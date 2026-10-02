@@ -1,0 +1,42 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource path="res://player.tscn" type="PackedScene" id="1"]
+
+[sub_resource type="BoxMesh" id="FloorMesh"]
+size = Vector3(28, 0.4, 36)
+
+[sub_resource type="BoxShape3D" id="FloorShape"]
+size = Vector3(28, 0.4, 36)
+
+[sub_resource type="Environment" id="Environment"]
+background_mode = 1
+background_color = Color(0.025, 0.03, 0.04, 1)
+ambient_light_source = 3
+ambient_light_color = Color(0.32, 0.35, 0.42, 1)
+ambient_light_energy = 0.65
+
+[sub_resource type="StandardMaterial3D" id="FloorMat"]
+albedo_color = Color(0.12, 0.11, 0.105, 1)
+roughness = 0.88
+
+[node name="Main" type="Node3D"]
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment")
+
+[node name="Moon" type="DirectionalLight3D" parent="."]
+rotation_degrees = Vector3(-52, -28, 0)
+light_energy = 1.25
+shadow_enabled = true
+
+[node name="Floor" type="StaticBody3D" parent="."]
+
+[node name="Mesh" type="MeshInstance3D" parent="Floor"]
+mesh = SubResource("FloorMesh")
+material_override = SubResource("FloorMat")
+
+[node name="Collision" type="CollisionShape3D" parent="Floor"]
+shape = SubResource("FloorShape")
+
+[node name="Player" parent="." instance=ExtResource("1")]
+position = Vector3(0, 1, 8)
