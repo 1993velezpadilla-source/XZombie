@@ -27,9 +27,28 @@ var _gun_reload_empty_clip: String = ""
 var _active_reload_hands_clip: String = ""
 var _active_reload_gun_clip: String = ""
 var _source_ok: bool = false
+# Small reversible on-device ADS calibration, not a source asset modification.
+@export_range(-0.015, 0.015, 0.001) var ads_fine_x_metres: float = -0.004
+var _mag_insert_sfx: AudioStreamPlayer3D
+var _bolt_pull_sfx: AudioStreamPlayer3D
+var _bolt_release_sfx: AudioStreamPlayer3D
+var _cue_mag_insert_at: float = -1.0
+var _cue_bolt_pull_at: float = -1.0
+var _cue_bolt_release_at: float = -1.0
+var _cue_insert_played: bool = false
+var _cue_pull_played: bool = false
+var _cue_release_played: bool = false
 
 func _ready() -> void:
  super._ready()
+ # Old MP40 ADS screenshot has the iron sight slightly camera-right.
+ # Shift only the Bukkbeek dedicated ADS Marker by 4 mm; HIP untouched.
+ if focused_aim_position != null:
+  focused_aim_position.position.x += ads_fine_x_metres
+  set_meta("mp40_ads_fine_x", ads_fine_x_metres)
+ _mag_insert_sfx = get_node_or_null("SFX/MagazineInsertCue") as AudioStreamPlayer3D
+ _bolt_pull_sfx = get_node_or_null("SFX/BoltPullCue") as AudioStreamPlayer3D
+ _bolt_release_sfx = get_node_or_null("SFX/BoltReleaseCue") as AudioStreamPlayer3D
  _hands_root = get_node_or_null("FPSHandsRoot/SourceHands") as Node3D
  _gun_root = get_node_or_null("FPSHandsRoot/SourceGun") as Node3D
  if _hands_root == null or _gun_root == null:
@@ -76,6 +95,9 @@ func _ready() -> void:
  # tracks (59 rotation/56 position magazine keys from the source GLB).
  if not _normalize_source_gun_root_basis():
   push_error("BUKKBEEK_MP40_RED: cannot safely neutralize source -90-degree animation root")
+  return
+ if not _normalize_source_bolt_idle_pose():
+  push_error("BUKKBEEK_MP40_RED: cannot preserve authentic charging-handle final pose")
   return
 
  var textured_gun: int = _texture_source(_gun_root, GUN_ALBEDO, GUN_NORMAL, 0.40, 0.31)
@@ -173,6 +195,76 @@ func _normalize_source_gun_root_basis() -> bool:
  set_meta("source_mp40_root_rotation_fixed", true)
  return true
 
+# Source measurements from genuine MP40 GLB (CI 38774153525):
+# idle PSA j_bolt=(-.064322,-.031814,-.025413) is an *incorrect*
+# idle-frame conversion, while the original reload EMPTY finishes at
+# (-.051676,+.021492,-.032661). The regular reload AND fire PSA
+# use approximately that SAME genuine settled location. On switching
+# to idle, the bad Y offset snapped the charging handle downward 53mm.
+# Repair ONLY the SINGLE-KEY j_bolt IDLE track using the source
+# normal+empty end consensus; do not modify the animated empty bolt
+# (8 keys) or hand PSAs. This avoids a fabricated custom hand animation.
+func _normalize_source_bolt_idle_pose() -> bool:
+ if _gun_anim == null or _gun_idle_clip.is_empty() or _gun_reload_empty_clip.is_empty():
+  return false
+ var idle_anim := _gun_anim.get_animation(_gun_idle_clip)
+ var normal_anim := _gun_anim.get_animation(_gun_reload_clip)
+ var empty_anim := _gun_anim.get_animation(_gun_reload_empty_clip)
+ if idle_anim == null or normal_anim == null or empty_anim == null:
+  return false
+ var track_suffix := ":j_bolt"
+ var idle_pos_track := -1
+ var idle_rot_track := -1
+ var normal_pos_track := -1
+ var normal_rot_track := -1
+ var empty_pos_track := -1
+ for i: int in range(idle_anim.get_track_count()):
+  if str(idle_anim.track_get_path(i)).ends_with(track_suffix):
+   if idle_anim.track_get_type(i) == Animation.TYPE_POSITION_3D:
+    idle_pos_track = i
+   elif idle_anim.track_get_type(i) == Animation.TYPE_ROTATION_3D:
+    idle_rot_track = i
+ for i: int in range(normal_anim.get_track_count()):
+  if str(normal_anim.track_get_path(i)).ends_with(track_suffix):
+   if normal_anim.track_get_type(i) == Animation.TYPE_POSITION_3D:
+    normal_pos_track = i
+   elif normal_anim.track_get_type(i) == Animation.TYPE_ROTATION_3D:
+    normal_rot_track = i
+ for i: int in range(empty_anim.get_track_count()):
+  if (str(empty_anim.track_get_path(i)).ends_with(track_suffix)
+   and empty_anim.track_get_type(i) == Animation.TYPE_POSITION_3D):
+   empty_pos_track = i
+ if mini(mini(idle_pos_track, normal_pos_track), empty_pos_track) < 0:
+  return false
+ if (idle_anim.track_get_key_count(idle_pos_track) != 1
+  or normal_anim.track_get_key_count(normal_pos_track) != 1
+  or empty_anim.track_get_key_count(empty_pos_track) < 8):
+  return false
+ var normal_bolt: Vector3 = normal_anim.track_get_key_value(normal_pos_track, 0) as Vector3
+ var empty_end: Vector3 = empty_anim.position_track_interpolate(empty_pos_track, empty_anim.length)
+ var idle_start: Vector3 = idle_anim.track_get_key_value(idle_pos_track, 0) as Vector3
+ # These source variants agree on where the charging handle should settle.
+ if normal_bolt.distance_to(empty_end) > 0.002:
+  return false
+ var error_m := idle_start.distance_to(empty_end)
+ if error_m < 0.025 or error_m > 0.100:
+  return false
+ # The -90° source root is already normalized separately. A tiny residual
+ # bolt orientation mismatch is also present in the idle source key.
+ if idle_rot_track >= 0 and normal_rot_track >= 0:
+  if (idle_anim.track_get_key_count(idle_rot_track) == 1
+   and normal_anim.track_get_key_count(normal_rot_track) == 1):
+   var settled_rotation: Quaternion = normal_anim.track_get_key_value(normal_rot_track, 0) as Quaternion
+   var old_rotation: Quaternion = idle_anim.track_get_key_value(idle_rot_track, 0) as Quaternion
+   if old_rotation.angle_to(settled_rotation) < deg_to_rad(5.0):
+    idle_anim.track_set_key_value(idle_rot_track, 0, settled_rotation)
+ idle_anim.track_set_key_value(idle_pos_track, 0, empty_end)
+ set_meta("source_mp40_bolt_idle_snap_fixed", true)
+ set_meta("source_mp40_bolt_idle_snap_error_m", error_m)
+ print("BUKKBEEK_MP40_BOLT_END_FIX_GREEN prior_idle=", idle_start,
+  " original_empty_end=", empty_end, " prior_snap_m=", error_m)
+ return true
+
 func _texture_source(root: Node3D, albedo_path: String, normal_path: String, metallic: float, roughness: float) -> int:
  var albedo: Texture2D = load(albedo_path) as Texture2D
  var normal: Texture2D = load(normal_path) as Texture2D
@@ -249,6 +341,84 @@ func _play_idle() -> void:
   # instantly to a different static bolt pose at the end of the reload.
   _gun_anim.play(_gun_idle_clip, 0.12)
 
+func _process(_delta: float) -> void:
+ if not _source_ok or not is_reloading or _gun_anim == null:
+  return
+ var elapsed := _gun_anim.current_animation_position
+ if not _cue_insert_played and _cue_mag_insert_at >= 0.0 and elapsed >= _cue_mag_insert_at:
+  _cue_insert_played = true
+  if _mag_insert_sfx != null:
+   _mag_insert_sfx.play()
+  print("BUKKBEEK_MP40_SFX_EVENT magazine_insert t=", elapsed)
+ if not _cue_pull_played and _cue_bolt_pull_at >= 0.0 and elapsed >= _cue_bolt_pull_at:
+  _cue_pull_played = true
+  if _bolt_pull_sfx != null:
+   _bolt_pull_sfx.play()
+  print("BUKKBEEK_MP40_SFX_EVENT bolt_pull t=", elapsed)
+ if not _cue_release_played and _cue_bolt_release_at >= 0.0 and elapsed >= _cue_bolt_release_at:
+  _cue_release_played = true
+  if _bolt_release_sfx != null:
+   _bolt_release_sfx.play()
+  print("BUKKBEEK_MP40_SFX_EVENT bolt_release t=", elapsed)
+
+
+func _source_magazine_insert_time(clip: String) -> float:
+ # Use actual j_clip translation peaks and return-to-well timing; no fixed
+ # 3.3s timer that also fires at the wrong moment in 4.2s empty reload.
+ var a: Animation = _gun_anim.get_animation(clip)
+ if a == null:
+  return -1.0
+ for i: int in range(a.get_track_count()):
+  if not str(a.track_get_path(i)).ends_with(":j_clip"):
+   continue
+  if a.track_get_type(i) != Animation.TYPE_POSITION_3D or a.track_get_key_count(i) < 8:
+   continue
+  var start: Vector3 = a.track_get_key_value(i, 0) as Vector3
+  var max_dist := 0.0
+  var max_index := 0
+  for j: int in range(a.track_get_key_count(i)):
+   var dist := start.distance_to(a.track_get_key_value(i, j) as Vector3)
+   if dist > max_dist:
+    max_dist = dist
+    max_index = j
+  if max_dist < 0.025:
+   break
+  for j: int in range(max_index + 1, a.track_get_key_count(i)):
+   if start.distance_to(a.track_get_key_value(i, j) as Vector3) < maxf(0.012, max_dist * 0.24):
+    return clampf(a.track_get_key_time(i, j), a.length * 0.35, a.length - 0.17)
+  break
+ return a.length * 0.65
+
+
+func _source_charging_bolt_cue_times(clip: String) -> Vector2:
+ var a: Animation = _gun_anim.get_animation(clip)
+ if a == null:
+  return Vector2(-1.0, -1.0)
+ for i: int in range(a.get_track_count()):
+  if (not str(a.track_get_path(i)).ends_with(":j_bolt")
+   or a.track_get_type(i) != Animation.TYPE_POSITION_3D
+   or a.track_get_key_count(i) < 8):
+   continue
+  var first: Vector3 = a.track_get_key_value(i, 0) as Vector3
+  var first_motion := -1.0
+  var last_motion := -1.0
+  var previous: Vector3 = first
+  for j: int in range(1, a.track_get_key_count(i)):
+   var pos: Vector3 = a.track_get_key_value(i, j) as Vector3
+   if first_motion < 0.0 and first.distance_to(pos) >= 0.004:
+    first_motion = a.track_get_key_time(i, j)
+   if previous.distance_to(pos) >= 0.003:
+    last_motion = a.track_get_key_time(i, j)
+   previous = pos
+  if first_motion < 0.0:
+   return Vector2(-1.0, -1.0)
+  # Release cue is reserved for a distinct later end of bolt travel.
+  var release := last_motion if last_motion > first_motion + 0.12 else first_motion + 0.16
+  return Vector2(clampf(first_motion, 0.1, a.length - 0.19),
+   clampf(release, first_motion + 0.12, a.length - 0.02))
+ return Vector2(-1.0, -1.0)
+
+
 func _hands_anim_finished(finished: StringName) -> void:
  if str(finished) != _idle_hands_clip and _source_ok and not is_reloading:
   _play_idle()
@@ -292,6 +462,21 @@ func start_reload() -> void:
   _gun_anim.play(selected_gun, 0.04)
   _gun_anim.seek(0.0, true)
   _hands_anim.seek(0.0, true)
+  _cue_mag_insert_at = _source_magazine_insert_time(selected_gun)
+  _cue_bolt_pull_at = -1.0
+  _cue_bolt_release_at = -1.0
+  if empty_mag:
+   var bolt_cues := _source_charging_bolt_cue_times(selected_gun)
+   _cue_bolt_pull_at = bolt_cues.x
+   _cue_bolt_release_at = bolt_cues.y
+  _cue_insert_played = false
+  _cue_pull_played = false
+  _cue_release_played = false
+  set_meta("source_mp40_reload_audio_cues", {
+   "mag_insert_at": _cue_mag_insert_at,
+   "bolt_pull_at": _cue_bolt_pull_at,
+   "bolt_release_at": _cue_bolt_release_at,
+  })
   set_meta("source_mp40_reload_active_variant", "empty" if empty_mag else "normal")
   set_meta("source_mp40_reload_active_duration", required_seconds)
   print("BUKKBEEK_MP40_REAL_RELOAD variant=", "EMPTY" if empty_mag else "NORMAL",
@@ -302,5 +487,8 @@ func _on_reload_timer_timeout() -> void:
  super._on_reload_timer_timeout()
  _active_reload_hands_clip = ""
  _active_reload_gun_clip = ""
+ _cue_mag_insert_at = -1.0
+ _cue_bolt_pull_at = -1.0
+ _cue_bolt_release_at = -1.0
  if _source_ok:
   _play_idle()

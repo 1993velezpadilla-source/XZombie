@@ -35,6 +35,17 @@ func _run() -> void:
  if not bool(mp40.get_meta("source_mp40_root_rotation_fixed", false)):
   _fail("source gun root animation -90 degree flip not corrected")
   return
+ if not bool(mp40.get_meta("source_mp40_bolt_idle_snap_fixed", false)):
+  _fail("charging bolt end-of-reload idle pose was not repaired")
+  return
+ if absf(float(mp40.get_meta("mp40_ads_fine_x", 0.0)) + 0.004) > 0.0001:
+  _fail("4mm reversible ADS calibration missing")
+  return
+ for cue_name: String in ["MagazineInsertCue", "BoltPullCue", "BoltReleaseCue"]:
+  var cue: AudioStreamPlayer3D = mp40.get_node_or_null("SFX/" + cue_name) as AudioStreamPlayer3D
+  if cue == null or cue.stream == null:
+   _fail("missing CC0 audio cue: " + cue_name)
+   return
  var skeleton: Skeleton3D = mp40.get("_skeleton") as Skeleton3D
  var gun: Node3D = mp40.get("_gun_root") as Node3D
  var hands: Node3D = mp40.get("_hands_root") as Node3D
@@ -206,6 +217,12 @@ func _run() -> void:
  if str(mp40.get_meta("source_mp40_reload_active_variant", "")) != "normal":
   _fail("non-empty MP40 incorrectly picked empty reload")
   return
+ var normal_audio: Dictionary = mp40.get_meta("source_mp40_reload_audio_cues", {}) as Dictionary
+ if (float(normal_audio.get("mag_insert_at", -1.0)) <= 0.5
+  or float(normal_audio.get("bolt_pull_at", 0.0)) >= 0.0
+  or float(normal_audio.get("bolt_release_at", 0.0)) >= 0.0):
+  _fail("normal reload must emit magazine insertion but NOT bolt sounds")
+  return
  print("BUKKBEEK_MP40_NORMAL_RELOAD_GREEN duration=", normal_duration,
   " gun=", normal_gun, " hands=", normal_hands)
 
@@ -244,8 +261,71 @@ func _run() -> void:
  if str(mp40.get_meta("source_mp40_reload_active_variant", "")) != "empty":
   _fail("empty MP40 incorrectly picked non-empty reload")
   return
+ var idle_gun_clip: String = str(mp40.get("_gun_idle_clip"))
+ var probe_samples: Array[float] = [0.0, 0.18, 0.42, 0.66, 0.85, 0.96, 1.0]
+ for role: String in ["idle", "normal", "empty"]:
+  var inspect_clip: String = idle_gun_clip if role == "idle" else (normal_gun if role == "normal" else empty_gun)
+  var track: Animation = gun_anim.get_animation(inspect_clip)
+  for i: int in range(track.get_track_count()):
+   if str(track.track_get_path(i)).ends_with(":j_bolt") and track.track_get_type(i) == Animation.TYPE_POSITION_3D:
+    print("MP40_BOLT_SOURCE_DIAG role=", role, " keys=", track.track_get_key_count(i),
+     " seconds=", track.length)
+    for fraction: float in probe_samples:
+     var pose: Vector3 = track.position_track_interpolate(i, track.length * fraction)
+     print("MP40_BOLT_KEY role=", role, " fraction=", fraction, " position=", pose)
+    break
+ # Source skeleton's bone rest is another independent reference.
+ var gun_skel: Skeleton3D = gun.get_node_or_null("MP40_SM_ao/Skeleton3D") as Skeleton3D
+ if gun_skel != null:
+  var bolt_idx := gun_skel.find_bone("j_bolt")
+  if bolt_idx >= 0:
+   print("MP40_BOLT_REST rest_position=", gun_skel.get_bone_rest(bolt_idx).origin,
+    " current_pose=", gun_skel.get_bone_pose_position(bolt_idx))
+
+ var empty_audio: Dictionary = mp40.get_meta("source_mp40_reload_audio_cues", {}) as Dictionary
+ var insert_time := float(empty_audio.get("mag_insert_at", -1.0))
+ var pull_time := float(empty_audio.get("bolt_pull_at", -1.0))
+ var release_time := float(empty_audio.get("bolt_release_at", -1.0))
+ if insert_time <= 0.5 or pull_time <= 0.0 or release_time <= pull_time or release_time >= empty_length:
+  _fail("empty reload missing correctly timed magazine/bolt audio cues")
+  return
+ var idle_animation: Animation = gun_anim.get_animation(idle_gun_clip)
+ var idle_bolt_pos := Vector3.ZERO
+ var empty_bolt_end := Vector3.ZERO
+ var found_idle := false
+ var found_empty := false
+ for i: int in range(idle_animation.get_track_count()):
+  if str(idle_animation.track_get_path(i)).ends_with(":j_bolt") and idle_animation.track_get_type(i) == Animation.TYPE_POSITION_3D:
+   idle_bolt_pos = idle_animation.track_get_key_value(i, 0) as Vector3
+   found_idle = true
+ for i: int in range(empty_animation.get_track_count()):
+  if str(empty_animation.track_get_path(i)).ends_with(":j_bolt") and empty_animation.track_get_type(i) == Animation.TYPE_POSITION_3D:
+   empty_bolt_end = empty_animation.position_track_interpolate(i, empty_animation.length)
+   found_empty = true
+ if not found_idle or not found_empty or idle_bolt_pos.distance_to(empty_bolt_end) > 0.002:
+  _fail("end-to-idle charging handle still snaps downward")
+  return
+ print("BUKKBEEK_MP40_BOLT_AUDIO_ADS_GREEN idle=", idle_bolt_pos,
+  " empty_end=", empty_bolt_end, " insert_at=", insert_time,
+  " bolt_pull_at=", pull_time, " bolt_release_at=", release_time)
  print("BUKKBEEK_MP40_EMPTY_SOURCE_GREEN hands=", empty_hands, " gun=", empty_gun,
   " duration=", empty_length, " charging_handle_keys=", animated_bolt_position_keys)
+ # Drive the real animation player forward to each source-derived event.
+ # Merely having SFX cue metadata is NOT evidence of sounds being scheduled.
+ for event in [
+  {"name": "magazine_insert", "when": insert_time, "flag": "_cue_insert_played"},
+  {"name": "bolt_pull", "when": pull_time, "flag": "_cue_pull_played"},
+  {"name": "bolt_release", "when": release_time, "flag": "_cue_release_played"},
+ ]:
+  gun_anim.seek(float(event["when"]) + 0.025, true)
+  # SceneTree.process_frame is emitted *before* node _process, so wait through
+  # a real engine timer frame for the audio dispatch code to run.
+  await create_timer(0.08).timeout
+  if not bool(mp40.get(str(event["flag"]))):
+   _fail("real MP40 original empty reload did not trigger SFX event: " + str(event["name"]))
+   return
+  print("BUKKBEEK_MP40_SFX_LIVE_GREEN event=", event["name"],
+   " triggered_at=", event["when"])
  print("BUKKBEEK_MP40_LIVE_GREEN "
   + "stock_weapon_count=" + str(weapon_nodes.size() - 1)
   + " hands_bones=" + str(skeleton.get_bone_count())
