@@ -134,6 +134,27 @@ func _run() -> void:
  print("MP40_VISUAL_ACTUAL_MESH_VERTEX_GREEN projected_rear=",projected_rear_px,
   " projected_front=",projected_front_px)
  await _capture(root, weapon_view, "ads")
+ # Probe ONLY: capture the original MP40 source scene FocusedAimPosition.
+ # This is an unmodified, same-renderer reference for actual hand silhouette
+ # and camera-distance comparisons. Always restore game test state.
+ var focus_marker: Marker3D = mp40.get_node("FocusedAimPosition") as Marker3D
+ var solved_marker: Transform3D = focus_marker.transform
+ var original_marker: Transform3D = Transform3D(
+  Vector3(0.999857, 0.00464, 0.01696),
+  Vector3(-0.00512, 0.999583, 0.02845),
+  Vector3(-0.01682, -0.02854, 0.99945),
+  Vector3(-0.04142, 0.0104, -0.24045))
+ root.get_node("Global").emit_signal("aim_mode_changed", false)
+ await create_timer(0.35).timeout
+ focus_marker.transform = original_marker
+ root.get_node("Global").emit_signal("aim_mode_changed", true)
+ await create_timer(0.45).timeout
+ await _capture(root, weapon_view, "unchanged_source_ads_baseline")
+ root.get_node("Global").emit_signal("aim_mode_changed", false)
+ await create_timer(0.35).timeout
+ focus_marker.transform = solved_marker
+ root.get_node("Global").emit_signal("aim_mode_changed", true)
+ await create_timer(0.45).timeout
  # Do not move the original world-space MP40 depth to "help" the sight fit.
  var legacy_ads_z: float = float(mp40.get_meta("source_mp40_marker_source_depth_z", 99.0))
  var solved_ads_z: float = float(mp40.get_meta("source_mp40_marker_solved_depth_z", -99.0))
