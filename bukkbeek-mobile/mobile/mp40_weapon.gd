@@ -373,6 +373,7 @@ func _derive_optical_ads_from_mesh() -> void:
  # to keep the original camera-visible limb shape as closely as possible.
  var arm_ik: SkeletonModifier3D = preload("res://mobile/mp40_ads_arm_modifier.gd").new()
  arm_ik.name = "SourceMP40ADSArmIK"
+ arm_ik.influence = 0.0 # Never affect HIP before original ADS tween starts.
  _skeleton.add_child(arm_ik)
  if not bool(arm_ik.call("configure",self,fps_arms_root,original_focus,fitted)):
   push_error("BUKKBEEK_MP40_ADS_RED cannot safely initialize authentic ADS arm source IK")
