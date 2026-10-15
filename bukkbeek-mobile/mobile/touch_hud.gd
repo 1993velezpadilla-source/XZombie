@@ -24,7 +24,7 @@ const LAYOUT := {
  "crouch": {"p":Vector2(0.555,0.870),"r":0.044,"icon":"crouch"}
 }
 const HELD := {
- "fire":["fire"],"adsfire":["fire","aim_mode"],"ads":["aim_mode"],
+ "fire":["fire"],"adsfire":["fire","aim_mode"],
  "reload":["reload"],"use":["activate"],"jump":["jump"],
  "crouch":["crouch"]
 }
@@ -32,6 +32,7 @@ const DEADZONE := 0.12
 const LOOK_SENSITIVITY := 0.0032
 const ADS_LOOK_MULTIPLIER := 0.62
 var layer_root: Control
+var joystick_visual: Control
 var images: Dictionary = {}
 var active: Dictionary = {}
 var hold_counts: Dictionary = {}
@@ -39,6 +40,8 @@ var stick_index: int = -1
 var stick_origin: Vector2 = Vector2.ZERO
 var stick_value: Vector2 = Vector2.ZERO
 var is_aiming: bool = false
+# ADS-only button is a tap-to-toggle by default. Combined ADS+FIRE stays held.
+var ads_toggled: bool = false
 var paused: bool = false
 
 func _ready() -> void:
@@ -55,6 +58,10 @@ func _ready() -> void:
  layer_root.set_anchors_preset(Control.PRESET_FULL_RECT)
  layer_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
  add_child(layer_root)
+ joystick_visual = preload("res://mobile/virtual_joystick.gd").new()
+ joystick_visual.name = "MovementJoystick"
+ joystick_visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ layer_root.add_child(joystick_visual)
  for role in LAYOUT.keys():
   var image := _image(str(LAYOUT[role]["icon"]))
   layer_root.add_child(image)
@@ -85,6 +92,12 @@ func _layout() -> void:
   var spec: Dictionary = LAYOUT[role]
   var center := Vector2(spec["p"].x*s.x,spec["p"].y*s.y)
   _place(images[role],center,s.y*spec["r"]*2.0)
+ # The only extra visual is a purpose-built analog joystick; all 12 action buttons
+ # remain the original approved PNGs, never synthetic replacement circles.
+ var joystick_diameter := s.y*0.30
+ joystick_visual.size = Vector2.ONE*joystick_diameter
+ var joystick_center := stick_origin if stick_index != -1 else Vector2(s.x*0.19,s.y*0.71)
+ joystick_visual.position = joystick_center - joystick_visual.size*0.5
 
 func _visual(role: String, down: bool) -> void:
  if images.has(role):
@@ -130,13 +143,18 @@ func _drag(index: int, pos: Vector2, delta: Vector2) -> void:
  var role: String = active[index]
  if role == "move" and index == stick_index:
   _update_stick(pos)
- elif role == "look":
-  if Global.in_vehicle or not is_instance_valid(Global.player): return
-  var p = Global.player
-  var m := ADS_LOOK_MULTIPLIER if is_aiming else 1.0
-  p.camera_pivot.rotate_y(-delta.x*LOOK_SENSITIVITY*m)
-  p.camera_holder.rotate_x(-delta.y*LOOK_SENSITIVITY*m)
-  p.camera_holder.rotation.x = clampf(p.camera_holder.rotation.x,deg_to_rad(-60.0),deg_to_rad(60.0))
+ elif role in ["look", "fire", "adsfire"]:
+  # IMPORTANT: do not release fire or switch finger ownership on drag.
+  # One finger may continuously fire AND rotate camera while sliding over screen.
+  _rotate_look(delta)
+
+func _rotate_look(delta: Vector2) -> void:
+ if Global.in_vehicle or not is_instance_valid(Global.player): return
+ var p = Global.player
+ var m := ADS_LOOK_MULTIPLIER if is_aiming else 1.0
+ p.camera_pivot.rotate_y(-delta.x*LOOK_SENSITIVITY*m)
+ p.camera_holder.rotate_x(-delta.y*LOOK_SENSITIVITY*m)
+ p.camera_holder.rotation.x = clampf(p.camera_holder.rotation.x,deg_to_rad(-60.0),deg_to_rad(60.0))
 
 func _up(index: int) -> void:
  if not active.has(index): return
@@ -145,6 +163,8 @@ func _up(index: int) -> void:
  if role == "move" and stick_index == index:
   stick_index = -1
   stick_value = Vector2.ZERO
+  joystick_visual.set("direction", stick_value)
+  joystick_visual.queue_redraw()
   _movement()
  elif HELD.has(role) and not paused:
   _release(role)
@@ -157,6 +177,8 @@ func _update_stick(pos: Vector2) -> void:
  var radius := maxf(1.0,get_viewport().get_visible_rect().size.y*0.16)
  stick_value = (pos-stick_origin).limit_length(radius)/radius
  if stick_value.length() < DEADZONE: stick_value=Vector2.ZERO
+ joystick_visual.set("direction", stick_value)
+ joystick_visual.queue_redraw()
  _movement()
  _layout()
 
@@ -173,6 +195,11 @@ func _movement() -> void:
  _drive("sprint",1.0 if stick_value.y < -0.86 else 0.0)
 
 func _press(role: String) -> void:
+ if role == "ads":
+  ads_toggled = not ads_toggled
+  _visual("ads", ads_toggled)
+  _sync_aim()
+  return
  _visual(role,true)
  if HELD.has(role):
   for action in HELD[role]:
@@ -200,7 +227,7 @@ func _release(role: String) -> void:
   _sync_aim()
 
 func _sync_aim() -> void:
- var aim: bool = hold_counts.get("aim_mode",0)>0
+ var aim: bool = ads_toggled or hold_counts.get("aim_mode",0)>0
  if aim != is_aiming:
   is_aiming=aim
   Global.aim_mode_changed.emit(aim)
@@ -220,8 +247,12 @@ func _release_all() -> void:
   Input.action_release(action)
  hold_counts.clear()
  active.clear()
+ ads_toggled=false
  stick_index=-1
  stick_value=Vector2.ZERO
+ if is_instance_valid(joystick_visual):
+  joystick_visual.set("direction", Vector2.ZERO)
+  joystick_visual.queue_redraw()
  _sync_aim()
  for key in LAYOUT.keys(): _visual(key,false)
  _layout()
