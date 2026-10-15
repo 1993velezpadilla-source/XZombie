@@ -45,14 +45,14 @@ func _run() -> void:
  weapon_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
  print("MP40_VISUAL_CAMERA_FOV prior= ", aim_camera.fov, " weapon=", weapon_camera.fov)
  await _capture(root, weapon_view, "hip")
- Global.aim_mode_changed.emit(true)
+ root.get_node("Global").emit_signal("aim_mode_changed", true)
  await create_timer(0.8).timeout
  print("MP40_VISUAL_ADS_GEOMETRY main_fov=", aim_camera.fov,
   " weapon_fov=", weapon_camera.fov,
   " root_transform=", mp40.get_node("FPSHandsRoot").transform)
  await _capture(root, weapon_view, "ads")
  # Save real empty-reload samples before and after the hand withdraws.
- Global.aim_mode_changed.emit(false)
+ root.get_node("Global").emit_signal("aim_mode_changed", false)
  await create_timer(0.4).timeout
  mp40.set("current_mag", 0)
  mp40.call("start_reload")
