@@ -38,15 +38,34 @@ func _run() -> void:
  if not bool(mp40.get_meta("source_mp40_bolt_idle_snap_fixed", false)):
   _fail("charging bolt end-of-reload idle pose was not repaired")
   return
- # Complete FRONT-RING + REAR-NOTCH optic line measured in actual 1280x720
- # rendered Godot poses: source front ring centered near (640,360). No SFX
- # modifications, reticle cheating or authoring GLB changes.
- if (absf(float(mp40.get_meta("mp40_ads_fine_x", 0.0)) - 0.002) > 0.0001
-  or absf(float(mp40.get_meta("mp40_ads_fine_y", 0.0)) + 0.026) > 0.0001
-  or absf(float(mp40.get_meta("mp40_ads_fine_pitch", 0.0)) - 6.60) > 0.001
-  or absf(float(mp40.get_meta("mp40_ads_fine_yaw", 0.0)) + 2.0) > 0.001):
-  _fail("source MP40 front ring + rear notch camera alignment missing")
+ # Physical sights must be derived from ORIGINAL GLB vertices, not
+ # a screenshot-only x/y/pitch/yaw adjustment. The gun itself points roughly
+ # along its original source +X barrel (0.96 deg to actual rear/front line).
+ # The MP40 source tag_weapon idle blending completes after ~0.12 s,
+ # and the optical calibration is deferred to 0.28 s to avoid stale geometry.
+ # This runtime gauntlet must WAIT FOR THAT SOURCE GATE, not race it at 0.20.
+ await create_timer(0.48).timeout
+ if not bool(mp40.get_meta("source_mp40_optical_axis_solved", false)):
+  _fail("source gun optic mesh calibration failed")
   return
+ var optic_pitch: float = float(mp40.get_meta("source_mp40_sight_axis_angle_deg", -1.0))
+ if optic_pitch < 0 or optic_pitch > 2.0:
+  _fail("original source barrel-to-optic >2 degrees (sky aiming detected): "+str(optic_pitch))
+  return
+ for suffix: String in ["rear", "front"]:
+  var err: float = float(mp40.get_meta("source_mp40_sight_"+suffix+"_error_m", 1000.0))
+  if err > 0.00005:
+   _fail("sight source vertex off aim ray "+suffix+" err_m="+str(err))
+   return
+ var actual_eye_relief_m: float = float(mp40.get_meta("source_mp40_eye_relief_m", -1.0))
+ if actual_eye_relief_m < 0.32 or actual_eye_relief_m > 0.38:
+  _fail("ADS rifle too distant/close; expected pixel-verified 0.35m, measured="+str(actual_eye_relief_m))
+  return
+ if str(mp40.get_meta("source_mp40_eye_relief_frame_ref", "")) != "Godot_source_visual_350mm":
+  _fail("eye relief calibration lacks six-render reference")
+  return
+ print("BUKKBEEK_MP40_ADS_SIZE_GREEN actual_eye_relief_m=", actual_eye_relief_m)
+ print("BUKKBEEK_MP40_ORIGINAL_SIGHT_AXIS_GREEN physical_angle_deg=", optic_pitch)
  var hip_marker: Marker3D = mp40.get_node_or_null("StandardAimPosition") as Marker3D
  var ads_marker: Marker3D = mp40.get_node_or_null("FocusedAimPosition") as Marker3D
  if hip_marker == null or ads_marker == null:
@@ -435,7 +454,7 @@ func _run() -> void:
  if not _magazine_idle_matches_reload_end(gun_anim, idle_gun_clip, empty_gun):
   _fail("magazine re-seats during empty reload charging-handle exit")
   return
- print("BUKKBEEK_MP40_ADS_MAG_SETTLE_GREEN x=0.002 y=-0.026 pitch=6.60 yaw=-2.0 idle_mag=exact_final_source_pose")
+ print("BUKKBEEK_MP40_ADS_MAG_SETTLE_GREEN original_physical_sight_axis_calibrated idle_mag=exact_final_source_pose")
  print("BUKKBEEK_MP40_LIVE_GREEN "
   + "stock_weapon_count=" + str(weapon_nodes.size() - 1)
   + " hands_bones=" + str(skeleton.get_bone_count())

@@ -26,6 +26,24 @@ func _capture(root_window: Window, v: SubViewport, label: String) -> void:
   quit(6)
   return
  isolated.save_png(folder + label + "_weapon_only.png")
+ # Quantitative real-render regression gate, NOT a guessed aiming coordinate:
+ # original stable MP40 ADS occupied 8.03% alpha of this 1280x720 viewmodel,
+ # but the source-landmark solver occupied 58.39% and put hands in camera.
+ # Fail BEFORE Android export even if source markers project perfectly.
+ if label == "ads":
+  var viewport_pixels: int = isolated.get_width() * isolated.get_height()
+  var occupied_pixels: int = 0
+  for yy: int in range(isolated.get_height()):
+   for xx: int in range(isolated.get_width()):
+    if isolated.get_pixel(xx, yy).a > 0.04:
+     occupied_pixels += 1
+  var alpha_coverage: float = float(occupied_pixels) / float(viewport_pixels)
+  print("MP40_VISUAL_ACTUAL_ADS_COVERAGE fraction=", alpha_coverage,
+   " prior_visible_reference=0.0803 candidate_failed=0.5839")
+  if alpha_coverage > 0.30:
+   push_error("MP40_VISUAL_RED: optical solver moved source MP40 inside camera. No APK release.")
+   quit(6)
+   return
  print("MP40_VISUAL_SCREENSHOT_GREEN ", label, " ", image.get_width(), "x", image.get_height())
 
 func _run() -> void:
@@ -72,29 +90,60 @@ func _run() -> void:
   push_error("MP40_VISUAL_RED: two ADS camera FOVs still mismatched")
   quit(6)
   return
+ # Certify original source 3D sight vertices projected by SAME Godot
+ # Camera3D used to render the weapon, independent of screenshot appearance.
+ var source_rig: Node3D = mp40.get_node("FPSHandsRoot") as Node3D
+ if not bool(mp40.get_meta("source_mp40_optical_axis_solved", false)):
+  push_error("MP40_VISUAL_RED: original GLB optical axis unsolved")
+  quit(6)
+  return
+ var sight_center: Vector2 = Vector2(weapon_view.size) * 0.5
+ for part: String in ["rear","front"]:
+  var point: Vector3 = mp40.get_meta("source_mp40_" + ("rear_sight_rig" if part == "rear" else "front_post_rig")) as Vector3
+  var pixel: Vector2 = weapon_camera.unproject_position(source_rig.to_global(point))
+  print("MP40_VISUAL_PHYSICAL_SIGHT_PIXEL part=",part," projected=",pixel," target=",sight_center,
+   " error_px=",pixel.distance_to(sight_center))
+  if pixel.distance_to(sight_center) > 2.0:
+   push_error("MP40_VISUAL_RED: real GLB "+part+" not on camera aim ray")
+   quit(6)
+   return
+ var inspect_mesh: MeshInstance3D = mp40.call("_find_source_mesh", gun) as MeshInstance3D
+ if inspect_mesh == null:
+  push_error("MP40_VISUAL_RED unable to access drawn gun mesh")
+  quit(6)
+  return
+ var raw_rear: Vector3 = inspect_mesh.to_global(Vector3(-0.157399, 0.060, -0.012522))
+ var raw_front: Vector3 = inspect_mesh.to_global(Vector3(0.366805, 0.053975, -0.0125345))
+ var computed_rear: Vector3 = mp40.get_node("FPSHandsRoot").to_global(mp40.get_meta("source_mp40_rear_sight_rig") as Vector3)
+ var computed_front: Vector3 = mp40.get_node("FPSHandsRoot").to_global(mp40.get_meta("source_mp40_front_post_rig") as Vector3)
+ print("MP40_VISUAL_SOURCE_POSED_MESH source_rear_px=",weapon_camera.unproject_position(raw_rear),
+  " source_front_px=",weapon_camera.unproject_position(raw_front),
+  " computed_rear_px=",weapon_camera.unproject_position(computed_rear),
+  " computed_front_px=",weapon_camera.unproject_position(computed_front),
+  " mesh_global=",inspect_mesh.global_transform)
+ # Reject false GREEN from calibrating at the temporary bone-bind pose.
+ # Both source-calibrated optical aperture and ORIGINAL front post must land on aiming ray once
+ # the source hand idle animation is actually posed and the weapon rendered.
+ var projected_rear_px: Vector2 = weapon_camera.unproject_position(raw_rear)
+ var projected_front_px: Vector2 = weapon_camera.unproject_position(raw_front)
+ if (projected_rear_px.distance_to(sight_center) > 2.0
+  or projected_front_px.distance_to(sight_center) > 2.0):
+  push_error("MP40_VISUAL_RED: real rendered mesh differs from calibration markers; source skeleton pose stale.")
+  quit(6)
+  return
+ print("MP40_VISUAL_ACTUAL_MESH_VERTEX_GREEN projected_rear=",projected_rear_px,
+  " projected_front=",projected_front_px)
  await _capture(root, weapon_view, "ads")
- # REAL SOURCE VISUAL SWEEP: diagnose front post / rear notch occlusion by
- # actual rendered optical changes, not invented green metadata. This does
- # NOT modify the exported Android game; marker only changes in this probe.
- var rig: Node3D = mp40.get_node("FPSHandsRoot") as Node3D
- var baseline: Transform3D = rig.transform
- for test in [
-  {"label":"optics_p6_ym015_x005_yaw_m1","x":0.005,"y":-0.015,"pitch":6.0,"yaw":-1.0},
-  {"label":"optics_p6_ym015_x007_yaw_m15","x":0.007,"y":-0.015,"pitch":6.0,"yaw":-1.5},
-  {"label":"optics_p6_ym015_x010_yaw_m15","x":0.010,"y":-0.015,"pitch":6.0,"yaw":-1.5},
-  {"label":"optics_p6_ym015_x006_yaw_m2","x":0.006,"y":-0.015,"pitch":6.0,"yaw":-2.0},
-  {"label":"optics_p6_ym015_x005_yaw_m2","x":0.005,"y":-0.015,"pitch":6.0,"yaw":-2.0},
-  {"label":"optics_p6_ym015_x010_yaw_m1","x":0.010,"y":-0.015,"pitch":6.0,"yaw":-1.0},
-  {"label":"optics_p5_ym015_x007_yaw_m15","x":0.007,"y":-0.015,"pitch":5.0,"yaw":-1.5}
-
- ]:
-  rig.transform = baseline
-  rig.position += Vector3(test["x"],test["y"],0.0)
-  rig.rotate_object_local(Vector3.RIGHT, deg_to_rad(float(test["pitch"])))
-  rig.rotate_object_local(Vector3.UP, deg_to_rad(float(test["yaw"])))
-  await create_timer(0.13).timeout
-  await _capture(root, weapon_view, "sight_" + str(test["label"]))
- rig.transform = baseline
+ # Source optical axis remains locked; the calibrated 350mm framing was
+ # selected from six real 720p screenshot candidates. No test-only transforms
+ # may leak into the released world or into original hand animation tracks.
+ var eye_distance_m: float = float(mp40.get_meta("source_mp40_eye_relief_m", -1.0))
+ if eye_distance_m < 0.32 or eye_distance_m > 0.38:
+  push_error("MP40_VISUAL_RED: ADS gun too distant from original physical eye position")
+  quit(6)
+  return
+ print("MP40_VISUAL_EYE_RELIEF_GREEN verified_real_source_m=", eye_distance_m)
+ # Optical fit is source-derived; do not run arbitrary X/Y/yaw sweeps.
  # Save real empty-reload samples before and after the hand withdraws.
  root.get_node("Global").emit_signal("aim_mode_changed", false)
  await create_timer(0.4).timeout
