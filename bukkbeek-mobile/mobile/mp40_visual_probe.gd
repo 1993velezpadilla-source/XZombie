@@ -1,0 +1,77 @@
+extends SceneTree
+## Pixel-level MP40 diagnostic in real Bukkbeek scene, rendered with xvfb.
+## CI headless-only gates cannot certify what the player sees on Android.
+func _init() -> void:
+ call_deferred("_run")
+
+func _capture(root_window: Window, v: SubViewport, label: String) -> void:
+ await RenderingServer.frame_post_draw
+ var image: Image = root_window.get_texture().get_image()
+ var isolated: Image = v.get_texture().get_image()
+ if image == null or isolated == null or image.is_empty() or isolated.is_empty():
+  push_error("MP40_VISUAL_RED frame unavailable: " + label)
+  quit(6)
+  return
+ var folder := "res://visual_probes/"
+ DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder))
+ if image.save_png(folder + label + ".png") != OK:
+  push_error("MP40_VISUAL_RED failed to save " + label)
+  quit(6)
+  return
+ isolated.save_png(folder + label + "_weapon_only.png")
+ print("MP40_VISUAL_SCREENSHOT_GREEN ", label, " ", image.get_width(), "x", image.get_height())
+
+func _run() -> void:
+ var world: PackedScene = load("res://main.tscn") as PackedScene
+ if world == null:
+  push_error("MP40_VISUAL_RED missing real world")
+  quit(3)
+  return
+ var main: Node3D = world.instantiate() as Node3D
+ root.add_child(main)
+ await create_timer(0.3).timeout
+ var player: Node = main.get_node_or_null("Player")
+ var manager: Node = player.get_node_or_null("WeaponsManager") if player else null
+ if manager == null:
+  push_error("MP40_VISUAL_RED no player manager")
+  quit(3)
+  return
+ manager.call("switch_weapon", 5)
+ await create_timer(0.8).timeout
+ var mp40: Node = player.get_node("WeaponsManager/MP40Source")
+ var aim_camera: Camera3D = player.get_node("CameraPivot/CameraHolder/MainCamera")
+ var weapon_view: SubViewport = player.get_node("WeaponSubViewport/SubViewport")
+ var weapon_camera: Camera3D = player.get_node("WeaponSubViewport/SubViewport/Camera3D")
+ weapon_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+ print("MP40_VISUAL_CAMERA_FOV prior= ", aim_camera.fov, " weapon=", weapon_camera.fov)
+ await _capture(root, weapon_view, "hip")
+ Global.aim_mode_changed.emit(true)
+ await create_timer(0.8).timeout
+ print("MP40_VISUAL_ADS_GEOMETRY main_fov=", aim_camera.fov,
+  " weapon_fov=", weapon_camera.fov,
+  " root_transform=", mp40.get_node("FPSHandsRoot").transform)
+ await _capture(root, weapon_view, "ads")
+ # Save real empty-reload samples before and after the hand withdraws.
+ Global.aim_mode_changed.emit(false)
+ await create_timer(0.4).timeout
+ mp40.set("current_mag", 0)
+ mp40.call("start_reload")
+ var hands: AnimationPlayer = mp40.get("_hands_anim") as AnimationPlayer
+ var gun: AnimationPlayer = mp40.get("_gun_anim") as AnimationPlayer
+ if not mp40.get("is_reloading") or hands == null or gun == null:
+  push_error("MP40_VISUAL_RED no real source reload")
+  quit(3)
+  return
+ var timepoints: Array = [2.2, 3.7, 4.12]
+ for t in timepoints:
+  hands.seek(t, true)
+  gun.seek(t, true)
+  hands.pause()
+  gun.pause()
+  await create_timer(0.15).timeout
+  await _capture(root, weapon_view, "reload_" + str(t).replace(".", "_"))
+ mp40.get_node("ReloadTimer").stop()
+ mp40.call("_on_reload_timer_timeout")
+ await create_timer(0.3).timeout
+ await _capture(root, weapon_view, "reload_finished_idle")
+ quit(0)
