@@ -32,6 +32,9 @@ func _run() -> void:
  if not bool(mp40.get_meta("source_mp40_ready", false)):
   _fail("MP40 did not bind real original hands/gun/PSAs/textures")
   return
+ if not bool(mp40.get_meta("source_mp40_root_rotation_fixed", false)):
+  _fail("source gun root animation -90 degree flip not corrected")
+  return
  var skeleton: Skeleton3D = mp40.get("_skeleton") as Skeleton3D
  var gun: Node3D = mp40.get("_gun_root") as Node3D
  var hands: Node3D = mp40.get("_hands_root") as Node3D
@@ -51,6 +54,46 @@ func _run() -> void:
   _fail("original source hand fire/reload clips missing")
   return
 
+ # Regression gate: source IDLE root is identity; imported FIRE/RELOAD root
+ # was -90 degrees around X. Only normalize the root, not j_clip/j_bolt.
+ var idle_clip: String = str(mp40.get("_gun_idle_clip"))
+ var idle_anim: Animation = gun_anim.get_animation(idle_clip)
+ var reference: Quaternion = Quaternion.IDENTITY
+ var root_track_path := "MP40_SM_ao/Skeleton3D:viewmodel_ger_mp40_smg_LOD0_skel"
+ for idx: int in range(idle_anim.get_track_count()):
+  if str(idle_anim.track_get_path(idx)) == root_track_path:
+   reference = idle_anim.track_get_key_value(idx, 0) as Quaternion
+ var source_reload: Animation = gun_anim.get_animation(str(mp40.get("_gun_reload_clip")))
+ var mag_position_keys := 0
+ var mag_rotation_keys := 0
+ for idx: int in range(source_reload.get_track_count()):
+  var path_name := str(source_reload.track_get_path(idx))
+  if path_name.ends_with(":j_clip"):
+   if source_reload.track_get_type(idx) == Animation.TYPE_POSITION_3D:
+    mag_position_keys = source_reload.track_get_key_count(idx)
+   if source_reload.track_get_type(idx) == Animation.TYPE_ROTATION_3D:
+    mag_rotation_keys = source_reload.track_get_key_count(idx)
+ if mag_position_keys < 50 or mag_rotation_keys < 50:
+  _fail("real source magazine motion tracks were removed")
+  return
+ for role: String in ["fire", "reload"]:
+  var clip: String = str(mp40.get("_gun_fire_clip")) if role == "fire" else str(mp40.get("_gun_reload_clip"))
+  var animated: Animation = gun_anim.get_animation(clip)
+  var hit := false
+  for idx: int in range(animated.get_track_count()):
+   if str(animated.track_get_path(idx)) == root_track_path:
+    var actual: Quaternion = animated.track_get_key_value(idx, 0) as Quaternion
+    if reference.angle_to(actual) > deg_to_rad(1.0):
+     _fail("source gun rotated during " + role)
+     return
+    hit = true
+  if not hit:
+   _fail("source gun has no " + role + " root track")
+   return
+ print("BUKKBEEK_MP40_90DEG_FIX_GREEN fire=neutral reload=neutral "
+  + "original_magazine_pos_keys=" + str(mag_position_keys)
+  + " original_magazine_rot_keys=" + str(mag_rotation_keys))
+
  # The current Android build starts on MP40; Linux CI switches explicitly.
  manager.call("switch_weapon", 5)
  await create_timer(0.4).timeout
@@ -63,6 +106,35 @@ func _run() -> void:
  if world_size.x < 0.2 or world_size.x > 5.0 or world_size.y < 0.2 or world_size.y > 5.0 or world_size.z < 0.2 or world_size.z > 5.0:
   _fail("source cm-to-meter grip mis-scaled")
   return
+
+ # Diagnostic ONLY: enumerate exact imported PSA tracks to find whether gun
+ # bone/root transform tracks double-drive the tag_weapon grip during FIRE/RELOAD.
+ for animation_mode: String in ["idle", "fire", "reload"]:
+  var name_var: String = ""
+  match animation_mode:
+   "idle":
+    name_var = str(mp40.get("_gun_idle_clip"))
+   "fire":
+    name_var = str(mp40.get("_gun_fire_clip"))
+   "reload":
+    name_var = str(mp40.get("_gun_reload_clip"))
+  if gun_anim.has_animation(name_var):
+   var a: Animation = gun_anim.get_animation(name_var)
+   print("MP40_DIAG_GUN_ANIM role=", animation_mode, " clip=", name_var, " tracks=", a.get_track_count(), " seconds=", a.length)
+   for idx: int in range(mini(a.get_track_count(), 80)):
+    print("MP40_DIAG_GUN_TRACK role=", animation_mode, " n=", idx, " path=", a.track_get_path(idx),
+     " type=", a.track_get_type(idx), " keys=", a.track_get_key_count(idx),
+     " first_key=", str(a.track_get_key_value(idx, 0)) if a.track_get_key_count(idx) > 0 and (idx == 0 or idx == 4 or idx == 5) else "omitted")
+ print("MP40_DIAG_GUN_PARENT ", gun.get_parent().get_path(), " gun_rot=", gun.rotation_degrees,
+  " hands_rot=", hands.rotation_degrees, " socket_rot=", socket.rotation_degrees)
+ for role: String in ["fire", "reload"]:
+  var clip: String = str(mp40.get("_fire_hands_clip")) if role == "fire" else str(mp40.get("_reload_hands_clip"))
+  var a: Animation = hands_anim.get_animation(clip)
+  print("MP40_DIAG_HANDS_ANIM role=", role, " clip=", clip, " tracks=", a.get_track_count(), " seconds=", a.length)
+  for idx: int in range(mini(a.get_track_count(), 100)):
+   var track_path := str(a.track_get_path(idx))
+   if "tag_weapon" in track_path.to_lower() or "root" in track_path.to_lower() or "tag_view" in track_path.to_lower() or "tag_ads" in track_path.to_lower() or idx < 3:
+    print("MP40_DIAG_HANDS_TRACK role=", role, " n=", idx, " path=", track_path)
 
  var before: int = mp40.get_current_mag()
  var did_try: bool = mp40.try_fire(true)

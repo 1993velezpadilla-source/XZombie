@@ -58,6 +58,17 @@ func _ready() -> void:
   push_error("BUKKBEEK_MP40_RED: missing source fire or reload PSA")
   return
 
+ # Source evidence: the imported root quaternion is IDENTITY in idle, but
+ # (-0.707107, 0, 0, 0.707107) in BOTH firing and reloading. This is a static
+ # -90-degree frame mismatch, not intentional recoil. The original hand
+ # tag_weapon pose already owns the grip; applying that key flips the *entire*
+ # gun sideways on FIRE and sends the reload toward the wrong screen side.
+ # Fix ONLY the single static root track. Do not touch animated j_clip/j_bolt
+ # tracks (59 rotation/56 position magazine keys from the source GLB).
+ if not _normalize_source_gun_root_basis():
+  push_error("BUKKBEEK_MP40_RED: cannot safely neutralize source -90-degree animation root")
+  return
+
  var textured_gun: int = _texture_source(_gun_root, GUN_ALBEDO, GUN_NORMAL, 0.40, 0.31)
  var textured_hands: int = _texture_source(_hands_root, HAND_ALBEDO, HAND_NORMAL, 0.0, 0.86)
  if textured_gun == 0 or textured_hands == 0:
@@ -91,6 +102,55 @@ func _ready() -> void:
   " source_hand_fire=", _fire_hands_clip, " source_hand_reload=", _reload_hands_clip,
   " original_gun_reload=", _gun_reload_clip)
  _play_idle()
+
+const SOURCE_GUN_ROOT_TRACK := "MP40_SM_ao/Skeleton3D:viewmodel_ger_mp40_smg_LOD0_skel"
+
+func _normalize_source_gun_root_basis() -> bool:
+ # Preserve the idle-root source basis, which the user verified appears upright.
+ # The imported firing/reload PSA both contain a SINGLE static -90 degree
+ # root key; applying that key produces the observed sideways flip. Modify the
+ # in-memory Animation only; downloaded authoring GLBs remain untouched.
+ if _gun_anim == null or _gun_idle_clip.is_empty():
+  return false
+ if not _gun_anim.has_animation(_gun_idle_clip):
+  return false
+ var idle: Animation = _gun_anim.get_animation(_gun_idle_clip)
+ var neutral_quat := Quaternion.IDENTITY
+ var idle_found := false
+ for track_idx: int in range(idle.get_track_count()):
+  if (str(idle.track_get_path(track_idx)) == SOURCE_GUN_ROOT_TRACK
+   and idle.track_get_type(track_idx) == Animation.TYPE_ROTATION_3D
+   and idle.track_get_key_count(track_idx) == 1):
+   neutral_quat = idle.track_get_key_value(track_idx, 0) as Quaternion
+   idle_found = true
+ if not idle_found:
+  return false
+
+ for clip: String in [_gun_fire_clip, _gun_reload_clip]:
+  if not _gun_anim.has_animation(clip):
+   return false
+  var animation: Animation = _gun_anim.get_animation(clip)
+  var root_found := false
+  for track_idx: int in range(animation.get_track_count()):
+   if str(animation.track_get_path(track_idx)) != SOURCE_GUN_ROOT_TRACK:
+    continue
+   if (animation.track_get_type(track_idx) != Animation.TYPE_ROTATION_3D
+    or animation.track_get_key_count(track_idx) != 1):
+    return false  # Never strip legitimate animated multi-key weapon rotations.
+   var source_quat: Quaternion = animation.track_get_key_value(track_idx, 0) as Quaternion
+   var mismatch_degrees := rad_to_deg(neutral_quat.angle_to(source_quat))
+   if mismatch_degrees < 70.0 or mismatch_degrees > 110.0:
+    return false  # Fail closed if upstream PSA differs from proven -90 source.
+   animation.track_set_key_value(track_idx, 0, neutral_quat)
+   root_found = true
+   print("BUKKBEEK_MP40_SOURCE_ROOT_FIXED clip=", clip,
+    " original_rotation_deg=", mismatch_degrees,
+    " new_root_key=", animation.track_get_key_value(track_idx, 0),
+    " preserved_magazine_and_bolt_tracks=", animation.get_track_count() - 1)
+  if not root_found:
+   return false
+ set_meta("source_mp40_root_rotation_fixed", true)
+ return true
 
 func _texture_source(root: Node3D, albedo_path: String, normal_path: String, metallic: float, roughness: float) -> int:
  var albedo: Texture2D = load(albedo_path) as Texture2D
