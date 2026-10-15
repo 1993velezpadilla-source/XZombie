@@ -61,10 +61,12 @@ func _run() -> void:
  # relief. Require the exact source FocusedAimPosition Z for original hands.
  var original_marker_z: float = float(mp40.get_meta("source_mp40_marker_source_depth_z", 99.0))
  var new_marker_z: float = float(mp40.get_meta("source_mp40_marker_solved_depth_z", -99.0))
- if absf(original_marker_z + 0.24045) > 0.0005 or absf(new_marker_z - original_marker_z) > 0.000001:
-  _fail("Original first-person MP40 ADS distance was replaced! original_z="+str(original_marker_z)+" new_z="+str(new_marker_z))
+ if (absf(original_marker_z + 0.24045) > 0.0005
+  or absf(float(mp40.get_meta("source_mp40_ads_proximity_m", -1.0)) - 0.020) > 0.0001
+  or absf(new_marker_z - original_marker_z - 0.020) > 0.00001):
+  _fail("MP40 ADS optics proximity not exactly +20mm: source_z="+str(original_marker_z)+" final_z="+str(new_marker_z))
   return
- print("BUKKBEEK_MP40_ORIGINAL_ADS_DISTANCE_GREEN z=",new_marker_z)
+ print("BUKKBEEK_MP40_ORIGINAL_ADS_DISTANCE_GREEN source_z=",original_marker_z," closer_z=",new_marker_z," delta_m=0.02")
  print("BUKKBEEK_MP40_ORIGINAL_SIGHT_AXIS_GREEN physical_angle_deg=", optic_pitch)
  var hip_marker: Marker3D = mp40.get_node_or_null("StandardAimPosition") as Marker3D
  var ads_marker: Marker3D = mp40.get_node_or_null("FocusedAimPosition") as Marker3D
