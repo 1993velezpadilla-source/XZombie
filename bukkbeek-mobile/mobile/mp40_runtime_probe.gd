@@ -41,11 +41,18 @@ func _run() -> void:
  if absf(float(mp40.get_meta("mp40_ads_fine_x", 0.0)) + 0.004) > 0.0001:
   _fail("4mm reversible ADS calibration missing")
   return
- for cue_name: String in ["MagazineInsertCue", "BoltPullCue", "BoltReleaseCue"]:
+ for cue_name: String in ["MagazineRemoveCue", "MagazineInsertCue", "BoltChargeCue"]:
   var cue: AudioStreamPlayer3D = mp40.get_node_or_null("SFX/" + cue_name) as AudioStreamPlayer3D
   if cue == null or cue.stream == null:
-   _fail("missing CC0 audio cue: " + cue_name)
+   _fail("missing ORIGINAL Aether MP40 audio cue: " + cue_name)
    return
+ if mp40.get("reload_sfx") != null:
+  _fail("MP40 still using Bukkbeek stock gun reload sample")
+  return
+ var required_source_names := ["gr_mp40_mag_out", "gr_mp40_mag_in", "gr_mp40_charge"]
+ if mp40.get_meta("source_mp40_real_audio", []) != required_source_names:
+  _fail("MP40 authentic Project Aether audio source manifest mismatch")
+  return
  var skeleton: Skeleton3D = mp40.get("_skeleton") as Skeleton3D
  var gun: Node3D = mp40.get("_gun_root") as Node3D
  var hands: Node3D = mp40.get("_hands_root") as Node3D
@@ -218,10 +225,10 @@ func _run() -> void:
   _fail("non-empty MP40 incorrectly picked empty reload")
   return
  var normal_audio: Dictionary = mp40.get_meta("source_mp40_reload_audio_cues", {}) as Dictionary
- if (float(normal_audio.get("mag_insert_at", -1.0)) <= 0.5
-  or float(normal_audio.get("bolt_pull_at", 0.0)) >= 0.0
-  or float(normal_audio.get("bolt_release_at", 0.0)) >= 0.0):
-  _fail("normal reload must emit magazine insertion but NOT bolt sounds")
+ if (float(normal_audio.get("mag_remove_at", -1.0)) <= 0.0
+  or float(normal_audio.get("mag_insert_at", -1.0)) <= float(normal_audio.get("mag_remove_at", -1.0))
+  or float(normal_audio.get("bolt_charge_at", 0.0)) >= 0.0):
+  _fail("normal reload must play original Aether mag-out/in but NOT charge")
   return
  print("BUKKBEEK_MP40_NORMAL_RELOAD_GREEN duration=", normal_duration,
   " gun=", normal_gun, " hands=", normal_hands)
@@ -283,11 +290,12 @@ func _run() -> void:
     " current_pose=", gun_skel.get_bone_pose_position(bolt_idx))
 
  var empty_audio: Dictionary = mp40.get_meta("source_mp40_reload_audio_cues", {}) as Dictionary
+ var remove_time := float(empty_audio.get("mag_remove_at", -1.0))
  var insert_time := float(empty_audio.get("mag_insert_at", -1.0))
- var pull_time := float(empty_audio.get("bolt_pull_at", -1.0))
- var release_time := float(empty_audio.get("bolt_release_at", -1.0))
- if insert_time <= 0.5 or pull_time <= 0.0 or release_time <= pull_time or release_time >= empty_length:
-  _fail("empty reload missing correctly timed magazine/bolt audio cues")
+ var charge_time := float(empty_audio.get("bolt_charge_at", -1.0))
+ if (remove_time <= 0.0 or insert_time <= remove_time
+  or charge_time <= insert_time or charge_time >= empty_length):
+  _fail("empty reload missing actual gr_mp40_mag_out, mag_in, charge timing")
   return
  var idle_animation: Animation = gun_anim.get_animation(idle_gun_clip)
  var idle_bolt_pos := Vector3.ZERO
@@ -306,16 +314,16 @@ func _run() -> void:
   _fail("end-to-idle charging handle still snaps downward")
   return
  print("BUKKBEEK_MP40_BOLT_AUDIO_ADS_GREEN idle=", idle_bolt_pos,
-  " empty_end=", empty_bolt_end, " insert_at=", insert_time,
-  " bolt_pull_at=", pull_time, " bolt_release_at=", release_time)
+  " empty_end=", empty_bolt_end, " remove_at=", remove_time,
+  " insert_at=", insert_time, " authentic_charge_at=", charge_time)
  print("BUKKBEEK_MP40_EMPTY_SOURCE_GREEN hands=", empty_hands, " gun=", empty_gun,
   " duration=", empty_length, " charging_handle_keys=", animated_bolt_position_keys)
  # Drive the real animation player forward to each source-derived event.
  # Merely having SFX cue metadata is NOT evidence of sounds being scheduled.
  for event in [
-  {"name": "magazine_insert", "when": insert_time, "flag": "_cue_insert_played"},
-  {"name": "bolt_pull", "when": pull_time, "flag": "_cue_pull_played"},
-  {"name": "bolt_release", "when": release_time, "flag": "_cue_release_played"},
+  {"name": "gr_mp40_mag_out", "when": remove_time, "flag": "_cue_remove_played"},
+  {"name": "gr_mp40_mag_in", "when": insert_time, "flag": "_cue_insert_played"},
+  {"name": "gr_mp40_charge", "when": charge_time, "flag": "_cue_charge_played"},
  ]:
   gun_anim.seek(float(event["when"]) + 0.025, true)
   # SceneTree.process_frame is emitted *before* node _process, so wait through
