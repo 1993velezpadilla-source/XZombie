@@ -13,6 +13,7 @@ on:
       - fix/mp40-source-sight-axis-20261015
       - experiment/mp40-original-distance-fixed-sights-20261015
       - experiment/mp40-original-arm-pose-projection-20261015
+      - experiment/mp40-ads-arm-ik-source-v1-20261015
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -86,6 +87,7 @@ jobs:
           cp bukkbeek-mobile/mobile/touch_hud.gd _build/bukkbeek/mobile/touch_hud.gd
           cp bukkbeek-mobile/mobile/virtual_joystick.gd _build/bukkbeek/mobile/virtual_joystick.gd
           cp bukkbeek-mobile/mobile/mp40_weapon.gd _build/bukkbeek/mobile/mp40_weapon.gd
+          cp bukkbeek-mobile/mobile/mp40_ads_arm_modifier.gd _build/bukkbeek/mobile/mp40_ads_arm_modifier.gd
           cp bukkbeek-mobile/mobile/mp40_runtime_probe.gd _build/bukkbeek/mobile/mp40_runtime_probe.gd
           cp bukkbeek-mobile/mobile/mp40_visual_probe.gd _build/bukkbeek/mobile/mp40_visual_probe.gd
           cp bukkbeek-mobile/mobile/mp40.tscn _build/bukkbeek/mobile/mp40.tscn
