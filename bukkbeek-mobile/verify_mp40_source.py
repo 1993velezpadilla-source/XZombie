@@ -67,14 +67,14 @@ def verify(root: Path) -> None:
         if not path.is_file():
             raise SystemExit(f"BUKKBEEK_MP40_SOURCE_RED: missing {path}")
         raw = path.read_bytes()
-        actual = hashlib.sha1(f"blob {len(raw)}\\0".encode() + raw).hexdigest()
+        actual = hashlib.sha1(f"blob {len(raw)}\0".encode() + raw).hexdigest()
         if actual != expected_sha:
             raise SystemExit(f"BUKKBEEK_MP40_SOURCE_RED: SHA mismatch {name}")
         if name.endswith(".glb"):
             if raw[:4] != b"glTF":
                 raise SystemExit(f"BUKKBEEK_MP40_SOURCE_RED: not GLB {name}")
         if name.endswith(".png"):
-            if raw[:8] != b"\\x89PNG\\r\\n\\x1a\\n":
+            if raw[:8] != b"\x89PNG\r\n\x1a\n":
                 raise SystemExit(f"BUKKBEEK_MP40_SOURCE_RED: not PNG {name}")
         print(f"BUKKBEEK_MP40_ASSET_GREEN {name} {len(raw)} bytes GitBlob={actual}")
 
