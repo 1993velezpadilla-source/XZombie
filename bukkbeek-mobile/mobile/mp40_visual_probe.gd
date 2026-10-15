@@ -86,8 +86,9 @@ func _run() -> void:
  print("MP40_VISUAL_ADS_GEOMETRY main_fov=", aim_camera.fov,
   " weapon_fov=", weapon_camera.fov,
   " root_transform=", mp40.get_node("FPSHandsRoot").transform)
- if absf(aim_camera.fov - weapon_camera.fov) > 0.65:
-  push_error("MP40_VISUAL_RED: two ADS camera FOVs still mismatched")
+ if (absf(weapon_camera.fov - 75.0) > 0.1
+  or absf(aim_camera.fov - 60.0) > 0.65):
+  push_error("MP40_VISUAL_RED: original 75° gun / 60° world camera optics lost")
   quit(6)
   return
  # Certify original source 3D sight vertices projected by SAME Godot
