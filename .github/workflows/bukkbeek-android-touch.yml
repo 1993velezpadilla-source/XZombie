@@ -11,6 +11,7 @@ on:
       - fix/bukkbeek-mp40-authentic-aether-sounds-20261015
       - fix/bukkbeek-mp40-ads-mag-settle-20261015
       - fix/mp40-source-sight-axis-20261015
+      - experiment/mp40-original-distance-fixed-sights-20261015
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
