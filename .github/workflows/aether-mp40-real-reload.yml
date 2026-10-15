@@ -1,0 +1,172 @@
+name: Recover Authentic Project Aether MP40 Reload WAVs
+
+on:
+  push:
+    branches:
+      - fix/bukkbeek-mp40-authentic-aether-sounds-20261015
+    paths:
+      - '.github/workflows/aether-mp40-real-reload.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  recover-raw-aether-sfx:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download original Project Aether package (not stock audio)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/aether-download"
+          npx --yes itchio-downloader --url "https://verrial.itch.io/projectaether" --downloadDirectory "$RUNNER_TEMP/aether-download"
+          FILE=$(find "$RUNNER_TEMP/aether-download" -type f -name '*.zip' -printf '%s\t%p\n' | sort -nr | head -1 | cut -f2-)
+          test -s "$FILE"
+          echo "SOURCE_ZIP=$FILE" >> "$GITHUB_ENV"
+          echo "MP40_REAL_SOURCE_PACKAGE bytes=$(stat -c %s "$FILE")"
+
+      - name: Convert original Aether IoStore to legacy pak
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/aether-paks"
+          7z x -y "$SOURCE_ZIP" 'ProjectAether/Content/Paks/*' -o"$RUNNER_TEMP/aether-paks" >/dev/null
+          PAKDIR="$RUNNER_TEMP/aether-paks/ProjectAether/Content/Paks"
+          curl -fL --retry 4 https://github.com/trumank/retoc/releases/download/v0.1.5/retoc_cli-x86_64-unknown-linux-gnu.tar.xz -o "$RUNNER_TEMP/retoc.tar.xz"
+          mkdir -p "$RUNNER_TEMP/retoc"
+          tar -xJf "$RUNNER_TEMP/retoc.tar.xz" -C "$RUNNER_TEMP/retoc"
+          RETOC=$(find "$RUNNER_TEMP/retoc" -type f -name 'retoc*' -perm -111 | head -1)
+          "$RETOC" to-legacy "$PAKDIR" "$RUNNER_TEMP/aether-legacy.pak"
+          test -s "$RUNNER_TEMP/aether-legacy.pak"
+          echo "MP40_REAL_PAK_VERIFIED bytes=$(stat -c %s "$RUNNER_TEMP/aether-legacy.pak")"
+
+      - name: Extract exact genuine MP40 magazine and charge samples
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fL --retry 4 https://github.com/trumank/repak/releases/download/v0.2.3/repak_cli-x86_64-unknown-linux-gnu.tar.xz -o "$RUNNER_TEMP/repak.tar.xz"
+          mkdir -p "$RUNNER_TEMP/repak"
+          tar -xJf "$RUNNER_TEMP/repak.tar.xz" -C "$RUNNER_TEMP/repak"
+          REPAK=$(find "$RUNNER_TEMP/repak" -type f -name 'repak*' -perm -111 | head -1)
+          "$REPAK" list "$RUNNER_TEMP/aether-legacy.pak" > "$RUNNER_TEMP/aether-files.txt"
+          for stem in gr_mp40_mag_out gr_mp40_mag_in gr_mp40_charge; do
+            grep -F "ProjectAether/Content/Assets/Sounds/Base/$stem.ubulk" "$RUNNER_TEMP/aether-files.txt"
+          done
+          mkdir -p mp40-real-source
+          "$REPAK" unpack "$RUNNER_TEMP/aether-legacy.pak" \
+            -o mp40-real-source \
+            -i 'ProjectAether/Content/Assets/Sounds/Base/gr_mp40_mag_out.*' \
+            -i 'ProjectAether/Content/Assets/Sounds/Base/gr_mp40_mag_in.*' \
+            -i 'ProjectAether/Content/Assets/Sounds/Base/gr_mp40_charge.*' \
+            --force
+          for stem in gr_mp40_mag_out gr_mp40_mag_in gr_mp40_charge; do
+            for ext in uasset uexp ubulk; do
+              FILE=$(find mp40-real-source -type f -name "$stem.$ext" -print -quit)
+              test -n "$FILE" && test -s "$FILE"
+              echo "MP40_REAL_AETHER_PACKAGE_FILE $FILE bytes=$(stat -c %s "$FILE")"
+            done
+          done
+
+      - name: Upload MP40 authentic raw sample triplets
+        uses: actions/upload-artifact@v4
+        with:
+          name: mp40-authentic-aether-reload-raw
+          path: mp40-real-source/
+          if-no-files-found: error
+          retention-days: 14
+
+  decode-real-mp40-wavs:
+    needs: recover-raw-aether-sfx
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+          fetch-depth: 0
+
+      - name: Download verified MP40 Aether raw original clips
+        uses: actions/download-artifact@v4
+        with:
+          name: mp40-authentic-aether-reload-raw
+          path: mp40-source-raw
+
+      - name: Prepare proven BINKA decoder (existing user Aether workflow)
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git clone --depth 1 https://github.com/AbienteSadness/ue5-binka-to-wav.git "$env:RUNNER_TEMP\ue5-binka-to-wav"
+          Invoke-WebRequest 'https://github.com/Keisawaakira/BinkadecWithWavHeader/releases/download/1.0.2/binkadec.zip' -OutFile "$env:RUNNER_TEMP\binkadec.zip"
+          Expand-Archive "$env:RUNNER_TEMP\binkadec.zip" -DestinationPath "$env:RUNNER_TEMP\binkadec" -Force
+          $decoder=Get-ChildItem "$env:RUNNER_TEMP\binkadec" -Filter 'binkadec.exe' -Recurse | Select-Object -First 1
+          if (-not $decoder) { throw 'Real Aether decoder missing' }
+          "BINKADEC=$($decoder.FullName)" | Out-File $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Decode and verify three original MP40 SFX
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dst = Join-Path $PWD 'bukkbeek-mobile\audio\aether\mp40'
+          New-Item -ItemType Directory -Force -Path $dst | Out-Null
+          $map = [ordered]@{
+            'gr_mp40_mag_out' = 'mag_out.wav'
+            'gr_mp40_mag_in' = 'mag_in.wav'
+            'gr_mp40_charge' = 'charge.wav'
+          }
+          $report=@()
+          foreach($stem in $map.Keys){
+            $ubulk=Get-ChildItem "$PWD\mp40-source-raw" -Filter "$stem.ubulk" -Recurse | Select-Object -First 1
+            if(-not $ubulk){ throw "Not found: authentic source $stem.ubulk" }
+            $tempDir=Join-Path $env:RUNNER_TEMP "decode-$stem"
+            New-Item -ItemType Directory -Force -Path $tempDir | Out-Null
+            Push-Location "$env:RUNNER_TEMP\ue5-binka-to-wav"
+            python binka2wav-cli.py $ubulk.FullName -o $tempDir --binkadec $env:BINKADEC
+            if($LASTEXITCODE -ne 0){throw "Original sample decode failed: $stem"}
+            Pop-Location
+            $wav=Get-ChildItem $tempDir -Filter '*.wav' -Recurse | Select-Object -First 1
+            if(-not $wav -or $wav.Length -le 64){throw "Invalid decoded source wav: $stem"}
+            Copy-Item $wav.FullName (Join-Path $dst $map[$stem]) -Force
+            $report += @{stem=$stem;output=$map[$stem];bytes=$wav.Length;raw_sha256=(Get-FileHash $ubulk.FullName -Algorithm SHA256).Hash;wav_sha256=(Get-FileHash (Join-Path $dst $map[$stem]) -Algorithm SHA256).Hash}
+            Write-Host "MP40_AUTHENTIC_AETHER_WAV_READY $stem $($map[$stem]) bytes=$($wav.Length)"
+          }
+          $report | ConvertTo-Json -Depth 6 | Set-Content (Join-Path $dst 'SOURCE_AETHER_PROVENANCE.json') -Encoding utf8
+          @'
+          from pathlib import Path
+          import wave
+          root = Path('bukkbeek-mobile/audio/aether/mp40')
+          for name in ['mag_out.wav', 'mag_in.wav', 'charge.wav']:
+              p = root / name
+              with wave.open(str(p), 'rb') as wav:
+                  assert wav.getnframes() >= 100, (name, wav.getnframes())
+                  assert 8000 <= wav.getframerate() <= 96000
+                  print('MP40_REAL_WAV_VERIFIED', name, wav.getnframes(), wav.getframerate())
+          '@ | Set-Content "$env:RUNNER_TEMP\verify_source.py" -Encoding utf8
+          python "$env:RUNNER_TEMP\verify_source.py"
+          if($LASTEXITCODE -ne 0){throw 'Source WAV validation failed'}
+
+      - name: Archive recovered ORIGINAL MP40 sound files
+        uses: actions/upload-artifact@v4
+        with:
+          name: mp40-authentic-aether-reload-wavs
+          path: bukkbeek-mobile/audio/aether/mp40/
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Commit original source WAVs to existing Bukkbeek development branch
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add bukkbeek-mobile/audio/aether/mp40
+          git diff --cached --quiet
+          if($LASTEXITCODE -eq 0){Write-Host "MP40_AUTHENTIC_WAVS_ALREADY_PRESENT";exit 0}
+          $global:LASTEXITCODE=0
+          git commit -m "assets(mp40): recover authentic Aether mag-out, mag-in and charge sounds"
+          git pull --rebase origin fix/bukkbeek-mp40-authentic-aether-sounds-20261015
+          git push origin HEAD:fix/bukkbeek-mp40-authentic-aether-sounds-20261015
+          if($LASTEXITCODE -ne 0){throw 'Failed to commit authentic original audio'}
+          Write-Host "MP40_AUTHENTIC_SOUND_SOURCE_COMMITTED"
