@@ -32,6 +32,9 @@ func _run() -> void:
  if not bool(mp40.get_meta("source_mp40_ready", false)):
   _fail("MP40 did not bind real original hands/gun/PSAs/textures")
   return
+ if not bool(mp40.get_meta("source_mp40_root_rotation_fixed", false)):
+  _fail("source gun root animation -90 degree flip not corrected")
+  return
  var skeleton: Skeleton3D = mp40.get("_skeleton") as Skeleton3D
  var gun: Node3D = mp40.get("_gun_root") as Node3D
  var hands: Node3D = mp40.get("_hands_root") as Node3D
@@ -50,6 +53,46 @@ func _run() -> void:
  if str(mp40.get("_fire_hands_clip")).is_empty() or str(mp40.get("_reload_hands_clip")).is_empty():
   _fail("original source hand fire/reload clips missing")
   return
+
+ # Regression gate: source IDLE root is identity; imported FIRE/RELOAD root
+ # was -90 degrees around X. Only normalize the root, not j_clip/j_bolt.
+ var idle_clip: String = str(mp40.get("_gun_idle_clip"))
+ var idle_anim: Animation = gun_anim.get_animation(idle_clip)
+ var reference: Quaternion = Quaternion.IDENTITY
+ var root_track_path := "MP40_SM_ao/Skeleton3D:viewmodel_ger_mp40_smg_LOD0_skel"
+ for idx: int in range(idle_anim.get_track_count()):
+  if str(idle_anim.track_get_path(idx)) == root_track_path:
+   reference = idle_anim.track_get_key_value(idx, 0) as Quaternion
+ var source_reload: Animation = gun_anim.get_animation(str(mp40.get("_gun_reload_clip")))
+ var mag_position_keys := 0
+ var mag_rotation_keys := 0
+ for idx: int in range(source_reload.get_track_count()):
+  var path_name := str(source_reload.track_get_path(idx))
+  if path_name.ends_with(":j_clip"):
+   if source_reload.track_get_type(idx) == Animation.TYPE_POSITION_3D:
+    mag_position_keys = source_reload.track_get_key_count(idx)
+   if source_reload.track_get_type(idx) == Animation.TYPE_ROTATION_3D:
+    mag_rotation_keys = source_reload.track_get_key_count(idx)
+ if mag_position_keys < 50 or mag_rotation_keys < 50:
+  _fail("real source magazine motion tracks were removed")
+  return
+ for role: String in ["fire", "reload"]:
+  var clip: String = str(mp40.get("_gun_fire_clip")) if role == "fire" else str(mp40.get("_gun_reload_clip"))
+  var animated: Animation = gun_anim.get_animation(clip)
+  var hit := false
+  for idx: int in range(animated.get_track_count()):
+   if str(animated.track_get_path(idx)) == root_track_path:
+    var actual: Quaternion = animated.track_get_key_value(idx, 0) as Quaternion
+    if reference.angle_to(actual) > deg_to_rad(1.0):
+     _fail("source gun rotated during " + role)
+     return
+    hit = true
+  if not hit:
+   _fail("source gun has no " + role + " root track")
+   return
+ print("BUKKBEEK_MP40_90DEG_FIX_GREEN fire=neutral reload=neutral "
+  + "original_magazine_pos_keys=" + str(mag_position_keys)
+  + " original_magazine_rot_keys=" + str(mag_rotation_keys))
 
  # The current Android build starts on MP40; Linux CI switches explicitly.
  manager.call("switch_weapon", 5)
