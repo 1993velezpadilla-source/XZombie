@@ -8,6 +8,7 @@ on:
       - fix/bukkbeek-mp40-fire-reload-orientation-20261015
       - fix/bukkbeek-mp40-source-reload-sync-20261015
       - fix/bukkbeek-mp40-bolt-audio-ads-20261015
+      - fix/bukkbeek-mp40-authentic-aether-sounds-20261015
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -79,6 +80,11 @@ jobs:
           cp bukkbeek-mobile/mobile/mp40_runtime_probe.gd _build/bukkbeek/mobile/mp40_runtime_probe.gd
           cp bukkbeek-mobile/mobile/mp40.tscn _build/bukkbeek/mobile/mp40.tscn
           python3 bukkbeek-mobile/verify_mp40_source.py _build/bukkbeek/mobile/mp40_source
+          # No user-facing test APK unless THESE EXACT 3 Project Aether files
+          # have been decoded and committed with their source .ubulk proof.
+          python3 bukkbeek-mobile/verify_mp40_authentic_audio.py bukkbeek-mobile/audio/aether/mp40
+          cp bukkbeek-mobile/audio/aether/mp40/*.wav _build/bukkbeek/mobile/mp40_source/
+          ! grep -Ei 'metal_(spring|close)|rubberduck|CC0' bukkbeek-mobile/mobile/mp40.tscn bukkbeek-mobile/mobile/mp40_weapon.gd
           cp bukkbeek-mobile/official_png/*.png _build/bukkbeek/mobile/official_png/
           python3 bukkbeek-mobile/patch_bukkbeek.py _build/bukkbeek
           test -s _build/bukkbeek/resources/player/fps_demo_arms.glb
