@@ -57,6 +57,14 @@ func _run() -> void:
   if err > 0.00005:
    _fail("sight source vertex off aim ray "+suffix+" err_m="+str(err))
    return
+ var actual_eye_relief_m: float = float(mp40.get_meta("source_mp40_eye_relief_m", -1.0))
+ if actual_eye_relief_m < 0.32 or actual_eye_relief_m > 0.38:
+  _fail("ADS rifle too distant/close; expected pixel-verified 0.35m, measured="+str(actual_eye_relief_m))
+  return
+ if str(mp40.get_meta("source_mp40_eye_relief_frame_ref", "")) != "Godot_source_visual_350mm":
+  _fail("eye relief calibration lacks six-render reference")
+  return
+ print("BUKKBEEK_MP40_ADS_SIZE_GREEN actual_eye_relief_m=", actual_eye_relief_m)
  print("BUKKBEEK_MP40_ORIGINAL_SIGHT_AXIS_GREEN physical_angle_deg=", optic_pitch)
  var hip_marker: Marker3D = mp40.get_node_or_null("StandardAimPosition") as Marker3D
  var ads_marker: Marker3D = mp40.get_node_or_null("FocusedAimPosition") as Marker3D
