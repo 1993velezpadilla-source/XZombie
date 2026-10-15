@@ -107,6 +107,20 @@ func _run() -> void:
    push_error("MP40_VISUAL_RED: real GLB "+part+" not on camera aim ray")
    quit(6)
    return
+ var inspect_mesh: MeshInstance3D = mp40.call("_find_source_mesh", gun) as MeshInstance3D
+ if inspect_mesh == null:
+  push_error("MP40_VISUAL_RED unable to access drawn gun mesh")
+  quit(6)
+  return
+ var raw_rear: Vector3 = inspect_mesh.to_global(Vector3(-0.157399, 0.045185, -0.012522))
+ var raw_front: Vector3 = inspect_mesh.to_global(Vector3(0.366805, 0.053975, -0.0125345))
+ var computed_rear: Vector3 = mp40.get_node("FPSHandsRoot").to_global(mp40.get_meta("source_mp40_rear_sight_rig") as Vector3)
+ var computed_front: Vector3 = mp40.get_node("FPSHandsRoot").to_global(mp40.get_meta("source_mp40_front_post_rig") as Vector3)
+ print("MP40_VISUAL_SOURCE_POSED_MESH source_rear_px=",weapon_camera.unproject_position(raw_rear),
+  " source_front_px=",weapon_camera.unproject_position(raw_front),
+  " computed_rear_px=",weapon_camera.unproject_position(computed_rear),
+  " computed_front_px=",weapon_camera.unproject_position(computed_front),
+  " mesh_global=",inspect_mesh.global_transform)
  await _capture(root, weapon_view, "ads")
  # Optical fit is source-derived; do not run arbitrary X/Y/yaw sweeps.
  # Save real empty-reload samples before and after the hand withdraws.
