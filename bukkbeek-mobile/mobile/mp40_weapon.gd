@@ -698,10 +698,13 @@ func _play_idle() -> void:
   _gun_anim.play(_gun_idle_clip, 0.12)
 
 func _process(_delta: float) -> void:
- # Unlike the old 4mm optical guess, this repairs the TWO-camera ADS mismatch.
- # Only the ACTIVE MP40 changes the viewmodel camera; stock guns untouched.
- if _source_ok and visible and main_camera != null and _viewmodel_camera != null:
-  _viewmodel_camera.fov = main_camera.fov
+ # Source Bukkbeek deliberately renders WEAPON at 75° while main ADS zooms
+ # the WORLD at 60°. Old V2 forced weapon to 60°, bloating the sleeves and
+ # receiver. The ORIGINAL 75° viewmodel lens is safe now because actual
+ # GLB rear/front metal points sit on the -Z sight ray (<2px projection).
+ # Keep original 75° ONLY while MP40 active, don't touch other weapons.
+ if _source_ok and visible and _viewmodel_camera != null:
+  _viewmodel_camera.fov = 75.0
  if not _source_ok or not is_reloading or _gun_anim == null:
   return
  var elapsed := _gun_anim.current_animation_position
