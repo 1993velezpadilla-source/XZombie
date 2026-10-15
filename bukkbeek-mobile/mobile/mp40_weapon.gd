@@ -49,6 +49,11 @@ const SOURCE_REAR_CLEAR_APERTURE_Y := 0.060
 const SOURCE_FRONT_POST_L := Vector3(0.366805, 0.053975, -0.013497)
 const SOURCE_FRONT_POST_R := Vector3(0.366805, 0.053975, -0.011572)
 const SOURCE_FLASH_TAG := Vector3(0.393835, 0.023172, -0.012254)
+# Approved original near-eye composition is immutable HIP; a small controlled
+# +20mm ADS-ONLY optical-ray translation gives a closer MP40 view without
+# changing FOV, pitch, source grip or animations. Three real frame sizes
+# (12/20/28 mm) were rendered first, not JPEG/PNG crops.
+const ADS_OPTICAL_PROXIMITY_M := 0.020
 var _source_sight_axis_solved: bool = false
 var _ads_arm_modifier: SkeletonModifier3D
 # The idle j_clip pose can disagree with a reload's FINAL magazine pose.
@@ -324,7 +329,7 @@ func _derive_optical_ads_from_mesh() -> void:
   ).orthonormalized()
   var offset_rear: Vector3 = candidate_basis * rear_rig
   var candidate := Transform3D(candidate_basis,
-   Vector3(-offset_rear.x, -offset_rear.y, source_ads_depth_z))
+   Vector3(-offset_rear.x, -offset_rear.y, source_ads_depth_z + ADS_OPTICAL_PROXIMITY_M))
   var error: float = 0.0
   for i: int in range(observed_points.size()):
    var posed_eye: Vector3 = candidate * observed_points[i]
@@ -342,8 +347,8 @@ func _derive_optical_ads_from_mesh() -> void:
   _source_ok = false
   return
  var depth: float = -(fitted * rear_rig).z
- if absf(fitted.origin.z - source_ads_depth_z) > 0.000001:
-  push_error("BUKKBEEK_MP40_ADS_RED: legacy ADS distance was modified")
+ if absf(fitted.origin.z - (source_ads_depth_z + ADS_OPTICAL_PROXIMITY_M)) > 0.000001:
+  push_error("BUKKBEEK_MP40_ADS_RED: axis-only deliberate 20mm proximity lost")
   _source_ok = false
   return
  set_meta("source_mp40_arm_preserving_roll_deg", best_roll_degrees)
@@ -390,6 +395,10 @@ func _derive_optical_ads_from_mesh() -> void:
  set_meta("source_mp40_eye_relief_frame_ref", "Original_MP40_FocusedAimPosition")
  set_meta("source_mp40_marker_source_depth_z", source_ads_depth_z)
  set_meta("source_mp40_marker_solved_depth_z", fitted.origin.z)
+ set_meta("source_mp40_ads_proximity_m", ADS_OPTICAL_PROXIMITY_M)
+ set_meta("source_mp40_original_unchanged_marker_z", original_focus.origin.z)
+ print("MP40_ADS_OPTICAL_PROXIMITY_SOURCE_GREEN original_marker_z=",source_ads_depth_z,
+  " new_marker_z=",fitted.origin.z, " additional_m=",ADS_OPTICAL_PROXIMITY_M)
  set_meta("source_mp40_rear_optical_aperture_y", SOURCE_REAR_CLEAR_APERTURE_Y)
  set_meta("source_mp40_original_focus_depth_m", -start_rear.z)
  set_meta("source_mp40_sight_rear_error_m", error_rear)
