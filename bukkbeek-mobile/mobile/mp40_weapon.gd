@@ -265,9 +265,21 @@ func _derive_optical_ads_from_mesh() -> void:
  var solved_basis: Basis = (Basis(fit) * original_focus.basis).orthonormalized()
  # Preserve ORIGINAL focused eye relief rather than guessing a new camera
  # distance, then solve translation to place rear notch on the -Z ray.
- var depth: float = -start_rear.z
- if depth < 0.025 or depth > 0.50:
-  push_error("BUKKBEEK_MP40_ADS_RED: source rear sight outside camera eye relief")
+ # V3 failed because the solver kept the existing near-zero eye relief:
+ # the butt/hand ended up INSIDE the camera, even though marker math was green.
+ # Source MP40 mesh: widest rear sight metal = 0.0440397 m (local Z extents
+ # -0.0345420 ... +0.0094977 near x=-0.157). Earlier visually normal source
+ # silhouette renders this metal ~58 px wide at 720p/60° FOV.
+ # Use calibrated pinhole projection depth = width * focal_px / apparent_px.
+ # Never pick a guessed pitch, and never change the source weapon geometry.
+ var rear_metal_width_m: float = 0.0094977 - (-0.0345420)
+ var target_rear_metal_width_px: float = 58.0
+ var weapon_camera: Camera3D = _viewmodel_camera
+ var viewport_height_px: float = float(weapon_camera.get_viewport().size.y)
+ var focal_length_px: float = viewport_height_px / (2.0 * tan(deg_to_rad(weapon_camera.fov) * 0.5))
+ var depth: float = rear_metal_width_m * focal_length_px / target_rear_metal_width_px
+ if depth < 0.25 or depth > 0.75:
+  push_error("BUKKBEEK_MP40_ADS_RED: rear iron sight eye relief is outside source-scale range "+str(depth))
   _source_ok = false
   return
  var rear_target := Vector3(0.0, 0.0, -depth)
@@ -293,12 +305,14 @@ func _derive_optical_ads_from_mesh() -> void:
  set_meta("source_mp40_rear_sight_rig", rear_rig)
  set_meta("source_mp40_front_post_rig", front_rig)
  set_meta("source_mp40_sight_axis_angle_deg", measured_angle_deg)
+ set_meta("source_mp40_eye_relief_m", depth)
+ set_meta("source_mp40_original_focus_depth_m", -start_rear.z)
  set_meta("source_mp40_sight_rear_error_m", error_rear)
  set_meta("source_mp40_sight_front_error_m", error_front)
  print("BUKKBEEK_MP40_SOURCE_OPTICAL_AXIS_GREEN front_rear_sep_m=", source_line.length(),
   " real_sight_to_barrel_deg=", measured_angle_deg,
   " error_rear_m=", error_rear, " error_front_m=", error_front,
-  " source=original_viewmodel_glb")
+  " source=original_viewmodel_glb", " solved_eye_relief_m=", depth, " old_eye_relief_m=", -start_rear.z)
 
 const SOURCE_GUN_ROOT_TRACK := "MP40_SM_ao/Skeleton3D:viewmodel_ger_mp40_smg_LOD0_skel"
 
