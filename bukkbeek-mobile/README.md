@@ -1,34 +1,31 @@
-# Bukkbeek Android — 12 ORIGINAL PNG ONLY (NO OLD CONTROLS)
+# Bukkbeek Android — EXACT 12 OFFICIAL XZIEL PNG buttons
 
-Source: original Bukkbeek GodotFPS-Template commit `11619794d644e7933f87caa6099f3acc1f085f5d`.
+RECOVERED: The user's *actual* approved full-image button PNGs were already in
+their GitHub repository: `1993velezpadilla-source/config-old-3`, branch
+`recovery/xziel-nzp-v026-official-buttons-20261011`,
+commit `0119c5b0f9109c4c88dbdd4173a9a2ba523abc3d`, directory
+`assets/xziel/official_touch_skins_v1/`.
 
-## Visual rule from the user — 15 October
-The gray circled buttons, outlined joystick, white icon overlays and auto-generated
-skinned button backgrounds from the previous APK are REJECTED. They must not
-appear in any new Bukkbeek APK.
+The official manifest says `status: official-approved`. Exactly 12 originals:
+`aim.png`, `aim_fire.png`, `crouch.png`, `fire.png`,
+`grenade.png`, `interact.png`, `knife.png`, `prone.png`,
+`reload.png`, `slide.png`, `vault_jump.png`, `weapon_swap.png`.
 
-This version permanently removes all references to the old transparent rings,
-old CC0 icon generator, separate glyph overlays, and generic fallback icons.
+The GitHub Android CI downloads the 12 exact original files with their pinned
+commit and verifies each source Git blob SHA. This **does not run**
+`build_xziel_icons.py` and never draws the rejected circle rings, separate
+glyphs, generic fallbacks or imitations. Touch buttons are rendered directly
+from these exact full PNGs only.
 
-The input controller now loads **only** 12 approved original image PNG files
-from `bukkbeek-mobile/official_png/`. Gameplay preserves upstream guns, models,
-zombies, map, ADS and reload logic.
+Left analog movement and right touch look are invisible gesture zones.
+Sprint is activated by pushing the left thumb fully forward.
+There is no original pause PNG; Android back and an invisible top-right pause
+zone are used instead. No counterfeit icon was added.
+If Bukkbeek lacks gameplay support for slide, prone, or grenades, the original
+textures appear but no substitute mechanics or animations are invented.
 
-**Important:** the previously approved 12 individual PNGs have not yet been
-recovered as actual files from the linked repositories / available Library.
-The original repository contains only an OLD icon generation script and older
-full-game screenshots. We deliberately do not mistake that for the requested
-art. See `official_png/README.md` for the required image naming.
+The original Bukkbeek environment, zombies, weapon meshes, and reload logic
+are retained as in upstream `11619794d644e7933f87caa6099f3acc1f085f5d`.
 
-## Fail-closed Android release gate
-`verify_official_png.py` blocks any APK export until all 12 actual PNGs are
-present, transparent and valid. No more "GREEN" with wrong icons or silent
-fallback. Earlier APK builds, including run #38742188897, are OLD/rejected
-and should not be installed for HUD validation.
-
-Controls: joystick, touch look, fire, ADS, ADS+fire, reload, use, jump, sprint,
-crouch input, knife, switch, pause. Crouch animation is not in original Bukkbeek.
-No new maps or weapons added.
-
-Branch: `feature/bukkbeek-android-touch-v1`. Never merge back to existing
-Quake/Vril or other Godot maps by mistake.
+A GREEN Android debug ARM64 export is still not proof of real-device touch
+gameplay. An Android phone smoke test remains required.
