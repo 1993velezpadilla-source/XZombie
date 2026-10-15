@@ -18,8 +18,14 @@ jobs:
       - name: Get XZombie overlay
         uses: actions/checkout@v4
 
-      - name: Block build if the 12 approved PNGs are not available
+      - name: Recover 12 ORIGINAL approved PNG assets from project GitHub
         run: |
+          mkdir -p bukkbeek-mobile/official_png
+          SOURCE="https://raw.githubusercontent.com/1993velezpadilla-source/config-old-3/0119c5b0f9109c4c88dbdd4173a9a2ba523abc3d/assets/xziel/official_touch_skins_v1"
+          for name in aim aim_fire crouch fire grenade interact knife prone reload slide vault_jump weapon_swap; do
+            curl --fail --silent --show-error --location --retry 3 \
+              "$SOURCE/$name.png" -o "bukkbeek-mobile/official_png/$name.png"
+          done
           python3 bukkbeek-mobile/verify_official_png.py bukkbeek-mobile/official_png
 
       - name: Java 17 for Godot Android
