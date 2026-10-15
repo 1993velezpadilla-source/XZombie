@@ -318,7 +318,9 @@ func _run() -> void:
   {"name": "bolt_release", "when": release_time, "flag": "_cue_release_played"},
  ]:
   gun_anim.seek(float(event["when"]) + 0.025, true)
-  await process_frame
+  # SceneTree.process_frame is emitted *before* node _process, so wait through
+  # a real engine timer frame for the audio dispatch code to run.
+  await create_timer(0.08).timeout
   if not bool(mp40.get(str(event["flag"]))):
    _fail("real MP40 original empty reload did not trigger SFX event: " + str(event["name"]))
    return
