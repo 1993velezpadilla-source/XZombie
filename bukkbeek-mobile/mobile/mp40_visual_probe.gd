@@ -43,6 +43,16 @@ func _run() -> void:
  var weapon_view: SubViewport = player.get_node("WeaponSubViewport/SubViewport")
  var weapon_camera: Camera3D = player.get_node("WeaponSubViewport/SubViewport/Camera3D")
  weapon_view.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+ weapon_camera.make_current()
+ var gun: Node3D = mp40.get("_gun_root") as Node3D
+ var hands: Node3D = mp40.get("_hands_root") as Node3D
+ print("MP40_VISUAL_DEBUG actual_weapon=", manager.get("current_weapon").name,
+  " visible=", mp40.visible,
+  " gun=", gun.global_transform,
+  " hands=", hands.global_transform,
+  " camera_current=", weapon_view.get_camera_3d().name if weapon_view.get_camera_3d() != null else "NONE",
+  " shared_world=", aim_camera.get_world_3d() == weapon_camera.get_world_3d(),
+  " root_visible=", mp40.get_node("FPSHandsRoot").is_visible_in_tree())
  print("MP40_VISUAL_CAMERA_FOV prior= ", aim_camera.fov, " weapon=", weapon_camera.fov)
  await _capture(root, weapon_view, "hip")
  root.get_node("Global").emit_signal("aim_mode_changed", true)
@@ -56,18 +66,18 @@ func _run() -> void:
  await create_timer(0.4).timeout
  mp40.set("current_mag", 0)
  mp40.call("start_reload")
- var hands: AnimationPlayer = mp40.get("_hands_anim") as AnimationPlayer
- var gun: AnimationPlayer = mp40.get("_gun_anim") as AnimationPlayer
- if not mp40.get("is_reloading") or hands == null or gun == null:
+ var hands_ap: AnimationPlayer = mp40.get("_hands_anim") as AnimationPlayer
+ var gun_ap: AnimationPlayer = mp40.get("_gun_anim") as AnimationPlayer
+ if not mp40.get("is_reloading") or hands_ap == null or gun_ap == null:
   push_error("MP40_VISUAL_RED no real source reload")
   quit(3)
   return
  var timepoints: Array = [2.2, 3.7, 4.12]
  for t in timepoints:
-  hands.seek(t, true)
-  gun.seek(t, true)
-  hands.pause()
-  gun.pause()
+  hands_ap.seek(t, true)
+  gun_ap.seek(t, true)
+  hands_ap.pause()
+  gun_ap.pause()
   await create_timer(0.15).timeout
   await _capture(root, weapon_view, "reload_" + str(t).replace(".", "_"))
  mp40.get_node("ReloadTimer").stop()
