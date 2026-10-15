@@ -63,7 +63,13 @@ func _process_modification_with_delta(_delta: float) -> void:
  var player: AnimationPlayer = _weapon.get("_hands_anim") as AnimationPlayer
  if player == null:
   return
- if player.current_animation != str(_weapon.get("_idle_hands_clip")):
+ # The original HandIdleMP40 source animation is NOT looping.
+ # Godot's AnimationPlayer.current_animation becomes empty AFTER the clip
+ # ends, even though all its source hand bone poses stay fixed in idle.
+ # Allow both the active idle clip and its finished/frozen pose. Every
+ # non-idle source FIRE/RELOAD/EQUIP PSA remains untouchable.
+ var playing_clip: String = str(player.current_animation)
+ if not playing_clip.is_empty() and playing_clip != str(_weapon.get("_idle_hands_clip")):
   _guard_skips += 1
   return # FIRE, RELOAD and SWAP source PSAs are untouched.
  _eligible_frames += 1
