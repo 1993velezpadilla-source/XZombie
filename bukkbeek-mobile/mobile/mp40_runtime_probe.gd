@@ -35,6 +35,17 @@ func _run() -> void:
  if not bool(mp40.get_meta("source_mp40_root_rotation_fixed", false)):
   _fail("source gun root animation -90 degree flip not corrected")
   return
+ if not bool(mp40.get_meta("source_mp40_bolt_idle_snap_fixed", false)):
+  _fail("charging bolt end-of-reload idle pose was not repaired")
+  return
+ if absf(float(mp40.get_meta("mp40_ads_fine_x", 0.0)) + 0.004) > 0.0001:
+  _fail("4mm reversible ADS calibration missing")
+  return
+ for cue_name: String in ["MagazineInsertCue", "BoltPullCue", "BoltReleaseCue"]:
+  var cue: AudioStreamPlayer3D = mp40.get_node_or_null("SFX/" + cue_name) as AudioStreamPlayer3D
+  if cue == null or cue.stream == null:
+   _fail("missing CC0 audio cue: " + cue_name)
+   return
  var skeleton: Skeleton3D = mp40.get("_skeleton") as Skeleton3D
  var gun: Node3D = mp40.get("_gun_root") as Node3D
  var hands: Node3D = mp40.get("_hands_root") as Node3D
@@ -206,6 +217,12 @@ func _run() -> void:
  if str(mp40.get_meta("source_mp40_reload_active_variant", "")) != "normal":
   _fail("non-empty MP40 incorrectly picked empty reload")
   return
+ var normal_audio: Dictionary = mp40.get_meta("source_mp40_reload_audio_cues", {}) as Dictionary
+ if (float(normal_audio.get("mag_insert_at", -1.0)) <= 0.5
+  or float(normal_audio.get("bolt_pull_at", 0.0)) >= 0.0
+  or float(normal_audio.get("bolt_release_at", 0.0)) >= 0.0):
+  _fail("normal reload must emit magazine insertion but NOT bolt sounds")
+  return
  print("BUKKBEEK_MP40_NORMAL_RELOAD_GREEN duration=", normal_duration,
   " gun=", normal_gun, " hands=", normal_hands)
 
@@ -265,6 +282,32 @@ func _run() -> void:
    print("MP40_BOLT_REST rest_position=", gun_skel.get_bone_rest(bolt_idx).origin,
     " current_pose=", gun_skel.get_bone_pose_position(bolt_idx))
 
+ var empty_audio: Dictionary = mp40.get_meta("source_mp40_reload_audio_cues", {}) as Dictionary
+ var insert_time := float(empty_audio.get("mag_insert_at", -1.0))
+ var pull_time := float(empty_audio.get("bolt_pull_at", -1.0))
+ var release_time := float(empty_audio.get("bolt_release_at", -1.0))
+ if insert_time <= 0.5 or pull_time <= 0.0 or release_time <= pull_time or release_time >= empty_length:
+  _fail("empty reload missing correctly timed magazine/bolt audio cues")
+  return
+ var idle_animation: Animation = gun_anim.get_animation(idle_gun_clip)
+ var idle_bolt_pos := Vector3.ZERO
+ var empty_bolt_end := Vector3.ZERO
+ var found_idle := false
+ var found_empty := false
+ for i: int in range(idle_animation.get_track_count()):
+  if str(idle_animation.track_get_path(i)).ends_with(":j_bolt") and idle_animation.track_get_type(i) == Animation.TYPE_POSITION_3D:
+   idle_bolt_pos = idle_animation.track_get_key_value(i, 0) as Vector3
+   found_idle = true
+ for i: int in range(empty_animation.get_track_count()):
+  if str(empty_animation.track_get_path(i)).ends_with(":j_bolt") and empty_animation.track_get_type(i) == Animation.TYPE_POSITION_3D:
+   empty_bolt_end = empty_animation.position_track_interpolate(i, empty_animation.length)
+   found_empty = true
+ if not found_idle or not found_empty or idle_bolt_pos.distance_to(empty_bolt_end) > 0.002:
+  _fail("end-to-idle charging handle still snaps downward")
+  return
+ print("BUKKBEEK_MP40_BOLT_AUDIO_ADS_GREEN idle=", idle_bolt_pos,
+  " empty_end=", empty_bolt_end, " insert_at=", insert_time,
+  " bolt_pull_at=", pull_time, " bolt_release_at=", release_time)
  print("BUKKBEEK_MP40_EMPTY_SOURCE_GREEN hands=", empty_hands, " gun=", empty_gun,
   " duration=", empty_length, " charging_handle_keys=", animated_bolt_position_keys)
  print("BUKKBEEK_MP40_LIVE_GREEN "
