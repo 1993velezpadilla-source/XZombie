@@ -41,7 +41,10 @@ func _run() -> void:
  # Physical sights must be derived from ORIGINAL GLB vertices, not
  # a screenshot-only x/y/pitch/yaw adjustment. The gun itself points roughly
  # along its original source +X barrel (0.96 deg to actual rear/front line).
- await create_timer(0.20).timeout
+ # The MP40 source tag_weapon idle blending completes after ~0.12 s,
+ # and the optical calibration is deferred to 0.28 s to avoid stale geometry.
+ # This runtime gauntlet must WAIT FOR THAT SOURCE GATE, not race it at 0.20.
+ await create_timer(0.48).timeout
  if not bool(mp40.get_meta("source_mp40_optical_axis_solved", false)):
   _fail("source gun optic mesh calibration failed")
   return
