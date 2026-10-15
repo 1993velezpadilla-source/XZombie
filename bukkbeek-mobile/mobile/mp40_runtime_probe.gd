@@ -310,6 +310,20 @@ func _run() -> void:
   " bolt_pull_at=", pull_time, " bolt_release_at=", release_time)
  print("BUKKBEEK_MP40_EMPTY_SOURCE_GREEN hands=", empty_hands, " gun=", empty_gun,
   " duration=", empty_length, " charging_handle_keys=", animated_bolt_position_keys)
+ # Drive the real animation player forward to each source-derived event.
+ # Merely having SFX cue metadata is NOT evidence of sounds being scheduled.
+ for event in [
+  {"name": "magazine_insert", "when": insert_time, "flag": "_cue_insert_played"},
+  {"name": "bolt_pull", "when": pull_time, "flag": "_cue_pull_played"},
+  {"name": "bolt_release", "when": release_time, "flag": "_cue_release_played"},
+ ]:
+  gun_anim.seek(float(event["when"]) + 0.025, true)
+  await process_frame
+  if not bool(mp40.get(str(event["flag"]))):
+   _fail("real MP40 original empty reload did not trigger SFX event: " + str(event["name"]))
+   return
+  print("BUKKBEEK_MP40_SFX_LIVE_GREEN event=", event["name"],
+   " triggered_at=", event["when"])
  print("BUKKBEEK_MP40_LIVE_GREEN "
   + "stock_weapon_count=" + str(weapon_nodes.size() - 1)
   + " hands_bones=" + str(skeleton.get_bone_count())
