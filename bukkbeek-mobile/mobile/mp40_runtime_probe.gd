@@ -53,6 +53,33 @@ func _run() -> void:
  if not bool(mp40.get_meta("source_mp40_mag_idle_contract_ready", false)):
   _fail("j_clip authentic magazine end-to-idle pose contract not loaded")
   return
+ var reseat_report: Dictionary = mp40.get_meta("source_mp40_late_second_seat_removed", {}) as Dictionary
+ if reseat_report.size() != 2:
+  _fail("two source reload variants have no late second seating correction")
+  return
+ var gun_ap: AnimationPlayer = mp40.get("_gun_anim") as AnimationPlayer
+ for variant: String in [str(mp40.get("_gun_reload_clip")), str(mp40.get("_gun_reload_empty_clip"))]:
+  if not reseat_report.has(variant):
+   _fail("missing magazine late-seating correction for " + variant)
+   return
+  var orig_gap: float = float((reseat_report[variant] as Dictionary).get("original_late_displacement_m", -1))
+  if orig_gap < 0.025 or orig_gap > 0.095:
+   _fail("source late 50mm magazine motion provenance invalid: " + variant)
+   return
+  var a: Animation = gun_ap.get_animation(variant)
+  var mag_pos_track: int = -1
+  for i: int in range(a.get_track_count()):
+   if str(a.track_get_path(i)).ends_with(":j_clip") and a.track_get_type(i) == Animation.TYPE_POSITION_3D:
+    mag_pos_track = i
+    break
+  if mag_pos_track < 0 or a.track_get_key_count(mag_pos_track) < 50:
+   _fail("original >50 j_clip position keys were removed")
+   return
+  var late_pose: Vector3 = a.position_track_interpolate(mag_pos_track, 2.55)
+  var final_pose: Vector3 = a.position_track_interpolate(mag_pos_track, a.length)
+  if late_pose.distance_to(final_pose) > 0.002:
+   _fail("MP40 magazine still has second seat after 2.55s: " + variant)
+   return
  for cue_name: String in ["MagazineRemoveCue", "MagazineInsertCue", "BoltChargeCue"]:
   var cue: AudioStreamPlayer3D = mp40.get_node_or_null("SFX/" + cue_name) as AudioStreamPlayer3D
   if cue == null or cue.stream == null:
@@ -143,6 +170,24 @@ func _run() -> void:
  if world_size.x < 0.2 or world_size.x > 5.0 or world_size.y < 0.2 or world_size.y > 5.0 or world_size.z < 0.2 or world_size.z > 5.0:
   _fail("source cm-to-meter grip mis-scaled")
   return
+
+ # The TWO cameras used to disagree (world=60° ADS, weapon=75°).
+ # Exercise real Bukkbeek global ADS signal and assert synchronized optics.
+ var globals_node: Node = root.get_node_or_null("Global")
+ if globals_node == null:
+  _fail("Bukkbeek autoload Global unavailable for ADS test")
+  return
+ globals_node.emit_signal("aim_mode_changed", true)
+ await create_timer(0.48).timeout
+ var main_cam: Camera3D = player.get_node("CameraPivot/CameraHolder/MainCamera")
+ var view_cam: Camera3D = player.get_node("WeaponSubViewport/SubViewport/Camera3D")
+ if (main_cam.fov < 57 or main_cam.fov > 65
+  or absf(main_cam.fov - view_cam.fov) > 0.75):
+  _fail("world and weapon camera ADS FOV do not match: "+ str(main_cam.fov)+" vs "+str(view_cam.fov))
+  return
+ print("BUKKBEEK_MP40_TWO_CAMERA_ADS_GREEN world_fov=", main_cam.fov, " weapon_fov=", view_cam.fov)
+ globals_node.emit_signal("aim_mode_changed", false)
+ await create_timer(0.25).timeout
 
  # Diagnostic ONLY: enumerate exact imported PSA tracks to find whether gun
  # bone/root transform tracks double-drive the tag_weapon grip during FIRE/RELOAD.
