@@ -203,10 +203,11 @@ func _run() -> void:
  var main_cam: Camera3D = player.get_node("CameraPivot/CameraHolder/MainCamera")
  var view_cam: Camera3D = player.get_node("WeaponSubViewport/SubViewport/Camera3D")
  if (main_cam.fov < 57 or main_cam.fov > 65
-  or absf(main_cam.fov - view_cam.fov) > 0.75):
-  _fail("world and weapon camera ADS FOV do not match: "+ str(main_cam.fov)+" vs "+str(view_cam.fov))
+  or absf(view_cam.fov - 75.0) > 0.1):
+  _fail("original independent 75-degree Bukkbeek viewmodel FOV not restored")
   return
- print("BUKKBEEK_MP40_TWO_CAMERA_ADS_GREEN world_fov=", main_cam.fov, " weapon_fov=", view_cam.fov)
+ print("BUKKBEEK_MP40_AUTHORED_VIEWMODEL_FOV_GREEN world_fov=", main_cam.fov,
+  " original_weapon_fov=", view_cam.fov)
  # Real source iron sights must not lag behind the ray when player looks
  # around on touchscreen; original Bukkbeek smoothed-follow still works in HIP.
  await create_timer(0.35).timeout
