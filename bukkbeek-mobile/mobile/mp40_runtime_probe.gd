@@ -218,7 +218,14 @@ func _run() -> void:
  var ik_frames: int = int(ads_ik.get("_frames"))
  var wrist_anchor_err_m: float = float(ads_ik.get("_worst_wrist_anchor_m"))
  if ik_frames < 1 or wrist_anchor_err_m > 0.06:
-  _fail("ADS source arm IK inactive or displaced original hand grip; frames="+str(ik_frames)+" wrist_error="+str(wrist_anchor_err_m))
+  _fail("ADS source arm IK inactive or displaced original hand grip; frames="+str(ik_frames)+" wrist_error="+str(wrist_anchor_err_m)
+   +" callback="+str(ads_ik.get("_callbacks"))
+   +" eligible="+str(ads_ik.get("_eligible_frames"))
+   +" skip="+str(ads_ik.get("_guard_skips"))
+   +" solver_calls="+str(ads_ik.get("_solver_attempts"))
+   +" source_clip="+str(hands_anim.current_animation)
+   +" source_ads="+str(mp40.get("is_aimed")))
+
   return
  print("BUKKBEEK_MP40_ADS_ARMS_IK_GREEN applied_frames=",ik_frames,
   " wrist_grip_error_source_units=",wrist_anchor_err_m)
