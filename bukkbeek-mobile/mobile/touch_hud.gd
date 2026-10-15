@@ -3,27 +3,30 @@ extends CanvasLayer
 # Never use old generated circles. Original PNG artwork is mandatory.
 const ICONS := "res://mobile/official_png/"
 const OFFICIAL_BUTTON_FILES := PackedStringArray([
- "move.png", "fire.png", "ads.png", "adsfire.png",
- "reload.png", "interact.png", "jump.png", "sprint.png",
- "crouch.png", "knife.png", "switch.png", "pause.png"
+ "aim.png", "aim_fire.png", "crouch.png", "fire.png",
+ "grenade.png", "interact.png", "knife.png", "prone.png",
+ "reload.png", "slide.png", "vault_jump.png", "weapon_swap.png"
 ])
+# Icons are exactly the official-approved individual PNGs.
+# Touch look and analog move are gesture zones, no new/rejected HUD graphics.
 const LAYOUT := {
  "fire": {"p":Vector2(0.885,0.585),"r":0.075,"icon":"fire"},
- "adsfire": {"p":Vector2(0.795,0.435),"r":0.057,"icon":"adsfire"},
- "ads": {"p":Vector2(0.695,0.575),"r":0.051,"icon":"ads"},
+ "adsfire": {"p":Vector2(0.795,0.435),"r":0.057,"icon":"aim_fire"},
+ "ads": {"p":Vector2(0.695,0.575),"r":0.051,"icon":"aim"},
  "reload": {"p":Vector2(0.805,0.785),"r":0.046,"icon":"reload"},
  "use": {"p":Vector2(0.605,0.675),"r":0.046,"icon":"interact"},
- "jump": {"p":Vector2(0.695,0.790),"r":0.047,"icon":"jump"},
+ "jump": {"p":Vector2(0.695,0.790),"r":0.047,"icon":"vault_jump"},
  "knife": {"p":Vector2(0.915,0.800),"r":0.046,"icon":"knife"},
- "weapon": {"p":Vector2(0.905,0.300),"r":0.044,"icon":"switch"},
- "sprint": {"p":Vector2(0.300,0.555),"r":0.046,"icon":"sprint"},
- "crouch": {"p":Vector2(0.555,0.845),"r":0.044,"icon":"crouch"},
- "pause": {"p":Vector2(0.960,0.100),"r":0.041,"icon":"pause"}
+ "weapon": {"p":Vector2(0.905,0.300),"r":0.044,"icon":"weapon_swap"},
+ "grenade": {"p":Vector2(0.843,0.265),"r":0.041,"icon":"grenade"},
+ "slide": {"p":Vector2(0.470,0.800),"r":0.041,"icon":"slide"},
+ "prone": {"p":Vector2(0.545,0.715),"r":0.041,"icon":"prone"},
+ "crouch": {"p":Vector2(0.555,0.870),"r":0.044,"icon":"crouch"}
 }
 const HELD := {
  "fire":["fire"],"adsfire":["fire","aim_mode"],"ads":["aim_mode"],
  "reload":["reload"],"use":["activate"],"jump":["jump"],
- "sprint":["sprint"],"crouch":["crouch"]
+ "crouch":["crouch"]
 }
 const DEADZONE := 0.12
 const LOOK_SENSITIVITY := 0.0032
@@ -35,8 +38,6 @@ var hold_counts: Dictionary = {}
 var stick_index: int = -1
 var stick_origin: Vector2 = Vector2.ZERO
 var stick_value: Vector2 = Vector2.ZERO
-var stick_base: TextureRect
-var stick_knob: TextureRect
 var is_aiming: bool = false
 var paused: bool = false
 
@@ -58,10 +59,6 @@ func _ready() -> void:
   var image := _image(str(LAYOUT[role]["icon"]))
   layer_root.add_child(image)
   images[role] = image
- stick_base = _image("move")
- stick_knob = _image("move")
- layer_root.add_child(stick_base)
- layer_root.add_child(stick_knob)
  get_viewport().size_changed.connect(_layout)
  _layout()
 
@@ -88,10 +85,6 @@ func _layout() -> void:
   var spec: Dictionary = LAYOUT[role]
   var center := Vector2(spec["p"].x*s.x,spec["p"].y*s.y)
   _place(images[role],center,s.y*spec["r"]*2.0)
- var center := stick_origin if stick_index != -1 else Vector2(s.x*0.17,s.y*0.74)
- var d := s.y*0.32
- _place(stick_base,center,d)
- _place(stick_knob,center+stick_value*s.y*0.105,d*0.46)
 
 func _visual(role: String, down: bool) -> void:
  if images.has(role):
@@ -104,6 +97,7 @@ func _role_for(pos: Vector2) -> String:
   var spec: Dictionary = LAYOUT[key]
   var center := Vector2(spec["p"].x*s.x,spec["p"].y*s.y)
   if pos.distance_to(center) <= s.y*spec["r"]: return key
+ if pos.x > s.x*0.93 and pos.y < s.y*0.20: return "system_pause"
  if pos.x < s.x*0.45 and pos.y > s.y*0.30: return "move"
  return "look"
 
@@ -120,13 +114,13 @@ func _down(index: int, pos: Vector2) -> void:
  if active.has(index): _up(index)
  var role := _role_for(pos)
  active[index] = role
- if role == "move" and stick_index == -1 and not paused:
+ if role == "system_pause":
+  _toggle_pause()
+ elif role == "move" and stick_index == -1 and not paused:
   stick_index = index
   stick_origin = pos
   stick_value = Vector2.ZERO
   _update_stick(pos)
- elif role == "pause":
-  _toggle_pause()
  elif role != "look" and not paused:
   _press(role)
  _layout()
@@ -154,6 +148,9 @@ func _up(index: int) -> void:
   _movement()
  elif HELD.has(role) and not paused:
   _release(role)
+ elif role in ["slide","prone","grenade"]:
+  var action := "throw_grenade" if role == "grenade" else role
+  if InputMap.has_action(action): Input.action_release(action)
  _layout()
 
 func _update_stick(pos: Vector2) -> void:
@@ -172,6 +169,8 @@ func _movement() -> void:
  _drive("right",maxf(0.0,stick_value.x))
  _drive("forward",maxf(0.0,-stick_value.y))
  _drive("backward",maxf(0.0,stick_value.y))
+ # Sprint uses the same virtual joystick at full extension, never a fake icon.
+ _drive("sprint",1.0 if stick_value.y < -0.86 else 0.0)
 
 func _press(role: String) -> void:
  _visual(role,true)
@@ -183,6 +182,11 @@ func _press(role: String) -> void:
   _sync_aim()
  elif role == "weapon":
   Global.weapon_switch_next.emit()
+ elif role in ["slide", "prone", "grenade"]:
+  # No invented behaviors: only activate actions implemented by the source game.
+  var action := "throw_grenade" if role == "grenade" else role
+  if InputMap.has_action(action):
+   Input.action_press(action)
  elif role == "knife" and is_instance_valid(Global.player):
   Global.player.weapons_manager.switch_weapon(0)
 
@@ -212,7 +216,7 @@ func _toggle_pause() -> void:
  _visual("pause",paused)
 
 func _release_all() -> void:
- for action in ["fire","aim_mode","reload","activate","jump","sprint","crouch","left","right","forward","backward"]:
+ for action in ["fire","aim_mode","reload","activate","jump","sprint","crouch","left","right","forward","backward","slide","prone","throw_grenade"]:
   Input.action_release(action)
  hold_counts.clear()
  active.clear()
@@ -223,8 +227,10 @@ func _release_all() -> void:
  _layout()
 
 func _notification(what: int) -> void:
- if what == NOTIFICATION_WM_GO_BACK_REQUEST or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-  if is_inside_tree(): _release_all()
+ if what == NOTIFICATION_WM_GO_BACK_REQUEST and is_inside_tree():
+  _toggle_pause()
+ elif what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_inside_tree():
+  _release_all()
 
 func _exit_tree() -> void:
  _release_all()
