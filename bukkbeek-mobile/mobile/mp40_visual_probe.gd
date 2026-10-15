@@ -79,24 +79,14 @@ func _run() -> void:
  var rig: Node3D = mp40.get_node("FPSHandsRoot") as Node3D
  var baseline: Transform3D = rig.transform
  for test in [
-  {"label":"vertical_plus_010","x":0.0,"y":0.010,"pitch":0.0,"yaw":0.0},
-  {"label":"vertical_plus_020","x":0.0,"y":0.020,"pitch":0.0,"yaw":0.0},
-  {"label":"vertical_plus_030","x":0.0,"y":0.030,"pitch":0.0,"yaw":0.0},
-  {"label":"vertical_minus_010","x":0.0,"y":-0.010,"pitch":0.0,"yaw":0.0},
-  {"label":"pitch_up_1","x":0.0,"y":0.0,"pitch":1.0,"yaw":0.0},
-  {"label":"pitch_down_1","x":0.0,"y":0.0,"pitch":-1.0,"yaw":0.0},
-  {"label":"yaw_plus_1","x":0.0,"y":0.0,"pitch":0.0,"yaw":1.0},
-  {"label":"yaw_minus_1","x":0.0,"y":0.0,"pitch":0.0,"yaw":-1.0},
-  {"label":"x_plus_008","x":0.008,"y":0.0,"pitch":0.0,"yaw":0.0},
-  {"label":"x_minus_008","x":-0.008,"y":0.0,"pitch":0.0,"yaw":0.0},
-  {"label":"combo_p3_yminus010","x":0.0,"y":-0.010,"pitch":3.0,"yaw":0.0},
-  {"label":"combo_p4_yminus010","x":0.0,"y":-0.010,"pitch":4.0,"yaw":0.0},
-  {"label":"combo_p5_yminus010","x":0.0,"y":-0.010,"pitch":5.0,"yaw":0.0},
-  {"label":"combo_p5_yminus020","x":0.0,"y":-0.020,"pitch":5.0,"yaw":0.0},
-  {"label":"combo_p6_yminus015","x":0.0,"y":-0.015,"pitch":6.0,"yaw":0.0},
-  {"label":"combo_p6_yminus020","x":0.0,"y":-0.020,"pitch":6.0,"yaw":0.0},
-  {"label":"combo_p7_yminus020","x":0.0,"y":-0.020,"pitch":7.0,"yaw":0.0},
-  {"label":"combo_p5_yminus020_xplus004","x":0.004,"y":-0.020,"pitch":5.0,"yaw":0.0}
+  {"label":"optics_p6_ym015_x005_yaw_m1","x":0.005,"y":-0.015,"pitch":6.0,"yaw":-1.0},
+  {"label":"optics_p6_ym015_x007_yaw_m15","x":0.007,"y":-0.015,"pitch":6.0,"yaw":-1.5},
+  {"label":"optics_p6_ym015_x010_yaw_m15","x":0.010,"y":-0.015,"pitch":6.0,"yaw":-1.5},
+  {"label":"optics_p6_ym015_x006_yaw_m2","x":0.006,"y":-0.015,"pitch":6.0,"yaw":-2.0},
+  {"label":"optics_p6_ym015_x005_yaw_m2","x":0.005,"y":-0.015,"pitch":6.0,"yaw":-2.0},
+  {"label":"optics_p6_ym015_x010_yaw_m1","x":0.010,"y":-0.015,"pitch":6.0,"yaw":-1.0},
+  {"label":"optics_p5_ym015_x007_yaw_m15","x":0.007,"y":-0.015,"pitch":5.0,"yaw":-1.5}
+
  ]:
   rig.transform = baseline
   rig.position += Vector3(test["x"],test["y"],0.0)
