@@ -5,6 +5,7 @@ on:
       - feature/bukkbeek-android-touch-v1
       - fix/bukkbeek-joystick-aim-toggle-fire-drag-20261015
       - feature/bukkbeek-source-mp40-firstplayable-20261015
+      - fix/bukkbeek-mp40-fire-reload-orientation-20261015
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
