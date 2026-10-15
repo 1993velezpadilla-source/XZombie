@@ -50,20 +50,6 @@ FILES: dict[str, tuple[str, str]] = {
         "xogot/assets/audio/weapons/mapmod/mp40/fire.wav",
         "7ad21d2ac3281372f9e91ecae8e424f27dea308f",
     ),
-    # Independent CC0 mechanical foley cues (NOT falsely attributed to WaW).
-    # Provenance: assets/audio/cc0_horror_library/wood_metal_rubberduck/SOURCE.txt
-    "metal_close_01.ogg": (
-        "assets/audio/cc0_horror_library/wood_metal_rubberduck/metal_close_01.ogg",
-        "a8b6479ef2d5f826051e7a2374afbaaff5c3e230",
-    ),
-    "metal_spring_01.ogg": (
-        "assets/audio/cc0_horror_library/wood_metal_rubberduck/metal_spring_01.ogg",
-        "394de5acc9c9c4caf5bac2eca38afe9d440a18a6",
-    ),
-    "metal_spring_02.ogg": (
-        "assets/audio/cc0_horror_library/wood_metal_rubberduck/metal_spring_02.ogg",
-        "bda4055d4edb47272ac417e18554c1db392221fb",
-    ),
 }
 
 
