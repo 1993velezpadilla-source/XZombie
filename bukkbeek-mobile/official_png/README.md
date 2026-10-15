@@ -1,36 +1,21 @@
-# XZIEL Official Touch PNGs — Bukkbeek Android
+# Recovery provenance — official XZIEL button skins
 
-## Permanent ban
-The round outlined controls in the rejected 15 Oct screenshot are from the earlier
-PNG generator and layered ring + white glyph renderer. Those are **NOT** the
-approved final user-provided art. They must never be generated or loaded.
+All 12 approved skins were FOUND in GitHub. Do not request another upload.
 
-The Android CI workflow no longer fetches or runs the old generator. The HUD script
-only loads original PNG textures, **one bitmap per action**, without adding
-circular borders, an artificial background, or a generic substitute.
+Source:
+- Repository: `1993velezpadilla-source/config-old-3`
+- Branch: `recovery/xziel-nzp-v026-official-buttons-20261011`
+- Commit: `0119c5b0f9109c4c88dbdd4173a9a2ba523abc3d`
+- Directory: `assets/xziel/official_touch_skins_v1/`
+- Manifest: `official-approved`
 
-## Exactly 12 source PNGs
-Place the **actual previously approved user-made images**, without recreating or
-redrawing them, in `bukkbeek-mobile/official_png/` as:
+The GitHub Actions workflow downloads these files on each build and validates
+their Git blob SHAs in `verify_official_png.py`.
 
-- `move.png` (used by dynamic joystick; reused scaled for its moving center)
-- `fire.png`, `ads.png`, `adsfire.png`, `reload.png`
-- `interact.png`, `jump.png`, `sprint.png`, `crouch.png`
-- `knife.png`, `switch.png`, `pause.png`
+Exact files:
+`aim.png`, `aim_fire.png`, `crouch.png`, `fire.png`,
+`grenade.png`, `interact.png`, `knife.png`, `prone.png`,
+`reload.png`, `slide.png`, `vault_jump.png`, `weapon_swap.png`.
 
-These semantic filenames are a **packaging convention**, not a claim that
-the original files already exist under those names. Map the real user-provided
-art correctly; never use the rejected CC0 generated art as a substitute.
-
-## Release gate
-The build intentionally FAILS before exporting the APK when ANY PNG is absent,
-non-transparent, corrupted or substituted with a forbidden legacy-named file.
-No more Android GREEN builds that silently ship those ugly old controls.
-
-Preserve Bukkbeek map, arms, 4 firearms, knife, animations and zombies untouched.
-
-**Asset discovery (Oct 15):** The linked GitHub repository contains the
-script `scripts/build_xziel_icons.py` that generated the old-style rings,
-but it does not have the separately approved original button PNG files.
-The user's earlier screenshots in Library are full gameplay captures, not
-individually extracted approved button artwork.
+Never regenerate icons or reintroduce rejected circles. Do not use older SVGs
+from `xogot/assets/hud/official/`; those were the *wrong* styles.
