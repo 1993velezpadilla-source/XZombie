@@ -4,6 +4,7 @@ on:
     branches:
       - feature/bukkbeek-android-touch-v1
       - fix/bukkbeek-joystick-aim-toggle-fire-drag-20261015
+      - feature/bukkbeek-source-mp40-firstplayable-20261015
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -49,6 +50,17 @@ jobs:
           git fetch --depth=1 origin 11619794d644e7933f87caa6099f3acc1f085f5d
           git checkout --detach FETCH_HEAD
 
+      - name: Recover exact source MP40 and T4 marine hands from existing repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _build/bukkbeek/mobile/mp40_source
+          while read -r name url; do
+            curl --fail --silent --show-error --location --retry 3 "$url" \
+              -o "_build/bukkbeek/mobile/mp40_source/$name"
+          done < <(python3 bukkbeek-mobile/verify_mp40_source.py --urls)
+          python3 bukkbeek-mobile/verify_mp40_source.py _build/bukkbeek/mobile/mp40_source
+
       - name: Assert approved PNGs and reject obsolete buttons
         run: |
           python3 bukkbeek-mobile/verify_official_png.py bukkbeek-mobile/official_png
@@ -60,10 +72,15 @@ jobs:
           mkdir -p _build/bukkbeek/mobile/official_png
           cp bukkbeek-mobile/mobile/touch_hud.gd _build/bukkbeek/mobile/touch_hud.gd
           cp bukkbeek-mobile/mobile/virtual_joystick.gd _build/bukkbeek/mobile/virtual_joystick.gd
+          cp bukkbeek-mobile/mobile/mp40_weapon.gd _build/bukkbeek/mobile/mp40_weapon.gd
+          cp bukkbeek-mobile/mobile/mp40_runtime_probe.gd _build/bukkbeek/mobile/mp40_runtime_probe.gd
+          cp bukkbeek-mobile/mobile/mp40.tscn _build/bukkbeek/mobile/mp40.tscn
+          python3 bukkbeek-mobile/verify_mp40_source.py _build/bukkbeek/mobile/mp40_source
           cp bukkbeek-mobile/official_png/*.png _build/bukkbeek/mobile/official_png/
           python3 bukkbeek-mobile/patch_bukkbeek.py _build/bukkbeek
           test -s _build/bukkbeek/resources/player/fps_demo_arms.glb
           test -s _build/bukkbeek/resources/undead/fps_demo_undead.glb
+          grep -q 'NodePath("MP40Source")' _build/bukkbeek/player/player.tscn
 
       - name: Install Godot 4.6 editor and Android templates
         run: |
@@ -102,6 +119,16 @@ jobs:
             exit 2
           fi
 
+      - name: Real Bukkbeek player MP40 runtime gate (hands, textures, fire, reload)
+        run: |
+          set -o pipefail
+          timeout 100s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/mp40_runtime_probe.gd 2>&1 | tee /tmp/bukkbeek-mp40-runtime.log
+          grep -q 'BUKKBEEK_MP40_LIVE_GREEN' /tmp/bukkbeek-mp40-runtime.log
+          if grep -E 'BUKKBEEK_MP40_LIVE_RED|BUKKBEEK_MP40_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/bukkbeek-mp40-runtime.log; then
+            exit 4
+          fi
+
       - name: Export debug Android arm64 APK
         env:
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ github.workspace }}/_tools/android-debug.keystore
@@ -123,7 +150,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Bukkbeek-XZIEL-Touch-Android-ARM64
+          name: Bukkbeek-XZIEL-MP40-Android-ARM64
           path: _build/bukkbeek/build/bukkbeek_xziel_touch_arm64.apk
           retention-days: 14
 
@@ -131,7 +158,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Bukkbeek-XZIEL-Touch-Godot-Source
+          name: Bukkbeek-XZIEL-MP40-Godot-Source
           path: |
             _build/bukkbeek/
             !_build/bukkbeek/.godot/

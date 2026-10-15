@@ -62,3 +62,53 @@ graphics/opengl_debug=false
 """)
 assert (src/"mobile/touch_hud.gd").exists()
 print("XZIEL Android touch overlay ready; Bukkbeek world, zombies, weapons retained")
+
+# Install a SIXTH source MP40 weapon inside the ORIGINAL Bukkbeek scene.
+# This is an additive overlay only: never change any existing 5 weapon scenes,
+# the map, zombie logic, player movement code, or XZIEL touch controls.
+mp40_scene = src / "mobile/mp40.tscn"
+mp40_script = src / "mobile/mp40_weapon.gd"
+mp40_source = src / "mobile/mp40_source"
+assert mp40_scene.is_file() and mp40_script.is_file(), "Original MP40 adapter missing"
+assert (mp40_source/"viewhands.glb").stat().st_size > 1000000
+assert (mp40_source/"viewmodel.glb").stat().st_size > 100000
+
+player_scene = src / "player/player.tscn"
+p_text = player_scene.read_text()
+reference = '[ext_resource type="Script" uid="uid://crk1vovs3vyif" path="res://common/managers/weapons_manager.gd" id="3_rgyib"]'
+assert p_text.count(reference) == 1, "Bukkbeek player source changed; refuse partial patch"
+p_text = p_text.replace(
+    reference,
+    reference + '\n[ext_resource type="PackedScene" path="res://mobile/mp40.tscn" id="22_mp40"]',
+    1,
+)
+old_array = 'weapons_array = [NodePath("Knife"), NodePath("Pistol"), NodePath("AssualtRifle"), NodePath("AssualtBurstRifle"), NodePath("LMG")]'
+assert p_text.count(old_array) == 1, "Bukkbeek stock weapon array changed"
+p_text = p_text.replace(
+    old_array,
+    'weapons_array = [NodePath("Knife"), NodePath("Pistol"), NodePath("AssualtRifle"), NodePath("AssualtBurstRifle"), NodePath("LMG"), NodePath("MP40Source")]',
+    1,
+)
+anchor_mp40 = '[node name="WeaponSubViewport" type="SubViewportContainer"'
+assert p_text.count(anchor_mp40) == 1, "Bukkbeek viewport changed; refuse partial patch"
+p_text = p_text.replace(
+    anchor_mp40,
+    '[node name="MP40Source" parent="WeaponsManager" instance=ExtResource("22_mp40")]\n\n' + anchor_mp40,
+    1,
+)
+player_scene.write_text(p_text)
+
+# For the Android TEST BUILD, start holding the new MP40 so QA can see it
+# immediately. Existing knife remains weapon index 0 for the knife PNG action.
+manager = src / "common/managers/weapons_manager.gd"
+manager_src = manager.read_text()
+original_line = '\tcurrent_weapon_index = 0\n\t_setup_current_weapon()'
+assert manager_src.count(original_line) == 1, "Source Bukkbeek startup weapon changed"
+manager_src = manager_src.replace(
+    original_line,
+    '\tcurrent_weapon_index = weapons_array.size() - 1 if OS.get_name() == "Android" and weapons_array.size() == 6 else 0\n\t_setup_current_weapon()',
+    1,
+)
+manager.write_text(manager_src)
+print("BUKKBEEK_MP40_PATCH_GREEN: sixth Bukkbeek weapon, Android starts MP40, knife remains index=0, old five remain")
+
