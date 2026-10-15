@@ -281,34 +281,21 @@ func _derive_optical_ads_from_mesh() -> void:
  # Rotate just enough to align the TWO physical sights onto that ray.
  var fit: Quaternion = Quaternion(source_line.normalized(), Vector3.FORWARD)
  var solved_basis: Basis = (Basis(fit) * original_focus.basis).orthonormalized()
- # Preserve ORIGINAL focused eye relief rather than guessing a new camera
- # distance, then solve translation to place rear notch on the -Z ray.
- # V3 failed because the solver kept the existing near-zero eye relief:
- # the butt/hand ended up INSIDE the camera, even though marker math was green.
- # Source MP40 mesh: rear sight metal is 0.0440397m wide (local Z extents
- # -0.0345420 .. +0.0094977, near x=-0.157).
- # The previous 58px @ 720p gave 0.473m camera clearance and was visibly
- # TOO DISTANT on the real Pixel Fold: arms bunched near the lower center.
- # Six ACTUAL Godot rendered eye-relief captures 0.29,0.32,0.35,0.38,0.41,
- # 0.44m were compared preserving original rear+front post source line.
- # 0.35m shows the gun more legibly with both source arms in view.
- # This distance is a verified VISUAL COMPOSITION choice, not a weapon-axis
- # rotation; 3D rear/front ray still comes ONLY from authentic MP40 geometry.
- var rear_metal_width_m: float = 0.0094977 - (-0.0345420)
- # The source SubViewport is still only 48px tall during Godot init and
- # will resize to the real 720px window later. Derive optical depth from a
- # RESOLUTION-INDEPENDENT reference angular fraction, at the ADS FOV set on
- # this MP40, instead of the transient 48px startup viewport.
- var normalized_rear_width: float = 78.5 / 720.0
- var focal_length_px: float = 1.0 / (2.0 * tan(deg_to_rad(focused_aim_fov) * 0.5))
- var target_rear_fraction: float = normalized_rear_width
- var depth: float = rear_metal_width_m * focal_length_px / target_rear_fraction
- if depth < 0.32 or depth > 0.38:
-  push_error("BUKKBEEK_MP40_ADS_RED: rear iron sight eye relief is outside source-scale range "+str(depth))
+ # LOCK the exact original source ADS marker depth from mp40.tscn:
+ #   FocusedAimPosition Z=-0.24045m.
+ # The first working near-camera weapon/hands pose was already approved by
+ # the player. Its Z must NEVER be overwritten by a new eye-relief guess.
+ # We only solve the two lateral coordinates and physically measured
+ # front-post / rear-aperture alignment, preserving camera depth exactly.
+ var source_ads_depth_z: float = original_focus.origin.z
+ var sight_offset: Vector3 = solved_basis * rear_rig
+ var fitted := Transform3D(solved_basis,
+  Vector3(-sight_offset.x, -sight_offset.y, source_ads_depth_z))
+ var depth: float = -(fitted * rear_rig).z
+ if absf(fitted.origin.z - source_ads_depth_z) > 0.000001:
+  push_error("BUKKBEEK_MP40_ADS_RED: legacy weapon-to-camera distance changed")
   _source_ok = false
   return
- var rear_target := Vector3(0.0, 0.0, -depth)
- var fitted := Transform3D(solved_basis, rear_target - solved_basis * rear_rig)
  var rear_result: Vector3 = fitted * rear_rig
  var front_result: Vector3 = fitted * front_rig
  var error_rear: float = Vector2(rear_result.x, rear_result.y).length()
@@ -331,7 +318,9 @@ func _derive_optical_ads_from_mesh() -> void:
  set_meta("source_mp40_front_post_rig", front_rig)
  set_meta("source_mp40_sight_axis_angle_deg", measured_angle_deg)
  set_meta("source_mp40_eye_relief_m", depth)
- set_meta("source_mp40_eye_relief_frame_ref", "Godot_source_visual_350mm")
+ set_meta("source_mp40_eye_relief_frame_ref", "Original_MP40_FocusedAimPosition")
+ set_meta("source_mp40_marker_source_depth_z", source_ads_depth_z)
+ set_meta("source_mp40_marker_solved_depth_z", fitted.origin.z)
  set_meta("source_mp40_rear_optical_aperture_y", SOURCE_REAR_CLEAR_APERTURE_Y)
  set_meta("source_mp40_original_focus_depth_m", -start_rear.z)
  set_meta("source_mp40_sight_rear_error_m", error_rear)
