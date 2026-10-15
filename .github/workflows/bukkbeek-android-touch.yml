@@ -73,6 +73,7 @@ jobs:
           cp bukkbeek-mobile/mobile/touch_hud.gd _build/bukkbeek/mobile/touch_hud.gd
           cp bukkbeek-mobile/mobile/virtual_joystick.gd _build/bukkbeek/mobile/virtual_joystick.gd
           cp bukkbeek-mobile/mobile/mp40_weapon.gd _build/bukkbeek/mobile/mp40_weapon.gd
+          cp bukkbeek-mobile/mobile/mp40_runtime_probe.gd _build/bukkbeek/mobile/mp40_runtime_probe.gd
           cp bukkbeek-mobile/mobile/mp40.tscn _build/bukkbeek/mobile/mp40.tscn
           python3 bukkbeek-mobile/verify_mp40_source.py _build/bukkbeek/mobile/mp40_source
           cp bukkbeek-mobile/official_png/*.png _build/bukkbeek/mobile/official_png/
@@ -116,6 +117,16 @@ jobs:
           if grep -E "SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script" /tmp/bukkbeek-import.log; then
             echo "Rejected: Godot source parse errors cannot be marked GREEN"
             exit 2
+          fi
+
+      - name: Real Bukkbeek player MP40 runtime gate (hands, textures, fire, reload)
+        run: |
+          set -o pipefail
+          timeout 100s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/mp40_runtime_probe.gd 2>&1 | tee /tmp/bukkbeek-mp40-runtime.log
+          grep -q 'BUKKBEEK_MP40_LIVE_GREEN' /tmp/bukkbeek-mp40-runtime.log
+          if grep -E 'BUKKBEEK_MP40_LIVE_RED|BUKKBEEK_MP40_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/bukkbeek-mp40-runtime.log; then
+            exit 4
           fi
 
       - name: Export debug Android arm64 APK
