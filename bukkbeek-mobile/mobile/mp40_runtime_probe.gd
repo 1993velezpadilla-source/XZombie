@@ -189,6 +189,17 @@ func _run() -> void:
  globals_node.emit_signal("aim_mode_changed", false)
  await create_timer(0.25).timeout
 
+ # Simulate a bad 170ms renderer stall. The upstream manager's
+ # lerp(t = 50 * 0.17 = 8.5) explodes offscreen; the patched renderer MUST
+ # clamp the camera-follow coefficient to <= 1 and snap back safely.
+ manager.global_position = main_cam.global_position + Vector3(1.0, 0.0, 0.0)
+ manager.call("_process", 0.17)
+ var camera_follow_error: float = manager.global_position.distance_to(main_cam.global_position)
+ if camera_follow_error > 0.005:
+  _fail("weapon/camera follow extrapolates on low FPS; error_m="+str(camera_follow_error))
+  return
+ print("BUKKBEEK_MP40_CAMERA_FOLLOW_STALL_GREEN delta=0.17s error_m=", camera_follow_error)
+
  # Diagnostic ONLY: enumerate exact imported PSA tracks to find whether gun
  # bone/root transform tracks double-drive the tag_weapon grip during FIRE/RELOAD.
  for animation_mode: String in ["idle", "fire", "reload"]:
