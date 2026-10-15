@@ -5,8 +5,9 @@ from pathlib import Path
 src = Path(sys.argv[1]).resolve()
 inp = src / "common/managers/input_manager.gd"
 txt = inp.read_text()
-anchor = "\tInput.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)"
-replacement = """\tif OS.get_name() == "Android":
+anchor = "func _ready() -> void:\\n\\tInput.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)"
+replacement = """func _ready() -> void:
+\tif OS.get_name() == "Android":
 \t\tInput.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
 \t\tvar mobile_ui: CanvasLayer = preload("res://mobile/touch_hud.gd").new()
 \t\tget_parent().call_deferred("add_child", mobile_ui)
