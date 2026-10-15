@@ -76,8 +76,15 @@ func _run() -> void:
  if mag_position_keys < 50 or mag_rotation_keys < 50:
   _fail("real source magazine motion tracks were removed")
   return
- for role: String in ["fire", "reload"]:
-  var clip: String = str(mp40.get("_gun_fire_clip")) if role == "fire" else str(mp40.get("_gun_reload_clip"))
+ for role: String in ["fire", "reload", "reload_empty"]:
+  var clip: String = ""
+  match role:
+   "fire":
+    clip = str(mp40.get("_gun_fire_clip"))
+   "reload":
+    clip = str(mp40.get("_gun_reload_clip"))
+   "reload_empty":
+    clip = str(mp40.get("_gun_reload_empty_clip"))
   var animated: Animation = gun_anim.get_animation(clip)
   var hit := false
   for idx: int in range(animated.get_track_count()):
@@ -136,6 +143,38 @@ func _run() -> void:
    if "tag_weapon" in track_path.to_lower() or "root" in track_path.to_lower() or "tag_view" in track_path.to_lower() or "tag_ads" in track_path.to_lower() or idx < 3:
     print("MP40_DIAG_HANDS_TRACK role=", role, " n=", idx, " path=", track_path)
 
+ # Source provenance check: determine what MP40 reload clips REALLY animate.
+ # The old Vril demo is not part of this source GLB. Inspect the j_bolt
+ # (charging handle), j_clip (magazine), and both source hand reload variants.
+ var clips_to_inspect := [
+  "PSA_viewmodel_mp40_reload",
+  "PSA_viewmodel_mp40_reload_empty",
+  "PSA_MP40ReloadHands",
+  "PSA_viewmodel_mp40_fire",
+ ]
+ for clip_name: String in clips_to_inspect:
+  for lane: String in ["gun", "hands"]:
+   var ap: AnimationPlayer = gun_anim if lane == "gun" else hands_anim
+   if not ap.has_animation(clip_name):
+    print("MP40_SOURCE_INSPECT lane=", lane, " clip=", clip_name, " absent")
+    continue
+   var animation: Animation = ap.get_animation(clip_name)
+   print("MP40_SOURCE_INSPECT lane=", lane, " clip=", clip_name,
+    " seconds=", animation.length, " tracks=", animation.get_track_count())
+   for track_idx: int in range(animation.get_track_count()):
+    var track_path := str(animation.track_get_path(track_idx))
+    var track_path_lower := track_path.to_lower()
+    if (track_path_lower.contains("j_bolt") or track_path_lower.contains("j_clip")
+     or track_path_lower.contains("tag_weapon") or track_path_lower.contains("tag_view")
+     or track_path_lower.contains("j_hand_le") or track_path_lower.contains("j_wrist_le")
+     or track_path_lower.contains("j_hand_ri")):
+     var count := animation.track_get_key_count(track_idx)
+     var key_preview := ""
+     if count > 0:
+      key_preview = str(animation.track_get_key_value(track_idx, 0))
+     print("MP40_SOURCE_INSPECT_TRACK lane=", lane, " clip=", clip_name,
+      " n=", track_idx, " path=", track_path, " type=",
+      animation.track_get_type(track_idx), " keys=", count, " first=", key_preview)
  var before: int = mp40.get_current_mag()
  var did_try: bool = mp40.try_fire(true)
  var after: int = mp40.get_current_mag()
@@ -154,6 +193,59 @@ func _run() -> void:
  if reload_timer == null or reload_timer.is_stopped() or not hands_anim.is_playing():
   _fail("source hands reload PSA or reload timer did not start")
   return
+ var normal_hands: String = str(mp40.get("_reload_hands_clip"))
+ var normal_gun: String = str(mp40.get("_gun_reload_clip"))
+ var normal_duration := maxf(hands_anim.get_animation(normal_hands).length,
+  gun_anim.get_animation(normal_gun).length)
+ if str(hands_anim.current_animation) != normal_hands or str(gun_anim.current_animation) != normal_gun:
+  _fail("normal reload isn't paired to matching original gun and hand PSA")
+  return
+ if absf(reload_timer.wait_time - normal_duration) > 0.005:
+  _fail("normal source gun/hand reload timer not synchronized")
+  return
+ if str(mp40.get_meta("source_mp40_reload_active_variant", "")) != "normal":
+  _fail("non-empty MP40 incorrectly picked empty reload")
+  return
+ print("BUKKBEEK_MP40_NORMAL_RELOAD_GREEN duration=", normal_duration,
+  " gun=", normal_gun, " hands=", normal_hands)
+
+ # Finish test tactical reload, then emulate a mag fired down to exactly zero.
+ # This must choose the *authentic* empty gun and hands PSA, where j_bolt has
+ # real keyframes. This is an independent source animation pair, NOT old Vril.
+ reload_timer.stop()
+ mp40.call("_on_reload_timer_timeout")
+ mp40.set("current_mag", 0)
+ mp40.call("start_reload")
+ if not bool(mp40.get("is_reloading")):
+  _fail("empty magazine cannot start original empty reload")
+  return
+ var empty_hands: String = str(mp40.get("_hands_reload_empty_clip"))
+ var empty_gun: String = str(mp40.get("_gun_reload_empty_clip"))
+ if empty_hands.is_empty() or empty_gun.is_empty():
+  _fail("original source empty reload hand or gun PSA missing")
+  return
+ if str(hands_anim.current_animation) != empty_hands or str(gun_anim.current_animation) != empty_gun:
+  _fail("original empty hand and gun PSAs are not both playing")
+  return
+ var empty_length := maxf(hands_anim.get_animation(empty_hands).length,
+  gun_anim.get_animation(empty_gun).length)
+ if absf(reload_timer.wait_time - empty_length) > 0.005:
+  _fail("source empty reload timer not synchronized")
+  return
+ var animated_bolt_position_keys := 0
+ var empty_animation := gun_anim.get_animation(empty_gun)
+ for track_idx: int in range(empty_animation.get_track_count()):
+  if (str(empty_animation.track_get_path(track_idx)).ends_with(":j_bolt")
+   and empty_animation.track_get_type(track_idx) == Animation.TYPE_POSITION_3D):
+   animated_bolt_position_keys = empty_animation.track_get_key_count(track_idx)
+ if animated_bolt_position_keys < 8:
+  _fail("original charging handle animated bolt keys missing")
+  return
+ if str(mp40.get_meta("source_mp40_reload_active_variant", "")) != "empty":
+  _fail("empty MP40 incorrectly picked non-empty reload")
+  return
+ print("BUKKBEEK_MP40_EMPTY_SOURCE_GREEN hands=", empty_hands, " gun=", empty_gun,
+  " duration=", empty_length, " charging_handle_keys=", animated_bolt_position_keys)
  print("BUKKBEEK_MP40_LIVE_GREEN "
   + "stock_weapon_count=" + str(weapon_nodes.size() - 1)
   + " hands_bones=" + str(skeleton.get_bone_count())
