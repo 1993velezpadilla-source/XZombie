@@ -36,14 +36,16 @@ var _source_ok: bool = false
 # Source sightline = atan2(0.008790,0.524204) = 0.961 degrees.
 # There was NEVER any geometrical justification for the old +6.60 pitch.
 const SOURCE_REAR_NOTCH := Vector3(-0.157399, 0.045185, -0.012522)
-# Original source rear notch TOP vertex is physically too low to aim through:
-# Moller-Trumbore ray-triangle inspection of ALL source GLB triangles shows
-# the ray from y=.045185 toward the front post intersects receiver triangles
-# #380/#311 near source x=-.025 (front ring hidden). At y=.0510 triangle
-# #300 still blocks it. At y=.0515, the ray first contacts the actual front
-# post at x=.3668, with ZERO gun-surface occlusion before the front.
-# This is a measured VISIBILITY clearance, not an arbitrary skyward pitch.
-const SOURCE_REAR_CLEAR_APERTURE_Y := 0.0515
+# The original metal top y=.045185 is NOT the unobstructed eye line.
+# Ray/triangle intersections on ALL source MP40 GLB triangles prove:
+#   eye Y=.045: center, top, bottom, both sides of front ring BLOCKED.
+#   eye Y=.0515: center post clear, but ring's lower/left/right still BLOCKED.
+#   eye Y=.060: center, TOP, BOTTOM, LEFT, RIGHT of real front sight ring
+#               completely clear before the original front sight geometry.
+# This enforces the COMPLETE authentic iron-sight RING visibility, without
+# arbitrary 6.6-degree gun pitching or modifying any 3D gun/hand geometry.
+# Source physical sightline relative to original barrel is -0.658 degrees.
+const SOURCE_REAR_CLEAR_APERTURE_Y := 0.060
 const SOURCE_FRONT_POST_L := Vector3(0.366805, 0.053975, -0.013497)
 const SOURCE_FRONT_POST_R := Vector3(0.366805, 0.053975, -0.011572)
 const SOURCE_FLASH_TAG := Vector3(0.393835, 0.023172, -0.012254)
