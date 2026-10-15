@@ -50,6 +50,7 @@ const SOURCE_FRONT_POST_L := Vector3(0.366805, 0.053975, -0.013497)
 const SOURCE_FRONT_POST_R := Vector3(0.366805, 0.053975, -0.011572)
 const SOURCE_FLASH_TAG := Vector3(0.393835, 0.023172, -0.012254)
 var _source_sight_axis_solved: bool = false
+var _ads_arm_modifier: SkeletonModifier3D
 # The idle j_clip pose can disagree with a reload's FINAL magazine pose.
 # Cache each source pair's genuine final bone transforms and copy ONLY those
 # 1-key idle values immediately before blending to idle (no source PSAs edited).
@@ -366,6 +367,20 @@ func _derive_optical_ads_from_mesh() -> void:
   _source_ok = false
   return
  focused_aim_position.transform = fitted
+ # Godot 4.6 SkeletonModifier3D runs AFTER the source hand AnimationPlayer
+ # and before GPU skinning. The modifier never edits source PSAs, grips or
+ # magazine; while stable ADS idle only, it changes SHOULDER/ELBOW geometry
+ # to keep the original camera-visible limb shape as closely as possible.
+ var arm_ik: SkeletonModifier3D = preload("res://mobile/mp40_ads_arm_modifier.gd").new()
+ arm_ik.name = "SourceMP40ADSArmIK"
+ arm_ik.influence = 0.0 # Never affect HIP before original ADS tween starts.
+ _skeleton.add_child(arm_ik)
+ if not bool(arm_ik.call("configure",self,fps_arms_root,original_focus,fitted)):
+  push_error("BUKKBEEK_MP40_ADS_RED cannot safely initialize authentic ADS arm source IK")
+  arm_ik.queue_free()
+  _source_ok = false
+  return
+ _ads_arm_modifier = arm_ik
  _source_sight_axis_solved = true
  set_meta("source_mp40_optical_axis_solved", true)
  set_meta("source_mp40_rear_sight_rig", rear_rig)
@@ -705,6 +720,15 @@ func _process(_delta: float) -> void:
  # Keep original 75° ONLY while MP40 active, don't touch other weapons.
  if _source_ok and visible and _viewmodel_camera != null:
   _viewmodel_camera.fov = 75.0
+ if _source_ok and _ads_arm_modifier != null:
+  # Source marker transform is already the sole Bukkbeek ADS interpolator.
+  # Follow its 0.20s motion instead of introducing any new hand animation.
+  var total_travel: float = standard_aim_position.position.distance_to(
+   focused_aim_position.position)
+  if total_travel > 0.0001:
+   _ads_arm_modifier.influence = clampf(1.0 -
+    fps_arms_root.position.distance_to(focused_aim_position.position) / total_travel,
+    0.0, 1.0)
  if not _source_ok or not is_reloading or _gun_anim == null:
   return
  var elapsed := _gun_anim.current_animation_position

@@ -208,6 +208,28 @@ func _run() -> void:
   return
  print("BUKKBEEK_MP40_AUTHORED_VIEWMODEL_FOV_GREEN world_fov=", main_cam.fov,
   " original_weapon_fov=", view_cam.fov)
+ # Source-anchored ADS IK must process actual animation, not an invented
+ # standalone hand clip. All 2 wrist global poses remain attached to the gun.
+ var ads_ik: SkeletonModifier3D = mp40.get("_ads_arm_modifier") as SkeletonModifier3D
+ if ads_ik == null or ads_ik.get_parent() != skeleton:
+  _fail("MP40 source arm modifier missing from original Skeleton3D")
+  return
+ await create_timer(0.10).timeout
+ var ik_frames: int = int(ads_ik.get("_frames"))
+ var wrist_anchor_err_m: float = float(ads_ik.get("_worst_wrist_anchor_m"))
+ if ik_frames < 1 or wrist_anchor_err_m > 0.06:
+  _fail("ADS source arm IK inactive or displaced original hand grip; frames="+str(ik_frames)+" wrist_error="+str(wrist_anchor_err_m)
+   +" callback="+str(ads_ik.get("_callbacks"))
+   +" eligible="+str(ads_ik.get("_eligible_frames"))
+   +" skip="+str(ads_ik.get("_guard_skips"))
+   +" solver_calls="+str(ads_ik.get("_solver_attempts"))
+   +" source_clip="+str(hands_anim.current_animation)
+   +" source_ads="+str(mp40.get("is_aimed")))
+
+  return
+ print("BUKKBEEK_MP40_ADS_ARMS_IK_GREEN applied_frames=",ik_frames,
+  " wrist_grip_error_source_units=",wrist_anchor_err_m)
+
  # Real source iron sights must not lag behind the ray when player looks
  # around on touchscreen; original Bukkbeek smoothed-follow still works in HIP.
  await create_timer(0.35).timeout
