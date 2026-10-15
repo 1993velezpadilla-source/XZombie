@@ -12,6 +12,13 @@ func _capture(root_window: Window, v: SubViewport, label: String) -> void:
   push_error("MP40_VISUAL_RED frame unavailable: " + label)
   quit(6)
   return
+ # An all-transparent subviewport was previously incorrectly labeled GREEN:
+ # the original unbounded camera lerp threw the gun 479 km out of view.
+ var used: Rect2i = isolated.get_used_rect()
+ if used.size.x < 100 or used.size.y < 100:
+  push_error("MP40_VISUAL_RED: gun/arms invisible in "+label+" subviewport used_rect="+str(used))
+  quit(6)
+  return
  var folder := "res://visual_probes/"
  DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(folder))
  if image.save_png(folder + label + ".png") != OK:
@@ -52,7 +59,8 @@ func _run() -> void:
   " hands=", hands.global_transform,
   " camera_current=", weapon_view.get_camera_3d().name if weapon_view.get_camera_3d() != null else "NONE",
   " shared_world=", aim_camera.get_world_3d() == weapon_camera.get_world_3d(),
-  " root_visible=", mp40.get_node("FPSHandsRoot").is_visible_in_tree())
+  " root_visible=", mp40.get_node("FPSHandsRoot").is_visible_in_tree(),
+  " gun_camera_distance=", gun.global_position.distance_to(weapon_camera.global_position))
  print("MP40_VISUAL_CAMERA_FOV prior= ", aim_camera.fov, " weapon=", weapon_camera.fov)
  await _capture(root, weapon_view, "hip")
  root.get_node("Global").emit_signal("aim_mode_changed", true)
@@ -60,6 +68,10 @@ func _run() -> void:
  print("MP40_VISUAL_ADS_GEOMETRY main_fov=", aim_camera.fov,
   " weapon_fov=", weapon_camera.fov,
   " root_transform=", mp40.get_node("FPSHandsRoot").transform)
+ if absf(aim_camera.fov - weapon_camera.fov) > 0.65:
+  push_error("MP40_VISUAL_RED: two ADS camera FOVs still mismatched")
+  quit(6)
+  return
  await _capture(root, weapon_view, "ads")
  # Save real empty-reload samples before and after the hand withdraws.
  root.get_node("Global").emit_signal("aim_mode_changed", false)
