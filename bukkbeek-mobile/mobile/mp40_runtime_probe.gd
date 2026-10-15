@@ -188,6 +188,20 @@ func _run() -> void:
   _fail("world and weapon camera ADS FOV do not match: "+ str(main_cam.fov)+" vs "+str(view_cam.fov))
   return
  print("BUKKBEEK_MP40_TWO_CAMERA_ADS_GREEN world_fov=", main_cam.fov, " weapon_fov=", view_cam.fov)
+ # Real source iron sights must not lag behind the ray when player looks
+ # around on touchscreen; original Bukkbeek smoothed-follow still works in HIP.
+ await create_timer(0.35).timeout
+ var cam_pivot: Node3D = player.get_node("CameraPivot") as Node3D
+ cam_pivot.rotate_y(deg_to_rad(12.0))
+ manager.call("_process", 0.008)
+ var ads_follow_error_m: float = manager.global_position.distance_to(main_cam.global_position)
+ var ads_forward_error_deg: float = rad_to_deg(manager.global_transform.basis.z.normalized().angle_to(main_cam.global_transform.basis.z.normalized()))
+ cam_pivot.rotate_y(-deg_to_rad(12.0))
+ manager.call("_process", 0.008)
+ if ads_follow_error_m > 0.0005 or ads_forward_error_deg > 0.05:
+  _fail("ADS sight drifts from world aim while turning; pos_m="+str(ads_follow_error_m)+" angle_deg="+str(ads_forward_error_deg))
+  return
+ print("BUKKBEEK_MP40_RIGID_ADS_TURN_GREEN angle_deg=", ads_forward_error_deg, " pos_m=", ads_follow_error_m)
  globals_node.emit_signal("aim_mode_changed", false)
  await create_timer(0.25).timeout
 
