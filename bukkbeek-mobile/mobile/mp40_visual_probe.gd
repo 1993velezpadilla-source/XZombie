@@ -112,7 +112,7 @@ func _run() -> void:
   push_error("MP40_VISUAL_RED unable to access drawn gun mesh")
   quit(6)
   return
- var raw_rear: Vector3 = inspect_mesh.to_global(Vector3(-0.157399, 0.045185, -0.012522))
+ var raw_rear: Vector3 = inspect_mesh.to_global(Vector3(-0.157399, 0.0515, -0.012522))
  var raw_front: Vector3 = inspect_mesh.to_global(Vector3(0.366805, 0.053975, -0.0125345))
  var computed_rear: Vector3 = mp40.get_node("FPSHandsRoot").to_global(mp40.get_meta("source_mp40_rear_sight_rig") as Vector3)
  var computed_front: Vector3 = mp40.get_node("FPSHandsRoot").to_global(mp40.get_meta("source_mp40_front_post_rig") as Vector3)
@@ -122,7 +122,7 @@ func _run() -> void:
   " computed_front_px=",weapon_camera.unproject_position(computed_front),
   " mesh_global=",inspect_mesh.global_transform)
  # Reject false GREEN from calibrating at the temporary bone-bind pose.
- # Both ORIGINAL VISIBLE source vertices must project onto aiming ray once
+ # Both source-calibrated optical aperture and ORIGINAL front post must land on aiming ray once
  # the source hand idle animation is actually posed and the weapon rendered.
  var projected_rear_px: Vector2 = weapon_camera.unproject_position(raw_rear)
  var projected_front_px: Vector2 = weapon_camera.unproject_position(raw_front)
