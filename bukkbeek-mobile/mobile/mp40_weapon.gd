@@ -77,6 +77,9 @@ func _ready() -> void:
  if not _normalize_source_gun_root_basis():
   push_error("BUKKBEEK_MP40_RED: cannot safely neutralize source -90-degree animation root")
   return
+ if not _normalize_source_bolt_idle_pose():
+  push_error("BUKKBEEK_MP40_RED: cannot preserve authentic charging-handle final pose")
+  return
 
  var textured_gun: int = _texture_source(_gun_root, GUN_ALBEDO, GUN_NORMAL, 0.40, 0.31)
  var textured_hands: int = _texture_source(_hands_root, HAND_ALBEDO, HAND_NORMAL, 0.0, 0.86)
@@ -171,6 +174,76 @@ func _normalize_source_gun_root_basis() -> bool:
   if not root_found:
    return false
  set_meta("source_mp40_root_rotation_fixed", true)
+ return true
+
+# Source measurements from genuine MP40 GLB (CI 38774153525):
+# idle PSA j_bolt=(-.064322,-.031814,-.025413) is an *incorrect*
+# idle-frame conversion, while the original reload EMPTY finishes at
+# (-.051676,+.021492,-.032661). The regular reload AND fire PSA
+# use approximately that SAME genuine settled location. On switching
+# to idle, the bad Y offset snapped the charging handle downward 53mm.
+# Repair ONLY the SINGLE-KEY j_bolt IDLE track using the source
+# normal+empty end consensus; do not modify the animated empty bolt
+# (8 keys) or hand PSAs. This avoids a fabricated custom hand animation.
+func _normalize_source_bolt_idle_pose() -> bool:
+ if _gun_anim == null or _gun_idle_clip.is_empty() or _gun_reload_empty_clip.is_empty():
+  return false
+ var idle_anim := _gun_anim.get_animation(_gun_idle_clip)
+ var normal_anim := _gun_anim.get_animation(_gun_reload_clip)
+ var empty_anim := _gun_anim.get_animation(_gun_reload_empty_clip)
+ if idle_anim == null or normal_anim == null or empty_anim == null:
+  return false
+ var track_suffix := ":j_bolt"
+ var idle_pos_track := -1
+ var idle_rot_track := -1
+ var normal_pos_track := -1
+ var normal_rot_track := -1
+ var empty_pos_track := -1
+ for i: int in range(idle_anim.get_track_count()):
+  if str(idle_anim.track_get_path(i)).ends_with(track_suffix):
+   if idle_anim.track_get_type(i) == Animation.TYPE_POSITION_3D:
+    idle_pos_track = i
+   elif idle_anim.track_get_type(i) == Animation.TYPE_ROTATION_3D:
+    idle_rot_track = i
+ for i: int in range(normal_anim.get_track_count()):
+  if str(normal_anim.track_get_path(i)).ends_with(track_suffix):
+   if normal_anim.track_get_type(i) == Animation.TYPE_POSITION_3D:
+    normal_pos_track = i
+   elif normal_anim.track_get_type(i) == Animation.TYPE_ROTATION_3D:
+    normal_rot_track = i
+ for i: int in range(empty_anim.get_track_count()):
+  if (str(empty_anim.track_get_path(i)).ends_with(track_suffix)
+   and empty_anim.track_get_type(i) == Animation.TYPE_POSITION_3D):
+   empty_pos_track = i
+ if mini(idle_pos_track, normal_pos_track, empty_pos_track) < 0:
+  return false
+ if (idle_anim.track_get_key_count(idle_pos_track) != 1
+  or normal_anim.track_get_key_count(normal_pos_track) != 1
+  or empty_anim.track_get_key_count(empty_pos_track) < 8):
+  return false
+ var normal_bolt: Vector3 = normal_anim.track_get_key_value(normal_pos_track, 0) as Vector3
+ var empty_end: Vector3 = empty_anim.position_track_interpolate(empty_pos_track, empty_anim.length)
+ var idle_start: Vector3 = idle_anim.track_get_key_value(idle_pos_track, 0) as Vector3
+ # These source variants agree on where the charging handle should settle.
+ if normal_bolt.distance_to(empty_end) > 0.002:
+  return false
+ var error_m := idle_start.distance_to(empty_end)
+ if error_m < 0.025 or error_m > 0.100:
+  return false
+ # The -90° source root is already normalized separately. A tiny residual
+ # bolt orientation mismatch is also present in the idle source key.
+ if idle_rot_track >= 0 and normal_rot_track >= 0:
+  if (idle_anim.track_get_key_count(idle_rot_track) == 1
+   and normal_anim.track_get_key_count(normal_rot_track) == 1):
+   var settled_rotation: Quaternion = normal_anim.track_get_key_value(normal_rot_track, 0) as Quaternion
+   var old_rotation: Quaternion = idle_anim.track_get_key_value(idle_rot_track, 0) as Quaternion
+   if old_rotation.angle_to(settled_rotation) < deg_to_rad(5.0):
+    idle_anim.track_set_key_value(idle_rot_track, 0, settled_rotation)
+ idle_anim.track_set_key_value(idle_pos_track, 0, empty_end)
+ set_meta("source_mp40_bolt_idle_snap_fixed", true)
+ set_meta("source_mp40_bolt_idle_snap_error_m", error_m)
+ print("BUKKBEEK_MP40_BOLT_END_FIX_GREEN prior_idle=", idle_start,
+  " original_empty_end=", empty_end, " prior_snap_m=", error_m)
  return true
 
 func _texture_source(root: Node3D, albedo_path: String, normal_path: String, metallic: float, roughness: float) -> int:
