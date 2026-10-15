@@ -224,10 +224,33 @@ func _derive_optical_ads_from_mesh() -> void:
   _source_ok = false
   return
  var front_local: Vector3 = (SOURCE_FRONT_POST_L + SOURCE_FRONT_POST_R) * 0.5
- # Conversion through the live imported GLB hierarchy accounts for the
- # actual source skeleton/tag_weapon socket and original imported rotation.
- var rear_rig: Vector3 = fps_arms_root.to_local(mesh.to_global(SOURCE_REAR_NOTCH))
- var front_rig: Vector3 = fps_arms_root.to_local(mesh.to_global(front_local))
+ # The imported MP40 mesh is SKINNED: all source sight vertices have 100%
+ # weight on j_gun (GLB JOINTS_0=1, WEIGHTS_0=1). MeshInstance.to_global()
+ # does NOT account for GPU skeleton deformation. Use the runtime bone pose
+ # and inverse bind/rest so the solved anchors are the ACTUALLY DRAWN verts.
+ var model_skel: Skeleton3D = _find_skeleton(_gun_root, "j_gun")
+ if model_skel == null:
+  push_error("BUKKBEEK_MP40_ADS_RED missing GPU gun skeleton")
+  _source_ok = false
+  return
+ var gun_bone: int = model_skel.find_bone("j_gun")
+ if gun_bone < 0:
+  push_error("BUKKBEEK_MP40_ADS_RED original j_gun skin bone missing")
+  _source_ok = false
+  return
+ var posed_skin: Transform3D = (
+  model_skel.get_bone_global_pose(gun_bone)
+  * model_skel.get_bone_global_rest(gun_bone).affine_inverse()
+ )
+ var raw_rear: Vector3 = mesh.to_global(SOURCE_REAR_NOTCH)
+ var raw_front: Vector3 = mesh.to_global(front_local)
+ var real_rear: Vector3 = model_skel.to_global(posed_skin * model_skel.to_local(raw_rear))
+ var real_front: Vector3 = model_skel.to_global(posed_skin * model_skel.to_local(raw_front))
+ print("BUKKBEEK_MP40_GPU_SKIN_SIGHT original_rest_rear=",raw_rear,
+  " posed_rear=",real_rear," rest_to_pose_m=",raw_rear.distance_to(real_rear),
+  " original_rest_front=",raw_front," posed_front=",real_front)
+ var rear_rig: Vector3 = fps_arms_root.to_local(real_rear)
+ var front_rig: Vector3 = fps_arms_root.to_local(real_front)
  var original_focus: Transform3D = focused_aim_position.transform
  var start_rear: Vector3 = original_focus * rear_rig
  var start_front: Vector3 = original_focus * front_rig
