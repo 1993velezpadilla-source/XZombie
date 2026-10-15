@@ -135,6 +135,9 @@ func _ready() -> void:
  if not _cache_source_magazine_end_poses():
   push_error("BUKKBEEK_MP40_RED: source magazine j_clip source/idle contract invalid")
   return
+ if not _smooth_source_magazine_late_second_seat():
+  push_error("BUKKBEEK_MP40_RED: cannot smooth the source j_clip late 50mm reseat")
+  return
  # Pre-seat the idle magazine using the ACTUAL normal reload ending, not an
  # invented magazine transform; future reloads select their own ending pose.
  if not _align_idle_magazine_to_source_end(_gun_reload_clip):
@@ -350,6 +353,56 @@ func _cache_source_magazine_end_poses() -> bool:
  set_meta("source_mp40_mag_idle_contract_ready", true)
  return true
 
+# Source-authored j_clip has a SECOND, late ~50mm magazine seating step at
+# 2.58s, after the magazine has already been inserted to the well at 2.08s.
+# That's the second visible "rearrangement" reported when the hand leaves.
+# Move ONLY the trailing seat (roughly 2.15..2.58s) into a short continuous
+# completion of the FIRST insertion. Keep all source key TIMES and counts,
+# every pre-insert magazine movement, bolt movement, hand PSAs and audio intact.
+func _smooth_source_magazine_late_second_seat() -> bool:
+ var report: Dictionary = {}
+ for clip: String in [_gun_reload_clip, _gun_reload_empty_clip]:
+  var source: Animation = _gun_anim.get_animation(clip)
+  var position_idx: int = _mag_bone_track(source, Animation.TYPE_POSITION_3D)
+  if position_idx < 0 or source.track_get_key_count(position_idx) < 50:
+   return false
+  var insert_at: float = _source_magazine_insert_time(clip)
+  if insert_at < 1.8 or insert_at > 2.4:
+   return false # Only this EXACT imported MP40 PSA timing.
+  var begin: float = insert_at + 0.11
+  var finish: float = begin + 0.30
+  var final_pose: Vector3 = (_mag_source_end_poses[clip] as Dictionary)["position"] as Vector3
+  var initial_pose: Vector3 = source.position_track_interpolate(position_idx, begin)
+  var late_gap_m: float = initial_pose.distance_to(final_pose)
+  if late_gap_m < 0.025 or late_gap_m > 0.095:
+   return false # Original residual is ~50mm. Do not edit other clips.
+  var corrected_keys: int = 0
+  # The original late-key 2.58s jump would otherwise remain in the source.
+  for key_idx: int in range(source.track_get_key_count(position_idx)):
+   var t: float = source.track_get_key_time(position_idx, key_idx)
+   if t <= begin or t > 2.64:
+    continue
+   var blend: float = clampf((t - begin) / (finish - begin), 0.0, 1.0)
+   # Single monotonic, continuous seating instead of hold and second snap.
+   blend = blend * blend * (3.0 - 2.0 * blend)
+   source.track_set_key_value(position_idx, key_idx, initial_pose.lerp(final_pose, blend))
+   corrected_keys += 1
+  if corrected_keys < 4:
+   return false
+  report[clip] = {
+   "original_late_displacement_m": late_gap_m,
+   "retimed_keys": corrected_keys,
+   "fully_seated_by": finish,
+  }
+  print("BUKKBEEK_MP40_MAG_SECOND_SEAT_REMOVED clip=", clip,
+   " late_gap_m=", late_gap_m,
+   " original_second_seat_at=2.58s",
+   " first_insert_full_seat_by=", finish,
+   " changed_keys=", corrected_keys)
+ set_meta("source_mp40_late_second_seat_removed", report)
+ return true
+
+
 func _align_idle_magazine_to_source_end(clip: String) -> bool:
  if not _mag_source_end_poses.has(clip):
   return false
@@ -550,6 +603,13 @@ func activate(current_aim_mode: bool = false) -> void:
  super.activate(current_aim_mode)
  if _source_ok:
   _play_idle()
+
+func deactivate() -> void:
+ super.deactivate()
+ # Return the shared viewport to Bukkbeek's original fixed viewmodel FOV.
+ # Other five weapons retain exactly their pre-MP40 renderer behavior.
+ if _viewmodel_camera != null:
+  _viewmodel_camera.fov = 75.0
 
 func fire_weapon() -> void:
  if not _source_ok:
