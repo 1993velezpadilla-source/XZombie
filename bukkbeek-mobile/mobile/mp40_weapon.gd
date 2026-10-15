@@ -36,6 +36,14 @@ var _source_ok: bool = false
 # Source sightline = atan2(0.008790,0.524204) = 0.961 degrees.
 # There was NEVER any geometrical justification for the old +6.60 pitch.
 const SOURCE_REAR_NOTCH := Vector3(-0.157399, 0.045185, -0.012522)
+# Original source rear notch TOP vertex is physically too low to aim through:
+# Moller-Trumbore ray-triangle inspection of ALL source GLB triangles shows
+# the ray from y=.045185 toward the front post intersects receiver triangles
+# #380/#311 near source x=-.025 (front ring hidden). At y=.0510 triangle
+# #300 still blocks it. At y=.0515, the ray first contacts the actual front
+# post at x=.3668, with ZERO gun-surface occlusion before the front.
+# This is a measured VISIBILITY clearance, not an arbitrary skyward pitch.
+const SOURCE_REAR_CLEAR_APERTURE_Y := 0.0515
 const SOURCE_FRONT_POST_L := Vector3(0.366805, 0.053975, -0.013497)
 const SOURCE_FRONT_POST_R := Vector3(0.366805, 0.053975, -0.011572)
 const SOURCE_FLASH_TAG := Vector3(0.393835, 0.023172, -0.012254)
@@ -248,7 +256,9 @@ func _derive_optical_ads_from_mesh() -> void:
   model_skel.get_bone_global_pose(gun_bone)
   * model_skel.get_bone_global_rest(gun_bone).affine_inverse()
  )
- var raw_rear: Vector3 = mesh.to_global(SOURCE_REAR_NOTCH)
+ var optical_rear_local: Vector3 = Vector3(SOURCE_REAR_NOTCH.x,
+  SOURCE_REAR_CLEAR_APERTURE_Y, SOURCE_REAR_NOTCH.z)
+ var raw_rear: Vector3 = mesh.to_global(optical_rear_local)
  var raw_front: Vector3 = mesh.to_global(front_local)
  var real_rear: Vector3 = model_skel.to_global(posed_skin * model_skel.to_local(raw_rear))
  var real_front: Vector3 = model_skel.to_global(posed_skin * model_skel.to_local(raw_front))
@@ -301,7 +311,7 @@ func _derive_optical_ads_from_mesh() -> void:
  # Front and rear sights are on source +X. Pitch must be physical (~0.961
  # degrees), NEVER arbitrary +6.6 degrees.
  var measured_angle_deg: float = rad_to_deg(
-  Vector3.RIGHT.angle_to((SOURCE_FRONT_POST_L + SOURCE_FRONT_POST_R) * 0.5 - SOURCE_REAR_NOTCH)
+  Vector3.RIGHT.angle_to(front_local - optical_rear_local)
  )
  if (error_rear > 0.00005 or error_front > 0.00005
   or measured_angle_deg > 2.0):
@@ -315,6 +325,7 @@ func _derive_optical_ads_from_mesh() -> void:
  set_meta("source_mp40_front_post_rig", front_rig)
  set_meta("source_mp40_sight_axis_angle_deg", measured_angle_deg)
  set_meta("source_mp40_eye_relief_m", depth)
+ set_meta("source_mp40_rear_optical_aperture_y", SOURCE_REAR_CLEAR_APERTURE_Y)
  set_meta("source_mp40_original_focus_depth_m", -start_rear.z)
  set_meta("source_mp40_sight_rear_error_m", error_rear)
  set_meta("source_mp40_sight_front_error_m", error_front)
