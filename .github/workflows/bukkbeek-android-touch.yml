@@ -44,7 +44,6 @@ jobs:
           mkdir -p _build/bukkbeek/mobile/icons
           mkdir -p _build/bukkbeek/tools
           cp bukkbeek-mobile/mobile/touch_hud.gd _build/bukkbeek/mobile/touch_hud.gd
-          cp bukkbeek-mobile/configure_android.gd _build/bukkbeek/tools/configure_android.gd
           curl --fail --location --retry 3 -o /tmp/build_xziel_icons.py \
             https://raw.githubusercontent.com/1993velezpadilla-source/config-old-3/751c98b6aab15dbf9d071e83179868bc8d839ce9/scripts/build_xziel_icons.py
           python3 /tmp/build_xziel_icons.py _build/bukkbeek/mobile/icons
@@ -78,9 +77,14 @@ jobs:
           keytool -genkeypair -noprompt -v -keystore _tools/android-debug.keystore \
             -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass android -keypass android -dname "CN=XZIEL Mobile Test, OU=Dev, O=XZIEL, C=PR"
-          _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --editor \
-            --script res://tools/configure_android.gd
-          _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --import
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          EOF
+          timeout 180s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --import
 
       - name: Export debug Android arm64 APK
         env:
