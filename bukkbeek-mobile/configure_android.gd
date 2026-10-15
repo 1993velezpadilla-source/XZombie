@@ -1,7 +1,7 @@
 @tool
-extends EditorScript
+extends SceneTree
 
-func _run() -> void:
+func _initialize() -> void:
  var settings := EditorInterface.get_editor_settings()
  var android_sdk := OS.get_environment("ANDROID_HOME")
  if android_sdk.is_empty():
@@ -13,3 +13,4 @@ func _run() -> void:
  settings.set_setting("export/android/java_sdk_path", java_sdk)
  settings.save()
  print("ANDROID BUILD SDK:", android_sdk, " JAVA:", java_sdk)
+ quit()
