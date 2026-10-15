@@ -1,13 +1,34 @@
-# Bukkbeek FPS Android touch-only port (Godot 4.6)
+# Bukkbeek Android — 12 ORIGINAL PNG ONLY (NO OLD CONTROLS)
 
-The source used is Bukkbeek GodotFPS-Template commit 11619794d644e7933f87caa6099f3acc1f085f5d (upstream https://github.com/bukkbeek/GodotFPS-Template).
+Source: original Bukkbeek GodotFPS-Template commit `11619794d644e7933f87caa6099f3acc1f085f5d`.
 
-This overlay downloads the unchanged original project at build time; Android input is added without replacing weapon models, zombies, animations, maps, or reworking reload.
+## Visual rule from the user — 15 October
+The gray circled buttons, outlined joystick, white icon overlays and auto-generated
+skinned button backgrounds from the previous APK are REJECTED. They must not
+appear in any new Bukkbeek APK.
 
-The exact user's XZIEL official HUD PNG generation script is taken from config-old-3/scripts/build_xziel_icons.py (original black/white/yellow, transparent button rings and joystick PNGs, fire/ADS/ADS+FIRE pressed states).
+This version permanently removes all references to the old transparent rings,
+old CC0 icon generator, separate glyph overlays, and generic fallback icons.
 
-Landscape mobile inputs: move joystick, camera swipe on right, fire, ADS, ADS+FIRE, reload, use, jump, sprint, crouch action, knife select, weapon switch, pause. Upstream currently binds crouch but does not implement crouch motion, so no animation has been invented. No gyro, no new weapons, no new map.
+The input controller now loads **only** 12 approved original image PNG files
+from `bukkbeek-mobile/official_png/`. Gameplay preserves upstream guns, models,
+zombies, map, ADS and reload logic.
 
-GitHub Actions workflow builds a debug ARM64 Android APK and uploads the assembled full Godot project and APK as artifacts. A pass requires a successful Actions run and Android device smoke test.
+**Important:** the previously approved 12 individual PNGs have not yet been
+recovered as actual files from the linked repositories / available Library.
+The original repository contains only an OLD icon generation script and older
+full-game screenshots. We deliberately do not mistake that for the requested
+art. See `official_png/README.md` for the required image naming.
 
-This branch is isolated from the user's Quake/Vril and other advanced Godot builds.
+## Fail-closed Android release gate
+`verify_official_png.py` blocks any APK export until all 12 actual PNGs are
+present, transparent and valid. No more "GREEN" with wrong icons or silent
+fallback. Earlier APK builds, including run #38742188897, are OLD/rejected
+and should not be installed for HUD validation.
+
+Controls: joystick, touch look, fire, ADS, ADS+fire, reload, use, jump, sprint,
+crouch input, knife, switch, pause. Crouch animation is not in original Bukkbeek.
+No new maps or weapons added.
+
+Branch: `feature/bukkbeek-android-touch-v1`. Never merge back to existing
+Quake/Vril or other Godot maps by mistake.
