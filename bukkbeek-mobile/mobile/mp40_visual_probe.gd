@@ -72,29 +72,25 @@ func _run() -> void:
   push_error("MP40_VISUAL_RED: two ADS camera FOVs still mismatched")
   quit(6)
   return
+ # Certify original source 3D sight vertices projected by SAME Godot
+ # Camera3D used to render the weapon, independent of screenshot appearance.
+ var source_rig: Node3D = mp40.get_node("FPSHandsRoot") as Node3D
+ if not bool(mp40.get_meta("source_mp40_optical_axis_solved", false)):
+  push_error("MP40_VISUAL_RED: original GLB optical axis unsolved")
+  quit(6)
+  return
+ var sight_center: Vector2 = Vector2(weapon_view.size) * 0.5
+ for part: String in ["rear","front"]:
+  var point: Vector3 = mp40.get_meta("source_mp40_" + ("rear_sight_rig" if part == "rear" else "front_post_rig")) as Vector3
+  var pixel: Vector2 = weapon_camera.unproject_position(source_rig.to_global(point))
+  print("MP40_VISUAL_PHYSICAL_SIGHT_PIXEL part=",part," projected=",pixel," target=",sight_center,
+   " error_px=",pixel.distance_to(sight_center))
+  if pixel.distance_to(sight_center) > 2.0:
+   push_error("MP40_VISUAL_RED: real GLB "+part+" not on camera aim ray")
+   quit(6)
+   return
  await _capture(root, weapon_view, "ads")
- # REAL SOURCE VISUAL SWEEP: diagnose front post / rear notch occlusion by
- # actual rendered optical changes, not invented green metadata. This does
- # NOT modify the exported Android game; marker only changes in this probe.
- var rig: Node3D = mp40.get_node("FPSHandsRoot") as Node3D
- var baseline: Transform3D = rig.transform
- for test in [
-  {"label":"optics_p6_ym015_x005_yaw_m1","x":0.005,"y":-0.015,"pitch":6.0,"yaw":-1.0},
-  {"label":"optics_p6_ym015_x007_yaw_m15","x":0.007,"y":-0.015,"pitch":6.0,"yaw":-1.5},
-  {"label":"optics_p6_ym015_x010_yaw_m15","x":0.010,"y":-0.015,"pitch":6.0,"yaw":-1.5},
-  {"label":"optics_p6_ym015_x006_yaw_m2","x":0.006,"y":-0.015,"pitch":6.0,"yaw":-2.0},
-  {"label":"optics_p6_ym015_x005_yaw_m2","x":0.005,"y":-0.015,"pitch":6.0,"yaw":-2.0},
-  {"label":"optics_p6_ym015_x010_yaw_m1","x":0.010,"y":-0.015,"pitch":6.0,"yaw":-1.0},
-  {"label":"optics_p5_ym015_x007_yaw_m15","x":0.007,"y":-0.015,"pitch":5.0,"yaw":-1.5}
-
- ]:
-  rig.transform = baseline
-  rig.position += Vector3(test["x"],test["y"],0.0)
-  rig.rotate_object_local(Vector3.RIGHT, deg_to_rad(float(test["pitch"])))
-  rig.rotate_object_local(Vector3.UP, deg_to_rad(float(test["yaw"])))
-  await create_timer(0.13).timeout
-  await _capture(root, weapon_view, "sight_" + str(test["label"]))
- rig.transform = baseline
+ # Optical fit is source-derived; do not run arbitrary X/Y/yaw sweeps.
  # Save real empty-reload samples before and after the hand withdraws.
  root.get_node("Global").emit_signal("aim_mode_changed", false)
  await create_timer(0.4).timeout
