@@ -29,15 +29,18 @@ var _active_reload_gun_clip: String = ""
 var _source_ok: bool = false
 # Small reversible on-device ADS calibration, not a source asset modification.
 @export_range(-0.015, 0.015, 0.001) var ads_fine_x_metres: float = -0.004
+# The ONLY allowed reload sounds for MP40 are the exact Project Aether sound
+# assets gr_mp40_mag_out, gr_mp40_mag_in and gr_mp40_charge (source .ubulk).
+# Never synthesize or route CC0 metal spring/close or Magnum sounds here.
+var _mag_remove_sfx: AudioStreamPlayer3D
 var _mag_insert_sfx: AudioStreamPlayer3D
-var _bolt_pull_sfx: AudioStreamPlayer3D
-var _bolt_release_sfx: AudioStreamPlayer3D
+var _bolt_charge_sfx: AudioStreamPlayer3D
+var _cue_mag_remove_at: float = -1.0
 var _cue_mag_insert_at: float = -1.0
-var _cue_bolt_pull_at: float = -1.0
-var _cue_bolt_release_at: float = -1.0
+var _cue_bolt_charge_at: float = -1.0
+var _cue_remove_played: bool = false
 var _cue_insert_played: bool = false
-var _cue_pull_played: bool = false
-var _cue_release_played: bool = false
+var _cue_charge_played: bool = false
 
 func _ready() -> void:
  super._ready()
@@ -46,9 +49,17 @@ func _ready() -> void:
  if focused_aim_position != null:
   focused_aim_position.position.x += ads_fine_x_metres
   set_meta("mp40_ads_fine_x", ads_fine_x_metres)
+ # Bukkbeek stock reload sample is unrelated to MP40. Suppress it here:
+ # real Aether magazine-out plays at j_clip removal time below instead.
+ reload_sfx = null
+ _mag_remove_sfx = get_node_or_null("SFX/MagazineRemoveCue") as AudioStreamPlayer3D
  _mag_insert_sfx = get_node_or_null("SFX/MagazineInsertCue") as AudioStreamPlayer3D
- _bolt_pull_sfx = get_node_or_null("SFX/BoltPullCue") as AudioStreamPlayer3D
- _bolt_release_sfx = get_node_or_null("SFX/BoltReleaseCue") as AudioStreamPlayer3D
+ _bolt_charge_sfx = get_node_or_null("SFX/BoltChargeCue") as AudioStreamPlayer3D
+ for source_cue: AudioStreamPlayer3D in [_mag_remove_sfx, _mag_insert_sfx, _bolt_charge_sfx]:
+  if source_cue == null or source_cue.stream == null:
+   push_error("BUKKBEEK_MP40_RED: exact original Aether MP40 sound file missing")
+   return
+ set_meta("source_mp40_real_audio", ["gr_mp40_mag_out", "gr_mp40_mag_in", "gr_mp40_charge"])
  _hands_root = get_node_or_null("FPSHandsRoot/SourceHands") as Node3D
  _gun_root = get_node_or_null("FPSHandsRoot/SourceGun") as Node3D
  if _hands_root == null or _gun_root == null:
@@ -345,21 +356,36 @@ func _process(_delta: float) -> void:
  if not _source_ok or not is_reloading or _gun_anim == null:
   return
  var elapsed := _gun_anim.current_animation_position
+ if not _cue_remove_played and _cue_mag_remove_at >= 0.0 and elapsed >= _cue_mag_remove_at:
+  _cue_remove_played = true
+  _mag_remove_sfx.play()
+  print("BUKKBEEK_MP40_AUTHENTIC_EVENT gr_mp40_mag_out t=", elapsed)
  if not _cue_insert_played and _cue_mag_insert_at >= 0.0 and elapsed >= _cue_mag_insert_at:
   _cue_insert_played = true
-  if _mag_insert_sfx != null:
-   _mag_insert_sfx.play()
-  print("BUKKBEEK_MP40_SFX_EVENT magazine_insert t=", elapsed)
- if not _cue_pull_played and _cue_bolt_pull_at >= 0.0 and elapsed >= _cue_bolt_pull_at:
-  _cue_pull_played = true
-  if _bolt_pull_sfx != null:
-   _bolt_pull_sfx.play()
-  print("BUKKBEEK_MP40_SFX_EVENT bolt_pull t=", elapsed)
- if not _cue_release_played and _cue_bolt_release_at >= 0.0 and elapsed >= _cue_bolt_release_at:
-  _cue_release_played = true
-  if _bolt_release_sfx != null:
-   _bolt_release_sfx.play()
-  print("BUKKBEEK_MP40_SFX_EVENT bolt_release t=", elapsed)
+  _mag_insert_sfx.play()
+  print("BUKKBEEK_MP40_AUTHENTIC_EVENT gr_mp40_mag_in t=", elapsed)
+ if not _cue_charge_played and _cue_bolt_charge_at >= 0.0 and elapsed >= _cue_bolt_charge_at:
+  _cue_charge_played = true
+  _bolt_charge_sfx.play()
+  print("BUKKBEEK_MP40_AUTHENTIC_EVENT gr_mp40_charge t=", elapsed)
+
+
+func _source_magazine_remove_time(clip: String) -> float:
+ # First authentic j_clip displacement: remove-mag click belongs to the
+ # actual source PSA, never to a guessed fixed-delay generic metal SFX.
+ var a: Animation = _gun_anim.get_animation(clip)
+ if a == null:
+  return -1.0
+ for i: int in range(a.get_track_count()):
+  if (not str(a.track_get_path(i)).ends_with(":j_clip")
+   or a.track_get_type(i) != Animation.TYPE_POSITION_3D
+   or a.track_get_key_count(i) < 8):
+   continue
+  var initial: Vector3 = a.track_get_key_value(i, 0) as Vector3
+  for j: int in range(1, a.track_get_key_count(i)):
+   if initial.distance_to(a.track_get_key_value(i, j) as Vector3) >= 0.018:
+    return a.track_get_key_time(i, j)
+ return -1.0
 
 
 func _source_magazine_insert_time(clip: String) -> float:
@@ -462,20 +488,24 @@ func start_reload() -> void:
   _gun_anim.play(selected_gun, 0.04)
   _gun_anim.seek(0.0, true)
   _hands_anim.seek(0.0, true)
+  _cue_mag_remove_at = _source_magazine_remove_time(selected_gun)
   _cue_mag_insert_at = _source_magazine_insert_time(selected_gun)
-  _cue_bolt_pull_at = -1.0
-  _cue_bolt_release_at = -1.0
+  _cue_bolt_charge_at = -1.0
   if empty_mag:
-   var bolt_cues := _source_charging_bolt_cue_times(selected_gun)
-   _cue_bolt_pull_at = bolt_cues.x
-   _cue_bolt_release_at = bolt_cues.y
+   # gr_mp40_charge is the original full charging action sample; do not
+   # fake separate 'pull' and 'release' with unrelated sounds.
+   _cue_bolt_charge_at = _source_charging_bolt_cue_times(selected_gun).x
+  _cue_remove_played = false
   _cue_insert_played = false
-  _cue_pull_played = false
-  _cue_release_played = false
+  _cue_charge_played = false
+  if _cue_mag_remove_at <= 0.0 or _cue_mag_insert_at <= _cue_mag_remove_at:
+   push_error("BUKKBEEK_MP40_RED: original MP40 magazine sound events missing")
+  if empty_mag and _cue_bolt_charge_at <= _cue_mag_insert_at:
+   push_error("BUKKBEEK_MP40_RED: authentic charge event must follow magazine insert")
   set_meta("source_mp40_reload_audio_cues", {
+   "mag_remove_at": _cue_mag_remove_at,
    "mag_insert_at": _cue_mag_insert_at,
-   "bolt_pull_at": _cue_bolt_pull_at,
-   "bolt_release_at": _cue_bolt_release_at,
+   "bolt_charge_at": _cue_bolt_charge_at,
   })
   set_meta("source_mp40_reload_active_variant", "empty" if empty_mag else "normal")
   set_meta("source_mp40_reload_active_duration", required_seconds)
@@ -487,8 +517,8 @@ func _on_reload_timer_timeout() -> void:
  super._on_reload_timer_timeout()
  _active_reload_hands_clip = ""
  _active_reload_gun_clip = ""
+ _cue_mag_remove_at = -1.0
  _cue_mag_insert_at = -1.0
- _cue_bolt_pull_at = -1.0
- _cue_bolt_release_at = -1.0
+ _cue_bolt_charge_at = -1.0
  if _source_ok:
   _play_idle()
