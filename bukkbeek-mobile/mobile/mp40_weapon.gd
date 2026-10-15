@@ -31,13 +31,16 @@ var _source_ok: bool = false
 # Reversible camera/weapon ADS fit only; source geometry and weapon ballistics
 # are untouched. Small vertical drop reveals the forward front-sight post,
 # while modest muzzle-up pitch prevents it hiding behind the receiver sight.
-# Visual reference: this ORIGINAL near-camera receiver and front-ring pose
-# was rendered and confirmed visible in run 38792448956. Aggressive
-# translations/yaw caused the receiver to hide the source front-ring;
-# do not claim final ballistics alignment from those failed pixel captures.
-@export_range(-0.015, 0.015, 0.001) var ads_fine_x_metres: float = -0.004
-@export_range(-0.025, 0.025, 0.001) var ads_fine_y_metres: float = -0.011
-@export_range(-2.0, 2.0, 0.05) var ads_fine_pitch_degrees: float = 0.60
+# Measured against 1280x720 actual Godot renders in visual gauntlet:
+# front ring was obstructed in V2. Tested 25 source-geometry poses (NO fake
+# sights or textures). Candidate p6_ym015_x006_yaw_m2 shows original front
+# ring fully visible centered on the world 640,360 aim ray, with rear notch
+# below and aligned. Includes prior V2 base offset/pitch in final defaults.
+# ADS ONLY; hip position / original hand rig / genuine source PSAs unchanged.
+@export_range(-0.035, 0.035, 0.001) var ads_fine_x_metres: float = 0.002
+@export_range(-0.065, 0.065, 0.001) var ads_fine_y_metres: float = -0.026
+@export_range(-10.0, 10.0, 0.05) var ads_fine_pitch_degrees: float = 6.60
+@export_range(-5.0, 5.0, 0.1) var ads_fine_yaw_degrees: float = -2.0
 # The idle j_clip pose can disagree with a reload's FINAL magazine pose.
 # Cache each source pair's genuine final bone transforms and copy ONLY those
 # 1-key idle values immediately before blending to idle (no source PSAs edited).
@@ -72,6 +75,8 @@ func _ready() -> void:
   focused_aim_position.position.x += ads_fine_x_metres
   focused_aim_position.position.y += ads_fine_y_metres
   focused_aim_position.rotate_object_local(Vector3.RIGHT, deg_to_rad(ads_fine_pitch_degrees))
+  focused_aim_position.rotate_object_local(Vector3.UP, deg_to_rad(ads_fine_yaw_degrees))
+  set_meta("mp40_ads_fine_yaw", ads_fine_yaw_degrees)
   set_meta("mp40_ads_fine_x", ads_fine_x_metres)
   set_meta("mp40_ads_fine_y", ads_fine_y_metres)
   set_meta("mp40_ads_fine_pitch", ads_fine_pitch_degrees)
