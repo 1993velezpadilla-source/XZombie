@@ -15,6 +15,11 @@ on:
       - '.github/workflows/bukkbeek-android-touch.yml'
   workflow_dispatch:
 
+# Don't spend the user's free GitHub minutes on stale intermediary MP40 builds.
+concurrency:
+  group: bukkbeek-xziel-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   android-debug-arm64:
     runs-on: ubuntu-24.04
