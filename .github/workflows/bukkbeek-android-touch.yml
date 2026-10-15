@@ -92,7 +92,12 @@ jobs:
           export/android/android_sdk_path = "$ANDROID_HOME"
           export/android/java_sdk_path = "$JAVA_HOME"
           EOF
-          timeout 180s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --import
+          set -o pipefail
+          timeout 180s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --import 2>&1 | tee /tmp/bukkbeek-import.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script" /tmp/bukkbeek-import.log; then
+            echo "Rejected: Godot source parse errors cannot be marked GREEN"
+            exit 2
+          fi
 
       - name: Export debug Android arm64 APK
         env:
@@ -101,9 +106,14 @@ jobs:
           GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
         run: |
           mkdir -p _build/bukkbeek/build
+          set -o pipefail
           _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
             --path _build/bukkbeek --export-debug "Android" \
-            "$GITHUB_WORKSPACE/_build/bukkbeek/build/bukkbeek_xziel_touch_arm64.apk"
+            "$GITHUB_WORKSPACE/_build/bukkbeek/build/bukkbeek_xziel_touch_arm64.apk" 2>&1 | tee /tmp/bukkbeek-export.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script" /tmp/bukkbeek-export.log; then
+            echo "Rejected: Godot script errors in exported APK"
+            exit 3
+          fi
           test -s _build/bukkbeek/build/bukkbeek_xziel_touch_arm64.apk
 
       - name: Upload Android APK
