@@ -244,6 +244,27 @@ func _run() -> void:
  if str(mp40.get_meta("source_mp40_reload_active_variant", "")) != "empty":
   _fail("empty MP40 incorrectly picked non-empty reload")
   return
+ var idle_gun_clip: String = str(mp40.get("_gun_idle_clip"))
+ var probe_samples: Array[float] = [0.0, 0.18, 0.42, 0.66, 0.85, 0.96, 1.0]
+ for role: String in ["idle", "normal", "empty"]:
+  var inspect_clip: String = idle_gun_clip if role == "idle" else (normal_gun if role == "normal" else empty_gun)
+  var track: Animation = gun_anim.get_animation(inspect_clip)
+  for i: int in range(track.get_track_count()):
+   if str(track.track_get_path(i)).ends_with(":j_bolt") and track.track_get_type(i) == Animation.TYPE_POSITION_3D:
+    print("MP40_BOLT_SOURCE_DIAG role=", role, " keys=", track.track_get_key_count(i),
+     " seconds=", track.length)
+    for fraction: float in probe_samples:
+     var pose: Vector3 = track.position_track_interpolate(i, track.length * fraction)
+     print("MP40_BOLT_KEY role=", role, " fraction=", fraction, " position=", pose)
+    break
+ # Source skeleton's bone rest is another independent reference.
+ var gun_skel: Skeleton3D = gun.get_node_or_null("MP40_SM_ao/Skeleton3D") as Skeleton3D
+ if gun_skel != null:
+  var bolt_idx := gun_skel.find_bone("j_bolt")
+  if bolt_idx >= 0:
+   print("MP40_BOLT_REST rest_position=", gun_skel.get_bone_rest(bolt_idx).origin,
+    " current_pose=", gun_skel.get_bone_pose_position(bolt_idx))
+
  print("BUKKBEEK_MP40_EMPTY_SOURCE_GREEN hands=", empty_hands, " gun=", empty_gun,
   " duration=", empty_length, " charging_handle_keys=", animated_bolt_position_keys)
  print("BUKKBEEK_MP40_LIVE_GREEN "
