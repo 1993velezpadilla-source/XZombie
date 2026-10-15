@@ -134,6 +134,17 @@ func _run() -> void:
  print("MP40_VISUAL_ACTUAL_MESH_VERTEX_GREEN projected_rear=",projected_rear_px,
   " projected_front=",projected_front_px)
  await _capture(root, weapon_view, "ads")
+ # TEST ONLY: original Bukkbeek weapon camera FOV was 75 while world FOV
+ # zoomed to 60. We had changed BOTH to 60, inflating the near-side weapon
+ # and cropping the source hands. Source sightline alignment is independent
+ # of focal length if front/rear vertices are both on the camera -Z ray.
+ mp40.set_process(false)
+ weapon_camera.fov = 75.0
+ await create_timer(0.2).timeout
+ await _capture(root, weapon_view, "original_weapon_fov75_aligned_optics")
+ weapon_camera.fov = aim_camera.fov
+ mp40.set_process(true)
+ await create_timer(0.2).timeout
  # Probe ONLY: capture the original MP40 source scene FocusedAimPosition.
  # This is an unmodified, same-renderer reference for actual hand silhouette
  # and camera-distance comparisons. Always restore game test state.
