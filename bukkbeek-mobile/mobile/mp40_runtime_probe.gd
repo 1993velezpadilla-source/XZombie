@@ -80,7 +80,8 @@ func _run() -> void:
    print("MP40_DIAG_GUN_ANIM role=", animation_mode, " clip=", name_var, " tracks=", a.get_track_count(), " seconds=", a.length)
    for idx: int in range(mini(a.get_track_count(), 80)):
     print("MP40_DIAG_GUN_TRACK role=", animation_mode, " n=", idx, " path=", a.track_get_path(idx),
-     " type=", a.track_get_type(idx), " keys=", a.track_get_key_count(idx))
+     " type=", a.track_get_type(idx), " keys=", a.track_get_key_count(idx),
+     " first_key=", str(a.track_get_key_value(idx, 0)) if a.track_get_key_count(idx) > 0 and (idx == 0 or idx == 4 or idx == 5) else "omitted")
  print("MP40_DIAG_GUN_PARENT ", gun.get_parent().get_path(), " gun_rot=", gun.rotation_degrees,
   " hands_rot=", hands.rotation_degrees, " socket_rot=", socket.rotation_degrees)
  for role: String in ["fire", "reload"]:
