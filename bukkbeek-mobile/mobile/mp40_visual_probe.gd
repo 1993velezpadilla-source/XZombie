@@ -121,6 +121,18 @@ func _run() -> void:
   " computed_rear_px=",weapon_camera.unproject_position(computed_rear),
   " computed_front_px=",weapon_camera.unproject_position(computed_front),
   " mesh_global=",inspect_mesh.global_transform)
+ # Reject false GREEN from calibrating at the temporary bone-bind pose.
+ # Both ORIGINAL VISIBLE source vertices must project onto aiming ray once
+ # the source hand idle animation is actually posed and the weapon rendered.
+ var projected_rear_px: Vector2 = weapon_camera.unproject_position(raw_rear)
+ var projected_front_px: Vector2 = weapon_camera.unproject_position(raw_front)
+ if (projected_rear_px.distance_to(sight_center) > 2.0
+  or projected_front_px.distance_to(sight_center) > 2.0):
+  push_error("MP40_VISUAL_RED: real rendered mesh differs from calibration markers; source skeleton pose stale.")
+  quit(6)
+  return
+ print("MP40_VISUAL_ACTUAL_MESH_VERTEX_GREEN projected_rear=",projected_rear_px,
+  " projected_front=",projected_front_px)
  await _capture(root, weapon_view, "ads")
  # Optical fit is source-derived; do not run arbitrary X/Y/yaw sweeps.
  # Save real empty-reload samples before and after the hand withdraws.
