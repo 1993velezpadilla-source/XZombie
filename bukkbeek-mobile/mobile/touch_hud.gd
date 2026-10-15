@@ -1,17 +1,23 @@
 extends CanvasLayer
 ## XZIEL official mobile HUD for the pristine Bukkbeek Godot 4.6 FPS template.
-const ICONS := "res://mobile/icons/"
+# Never use old generated circles. Original PNG artwork is mandatory.
+const ICONS := "res://mobile/official_png/"
+const OFFICIAL_BUTTON_FILES := PackedStringArray([
+ "move.png", "fire.png", "ads.png", "adsfire.png",
+ "reload.png", "interact.png", "jump.png", "sprint.png",
+ "crouch.png", "knife.png", "switch.png", "pause.png"
+])
 const LAYOUT := {
  "fire": {"p":Vector2(0.885,0.585),"r":0.075,"icon":"fire"},
  "adsfire": {"p":Vector2(0.795,0.435),"r":0.057,"icon":"adsfire"},
  "ads": {"p":Vector2(0.695,0.575),"r":0.051,"icon":"ads"},
  "reload": {"p":Vector2(0.805,0.785),"r":0.046,"icon":"reload"},
- "use": {"p":Vector2(0.605,0.675),"r":0.046,"icon":"use"},
+ "use": {"p":Vector2(0.605,0.675),"r":0.046,"icon":"interact"},
  "jump": {"p":Vector2(0.695,0.790),"r":0.047,"icon":"jump"},
  "knife": {"p":Vector2(0.915,0.800),"r":0.046,"icon":"knife"},
- "weapon": {"p":Vector2(0.905,0.300),"r":0.044,"icon":"weapon"},
+ "weapon": {"p":Vector2(0.905,0.300),"r":0.044,"icon":"switch"},
  "sprint": {"p":Vector2(0.300,0.555),"r":0.046,"icon":"sprint"},
- "crouch": {"p":Vector2(0.555,0.845),"r":0.044,"icon":"slide"},
+ "crouch": {"p":Vector2(0.555,0.845),"r":0.044,"icon":"crouch"},
  "pause": {"p":Vector2(0.960,0.100),"r":0.041,"icon":"pause"}
 }
 const HELD := {
@@ -29,7 +35,7 @@ var hold_counts: Dictionary = {}
 var stick_index: int = -1
 var stick_origin: Vector2 = Vector2.ZERO
 var stick_value: Vector2 = Vector2.ZERO
-var stick_ring: TextureRect
+var stick_base: TextureRect
 var stick_knob: TextureRect
 var is_aiming: bool = false
 var paused: bool = false
@@ -37,67 +43,59 @@ var paused: bool = false
 func _ready() -> void:
  process_mode = Node.PROCESS_MODE_ALWAYS
  layer = 20
+ # Fail closed rather than silently reintroducing the ugly historical HUD.
+ for filename in OFFICIAL_BUTTON_FILES:
+  if not ResourceLoader.exists(ICONS + filename):
+   push_error("XZIEL_OFFICIAL_HUD_REQUIRED: " + ICONS + filename)
+   set_process_input(false)
+   return
  layer_root = Control.new()
- layer_root.name = "XZIEL_Official_Touch"
+ layer_root.name = "XZIEL_PNG_ONLY"
  layer_root.set_anchors_preset(Control.PRESET_FULL_RECT)
  layer_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
  add_child(layer_root)
- for key in LAYOUT.keys():
-  var ring := _image("touch_idle")
-  var glyph := _image(str(LAYOUT[key]["icon"]))
-  layer_root.add_child(ring)
-  layer_root.add_child(glyph)
-  images[key] = {"ring":ring,"glyph":glyph}
- stick_ring = _image("joystick_ring")
- stick_knob = _image("joystick_knob")
- layer_root.add_child(stick_ring)
+ for role in LAYOUT.keys():
+  var image := _image(str(LAYOUT[role]["icon"]))
+  layer_root.add_child(image)
+  images[role] = image
+ stick_base = _image("move")
+ stick_knob = _image("move")
+ layer_root.add_child(stick_base)
  layer_root.add_child(stick_knob)
  get_viewport().size_changed.connect(_layout)
  _layout()
 
-func _image(asset_name: String) -> TextureRect:
- var rect := TextureRect.new()
- var path := ICONS + asset_name + ".png"
- if ResourceLoader.exists(path):
-  rect.texture = load(path)
- rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
- rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
- rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
- rect.modulate.a = 0.82
- return rect
+func _image(name: String) -> TextureRect:
+ var img := TextureRect.new()
+ img.texture = load(ICONS + name + ".png")
+ img.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+ img.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+ img.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ img.modulate.a = 0.76
+ return img
 
 func _place(img: TextureRect, center: Vector2, diameter: float) -> void:
- var v := Vector2(diameter,diameter)
- img.position = center - v * 0.5
- img.size = v
+ var bounds := Vector2(diameter,diameter)
+ img.position = center - bounds*0.5
+ img.size = bounds
 
 func _layout() -> void:
+ if not is_instance_valid(layer_root): return
  var s := Vector2(get_viewport().get_visible_rect().size)
  if s.x < 1.0 or s.y < 1.0: return
  layer_root.size = s
- for key in LAYOUT.keys():
-  var spec: Dictionary = LAYOUT[key]
-  var center := Vector2(spec["p"].x * s.x, spec["p"].y * s.y)
-  var d: float = s.y * spec["r"] * 2.0
-  _place(images[key]["ring"],center,d)
-  _place(images[key]["glyph"],center,d*0.52)
+ for role in LAYOUT.keys():
+  var spec: Dictionary = LAYOUT[role]
+  var center := Vector2(spec["p"].x*s.x,spec["p"].y*s.y)
+  _place(images[role],center,s.y*spec["r"]*2.0)
  var center := stick_origin if stick_index != -1 else Vector2(s.x*0.17,s.y*0.74)
  var d := s.y*0.32
- _place(stick_ring,center,d)
+ _place(stick_base,center,d)
  _place(stick_knob,center+stick_value*s.y*0.105,d*0.46)
 
 func _visual(role: String, down: bool) -> void:
- if not images.has(role): return
- var name := "touch_pressed" if down else "touch_idle"
- if role == "fire":
-  name = "touch_fire_pressed" if down else "touch_fire_idle"
- elif role == "ads":
-  name = "touch_ads_pressed" if down else "touch_ads_idle"
- elif role == "adsfire":
-  name = "touch_adsfire_pressed" if down else "touch_adsfire_idle"
- var path := ICONS+name+".png"
- if ResourceLoader.exists(path):
-  images[role]["ring"].texture = load(path)
+ if images.has(role):
+  images[role].modulate.a = 1.0 if down else 0.76
 
 func _role_for(pos: Vector2) -> String:
  var s := Vector2(get_viewport().get_visible_rect().size)
