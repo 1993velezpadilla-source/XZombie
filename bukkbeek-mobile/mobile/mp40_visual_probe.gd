@@ -88,7 +88,15 @@ func _run() -> void:
   {"label":"yaw_plus_1","x":0.0,"y":0.0,"pitch":0.0,"yaw":1.0},
   {"label":"yaw_minus_1","x":0.0,"y":0.0,"pitch":0.0,"yaw":-1.0},
   {"label":"x_plus_008","x":0.008,"y":0.0,"pitch":0.0,"yaw":0.0},
-  {"label":"x_minus_008","x":-0.008,"y":0.0,"pitch":0.0,"yaw":0.0}
+  {"label":"x_minus_008","x":-0.008,"y":0.0,"pitch":0.0,"yaw":0.0},
+  {"label":"combo_p3_yminus010","x":0.0,"y":-0.010,"pitch":3.0,"yaw":0.0},
+  {"label":"combo_p4_yminus010","x":0.0,"y":-0.010,"pitch":4.0,"yaw":0.0},
+  {"label":"combo_p5_yminus010","x":0.0,"y":-0.010,"pitch":5.0,"yaw":0.0},
+  {"label":"combo_p5_yminus020","x":0.0,"y":-0.020,"pitch":5.0,"yaw":0.0},
+  {"label":"combo_p6_yminus015","x":0.0,"y":-0.015,"pitch":6.0,"yaw":0.0},
+  {"label":"combo_p6_yminus020","x":0.0,"y":-0.020,"pitch":6.0,"yaw":0.0},
+  {"label":"combo_p7_yminus020","x":0.0,"y":-0.020,"pitch":7.0,"yaw":0.0},
+  {"label":"combo_p5_yminus020_xplus004","x":0.004,"y":-0.020,"pitch":5.0,"yaw":0.0}
  ]:
   rig.transform = baseline
   rig.position += Vector3(test["x"],test["y"],0.0)
