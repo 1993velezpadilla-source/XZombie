@@ -130,7 +130,27 @@ manager_src = manager_src.replace(
     "global_transform.basis = current_basis.slerp(target_basis, clampf(follow_speed * _delta, 0.0, 1.0))",
     1,
 )
+# Keep MP40 iron sights rigid to the actual 3D camera ray when ADS is held.
+# The old interpolated camera follow introduces temporary aim drift while
+# rotating on touchscreen/gyro. Leave all other weapons and HIP follow intact.
+follow_start = manager_src.index("\\t# Lerp position\\n")
+follow_end = manager_src.index("\\t# Continuous firing for automatic weapons", follow_start)
+follow_block = manager_src[follow_start:follow_end]
+assert follow_block.count("clampf(follow_speed * _delta, 0.0, 1.0)") == 2
+nested_follow = "".join(
+    ("\\t" + line if line.strip() else line)
+    for line in follow_block.splitlines(keepends=True)
+)
+manager_src = (
+    manager_src[:follow_start]
+    + "\\tif current_weapon and current_weapon.name == \\"MP40Source\\" and current_aim_mode and not is_switching:\\n"
+    + "\\t\\tglobal_transform = target_transform\\n"
+    + "\\telse:\\n"
+    + nested_follow
+    + manager_src[follow_end:]
+)
 manager.write_text(manager_src)
+print("BUKKBEEK_MP40_RIGID_ADS_GREEN: camera-follow lag disabled only while MP40 ADS")
 print("BUKKBEEK_MP40_CAMERA_FOLLOW_CLAMP_GREEN: no extrapolation on Android frame drops")
 print("BUKKBEEK_MP40_PATCH_GREEN: sixth Bukkbeek weapon, Android starts MP40, knife remains index=0, old five remain")
 
