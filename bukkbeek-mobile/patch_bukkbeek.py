@@ -130,22 +130,26 @@ manager_src = manager_src.replace(
     "global_transform.basis = current_basis.slerp(target_basis, clampf(follow_speed * _delta, 0.0, 1.0))",
     1,
 )
-# Keep MP40 iron sights rigid to the actual 3D camera ray when ADS is held.
-# The old interpolated camera follow introduces temporary aim drift while
-# rotating on touchscreen/gyro. Leave all other weapons and HIP follow intact.
-follow_start = manager_src.index("\\t# Lerp position\\n")
-follow_end = manager_src.index("\\t# Continuous firing for automatic weapons", follow_start)
+# Lock original iron sight to the gameplay camera during ADS. The source
+# follow block remains exactly as-is for HIP and the five other weapons.
+tab = chr(9)
+nl = chr(10)
+follow_start = manager_src.index(tab + "# Lerp position" + nl)
+follow_end = manager_src.index(tab + "# Continuous firing for automatic weapons", follow_start)
 follow_block = manager_src[follow_start:follow_end]
 assert follow_block.count("clampf(follow_speed * _delta, 0.0, 1.0)") == 2
 nested_follow = "".join(
-    ("\\t" + line if line.strip() else line)
+    (tab + line if line.strip() else line)
     for line in follow_block.splitlines(keepends=True)
+)
+rigid_branch = (
+    tab + 'if current_weapon and current_weapon.name == "MP40Source" and current_aim_mode and not is_switching:' + nl
+    + tab * 2 + "global_transform = target_transform" + nl
+    + tab + "else:" + nl
 )
 manager_src = (
     manager_src[:follow_start]
-    + "\\tif current_weapon and current_weapon.name == \\"MP40Source\\" and current_aim_mode and not is_switching:\\n"
-    + "\\t\\tglobal_transform = target_transform\\n"
-    + "\\telse:\\n"
+    + rigid_branch
     + nested_follow
     + manager_src[follow_end:]
 )
