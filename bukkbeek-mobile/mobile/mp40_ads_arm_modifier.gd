@@ -57,7 +57,10 @@ func _process_modification_with_delta(_delta: float) -> void:
    " source_skeleton=",sk != null, " original_hand_anim=",str(_weapon.get("_idle_hands_clip")) if _weapon != null else "NONE")
  if not _enabled or sk == null or _weapon == null or not _weapon.is_inside_tree():
   return
- if (not _weapon.visible or not bool(_weapon.get("is_aimed"))
+ # Viewmodel's 0.20s original ADS tween drives influence continuously,
+ # including while leaving ADS. No one-frame limb pop when finger lifts.
+ # The Godot SkeletonModifier automatically blends its changed bone poses.
+ if (not _weapon.visible or influence <= 0.001
   or bool(_weapon.get("is_reloading"))):
   return
  var player: AnimationPlayer = _weapon.get("_hands_anim") as AnimationPlayer
