@@ -234,7 +234,7 @@ func _normalize_source_bolt_idle_pose() -> bool:
   if (str(empty_anim.track_get_path(i)).ends_with(track_suffix)
    and empty_anim.track_get_type(i) == Animation.TYPE_POSITION_3D):
    empty_pos_track = i
- if mini(idle_pos_track, normal_pos_track, empty_pos_track) < 0:
+ if mini(mini(idle_pos_track, normal_pos_track), empty_pos_track) < 0:
   return false
  if (idle_anim.track_get_key_count(idle_pos_track) != 1
   or normal_anim.track_get_key_count(normal_pos_track) != 1
@@ -385,7 +385,7 @@ func _source_magazine_insert_time(clip: String) -> float:
    break
   for j: int in range(max_index + 1, a.track_get_key_count(i)):
    if start.distance_to(a.track_get_key_value(i, j) as Vector3) < maxf(0.012, max_dist * 0.24):
-    return clampf(a.track_get_key_time(j), a.length * 0.35, a.length - 0.17)
+    return clampf(a.track_get_key_time(i, j), a.length * 0.35, a.length - 0.17)
   break
  return a.length * 0.65
 
@@ -406,9 +406,9 @@ func _source_charging_bolt_cue_times(clip: String) -> Vector2:
   for j: int in range(1, a.track_get_key_count(i)):
    var pos: Vector3 = a.track_get_key_value(i, j) as Vector3
    if first_motion < 0.0 and first.distance_to(pos) >= 0.004:
-    first_motion = a.track_get_key_time(j)
+    first_motion = a.track_get_key_time(i, j)
    if previous.distance_to(pos) >= 0.003:
-    last_motion = a.track_get_key_time(j)
+    last_motion = a.track_get_key_time(i, j)
    previous = pos
   if first_motion < 0.0:
    return Vector2(-1.0, -1.0)
