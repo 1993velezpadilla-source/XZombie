@@ -719,6 +719,15 @@ func _process(_delta: float) -> void:
  # Keep original 75° ONLY while MP40 active, don't touch other weapons.
  if _source_ok and visible and _viewmodel_camera != null:
   _viewmodel_camera.fov = 75.0
+ if _source_ok and _ads_arm_modifier != null:
+  # Source marker transform is already the sole Bukkbeek ADS interpolator.
+  # Follow its 0.20s motion instead of introducing any new hand animation.
+  var total_travel: float = standard_aim_position.position.distance_to(
+   focused_aim_position.position)
+  if total_travel > 0.0001:
+   _ads_arm_modifier.influence = clampf(1.0 -
+    fps_arms_root.position.distance_to(focused_aim_position.position) / total_travel,
+    0.0, 1.0)
  if not _source_ok or not is_reloading or _gun_anim == null:
   return
  var elapsed := _gun_anim.current_animation_position
