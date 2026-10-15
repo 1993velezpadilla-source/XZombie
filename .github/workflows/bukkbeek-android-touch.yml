@@ -9,6 +9,7 @@ on:
       - fix/bukkbeek-mp40-source-reload-sync-20261015
       - fix/bukkbeek-mp40-bolt-audio-ads-20261015
       - fix/bukkbeek-mp40-authentic-aether-sounds-20261015
+      - fix/bukkbeek-mp40-ads-mag-settle-20261015
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
