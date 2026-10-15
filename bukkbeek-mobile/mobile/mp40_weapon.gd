@@ -11,6 +11,7 @@ const GUN_SPECULAR := "res://mobile/mp40_source/_weapon_mp40_mp_s-rgb_weapon__08
 
 var _hands_root: Node3D
 var _gun_root: Node3D
+var _viewmodel_camera: Camera3D
 var _hands_anim: AnimationPlayer
 var _gun_anim: AnimationPlayer
 var _skeleton: Skeleton3D
@@ -54,6 +55,13 @@ var _cue_charge_played: bool = false
 
 func _ready() -> void:
  super._ready()
+ # Bukkbeek has a SECOND dedicated weapon renderer. Its camera was held at
+ # 75 degrees even as the gameplay camera zoomed to 60 in ADS. The two views
+ # must use the SAME FOV or iron-sight screen geometry cannot match the target.
+ _viewmodel_camera = get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
+ if _viewmodel_camera == null:
+  push_error("BUKKBEEK_MP40_RED: dedicated weapon subviewport camera unavailable")
+  return
  # Keep HIP untouched. ADS-only marker adjustment for the missing front post.
  # Positive local X pitch raises the muzzle to reveal the ORIGINAL iron sight.
  if focused_aim_position != null:
@@ -438,6 +446,10 @@ func _play_idle() -> void:
   _gun_anim.play(_gun_idle_clip, 0.12)
 
 func _process(_delta: float) -> void:
+ # Unlike the old 4mm optical guess, this repairs the TWO-camera ADS mismatch.
+ # Only the ACTIVE MP40 changes the viewmodel camera; stock guns untouched.
+ if _source_ok and visible and main_camera != null and _viewmodel_camera != null:
+  _viewmodel_camera.fov = main_camera.fov
  if not _source_ok or not is_reloading or _gun_anim == null:
   return
  var elapsed := _gun_anim.current_animation_position
