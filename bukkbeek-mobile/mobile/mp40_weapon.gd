@@ -31,8 +31,11 @@ var _source_ok: bool = false
 # Reversible camera/weapon ADS fit only; source geometry and weapon ballistics
 # are untouched. Small vertical drop reveals the forward front-sight post,
 # while modest muzzle-up pitch prevents it hiding behind the receiver sight.
-@export_range(-0.015, 0.015, 0.001) var ads_fine_x_metres: float = -0.004
-@export_range(-0.025, 0.025, 0.001) var ads_fine_y_metres: float = -0.011
+# Calibrated from actual 1280x720 rendered ADS probe: front ring was
+# about 20px camera-left and 20px below the center aiming ray at 60° FOV.
+# Move the real weapon to the reticle; no crosshair/ballistic cheating.
+@export_range(-0.035, 0.035, 0.001) var ads_fine_x_metres: float = 0.017
+@export_range(-0.035, 0.035, 0.001) var ads_fine_y_metres: float = 0.011
 @export_range(-2.0, 2.0, 0.05) var ads_fine_pitch_degrees: float = 0.60
 # The idle j_clip pose can disagree with a reload's FINAL magazine pose.
 # Cache each source pair's genuine final bone transforms and copy ONLY those
