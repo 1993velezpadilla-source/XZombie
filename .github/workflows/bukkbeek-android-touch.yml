@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/bukkbeek-android-touch-v1
+      - fix/bukkbeek-joystick-aim-toggle-fire-drag-20261015
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -52,11 +53,13 @@ jobs:
         run: |
           python3 bukkbeek-mobile/verify_official_png.py bukkbeek-mobile/official_png
           ! grep -E 'touch_idle|touch_pressed|joystick_ring|touch_fire_idle|touch_fire_pressed' bukkbeek-mobile/mobile/touch_hud.gd
+          python3 bukkbeek-mobile/verify_mobile_gestures.py bukkbeek-mobile/mobile
 
       - name: Install approved PNGs and apply Android input adapter
         run: |
           mkdir -p _build/bukkbeek/mobile/official_png
           cp bukkbeek-mobile/mobile/touch_hud.gd _build/bukkbeek/mobile/touch_hud.gd
+          cp bukkbeek-mobile/mobile/virtual_joystick.gd _build/bukkbeek/mobile/virtual_joystick.gd
           cp bukkbeek-mobile/official_png/*.png _build/bukkbeek/mobile/official_png/
           python3 bukkbeek-mobile/patch_bukkbeek.py _build/bukkbeek
           test -s _build/bukkbeek/resources/player/fps_demo_arms.glb
