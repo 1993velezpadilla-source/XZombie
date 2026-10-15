@@ -211,7 +211,13 @@ func _mesh_has_source_vertex(m: MeshInstance3D, source_point: Vector3) -> bool:
  return false
 
 func _derive_optical_ads_from_mesh() -> void:
- # Source animations/socket grip must settle before calculating the mesh pose.
+ # The source hand tag_weapon is NOT in the authored idle pose on _ready().
+ # _play_idle() blends from a generic bind pose over 0.12s, moving the
+ # attached MP40 significantly while the previous (false GREEN) solver ran
+ # after only ONE frame. Calibrate ONLY once the genuine source skeleton
+ # finishes its idle blend, not the transient initialization frame.
+ await get_tree().create_timer(0.28).timeout
+ _sync_grip()
  await get_tree().process_frame
  if not _source_ok or _gun_root == null or fps_arms_root == null:
   return
