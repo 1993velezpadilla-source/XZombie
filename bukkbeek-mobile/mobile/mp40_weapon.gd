@@ -28,19 +28,18 @@ var _gun_reload_empty_clip: String = ""
 var _active_reload_hands_clip: String = ""
 var _active_reload_gun_clip: String = ""
 var _source_ok: bool = false
-# Reversible camera/weapon ADS fit only; source geometry and weapon ballistics
-# are untouched. Small vertical drop reveals the forward front-sight post,
-# while modest muzzle-up pitch prevents it hiding behind the receiver sight.
-# Measured against 1280x720 actual Godot renders in visual gauntlet:
-# front ring was obstructed in V2. Tested 25 source-geometry poses (NO fake
-# sights or textures). Candidate p6_ym015_x006_yaw_m2 shows original front
-# ring fully visible centered on the world 640,360 aim ray, with rear notch
-# below and aligned. Includes prior V2 base offset/pitch in final defaults.
-# ADS ONLY; hip position / original hand rig / genuine source PSAs unchanged.
-@export_range(-0.035, 0.035, 0.001) var ads_fine_x_metres: float = 0.002
-@export_range(-0.065, 0.065, 0.001) var ads_fine_y_metres: float = -0.026
-@export_range(-10.0, 10.0, 0.05) var ads_fine_pitch_degrees: float = 6.60
-@export_range(-5.0, 5.0, 0.1) var ads_fine_yaw_degrees: float = -2.0
+# Source measured physical iron sight landmarks from the ORIGINAL MP40 GLB
+# (original imported surface, NOT screenshot or trial-and-error translations):
+# Rear notch vertex: x=-0.157399, y=0.045185, z=-0.012522 meters.
+# Front post: midpoint of paired model vertices at
+# x=+0.366805,y=0.053975,z=-0.013497/-0.011572 meters.
+# Source sightline = atan2(0.008790,0.524204) = 0.961 degrees.
+# There was NEVER any geometrical justification for the old +6.60 pitch.
+const SOURCE_REAR_NOTCH := Vector3(-0.157399, 0.045185, -0.012522)
+const SOURCE_FRONT_POST_L := Vector3(0.366805, 0.053975, -0.013497)
+const SOURCE_FRONT_POST_R := Vector3(0.366805, 0.053975, -0.011572)
+const SOURCE_FLASH_TAG := Vector3(0.393835, 0.023172, -0.012254)
+var _source_sight_axis_solved: bool = false
 # The idle j_clip pose can disagree with a reload's FINAL magazine pose.
 # Cache each source pair's genuine final bone transforms and copy ONLY those
 # 1-key idle values immediately before blending to idle (no source PSAs edited).
@@ -69,17 +68,7 @@ func _ready() -> void:
  if _viewmodel_camera == null:
   push_error("BUKKBEEK_MP40_RED: dedicated weapon subviewport camera unavailable")
   return
- # Keep HIP untouched. ADS-only marker adjustment for the missing front post.
- # Positive local X pitch raises the muzzle to reveal the ORIGINAL iron sight.
- if focused_aim_position != null:
-  focused_aim_position.position.x += ads_fine_x_metres
-  focused_aim_position.position.y += ads_fine_y_metres
-  focused_aim_position.rotate_object_local(Vector3.RIGHT, deg_to_rad(ads_fine_pitch_degrees))
-  focused_aim_position.rotate_object_local(Vector3.UP, deg_to_rad(ads_fine_yaw_degrees))
-  set_meta("mp40_ads_fine_yaw", ads_fine_yaw_degrees)
-  set_meta("mp40_ads_fine_x", ads_fine_x_metres)
-  set_meta("mp40_ads_fine_y", ads_fine_y_metres)
-  set_meta("mp40_ads_fine_pitch", ads_fine_pitch_degrees)
+ # No trial-and-error offsets or authored angles; source landmarks solve ADS.
  # Bukkbeek stock reload sample is unrelated to MP40. Suppress it here:
  # real Aether magazine-out plays at j_clip removal time below instead.
  reload_sfx = null
@@ -193,6 +182,100 @@ func _ready() -> void:
   " source_hand_fire=", _fire_hands_clip, " source_hand_reload=", _reload_hands_clip,
   " original_gun_reload=", _gun_reload_clip)
  _play_idle()
+ call_deferred("_derive_optical_ads_from_mesh")
+
+
+# Source model optical fit. Solve a rigid transform from physical rear-notch
+# and front-post vertices directly, instead of manipulating offsets by eye.
+# No synthetic sight, no change to weapon source mesh, skeleton, or source PSA.
+func _find_source_mesh(n: Node) -> MeshInstance3D:
+ if n is MeshInstance3D:
+  var m := n as MeshInstance3D
+  if m.mesh != null:
+   return m
+ for child: Node in n.get_children():
+  var result: MeshInstance3D = _find_source_mesh(child)
+  if result != null:
+   return result
+ return null
+
+func _mesh_has_source_vertex(m: MeshInstance3D, source_point: Vector3) -> bool:
+ if m == null or m.mesh == null:
+  return false
+ for surface_idx: int in range(m.mesh.get_surface_count()):
+  var arrays: Array = m.mesh.surface_get_arrays(surface_idx)
+  var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX] as PackedVector3Array
+  for vert: Vector3 in verts:
+   if vert.distance_to(source_point) < 0.00003:
+    return true
+ return false
+
+func _derive_optical_ads_from_mesh() -> void:
+ # Source animations/socket grip must settle before calculating the mesh pose.
+ await get_tree().process_frame
+ if not _source_ok or _gun_root == null or fps_arms_root == null:
+  return
+ var mesh: MeshInstance3D = _find_source_mesh(_gun_root)
+ if (mesh == null
+  or not _mesh_has_source_vertex(mesh, SOURCE_REAR_NOTCH)
+  or not _mesh_has_source_vertex(mesh, SOURCE_FRONT_POST_L)
+  or not _mesh_has_source_vertex(mesh, SOURCE_FRONT_POST_R)):
+  push_error("BUKKBEEK_MP40_ADS_RED: exact original GLB sight vertices missing")
+  _source_ok = false
+  return
+ var front_local: Vector3 = (SOURCE_FRONT_POST_L + SOURCE_FRONT_POST_R) * 0.5
+ # Conversion through the live imported GLB hierarchy accounts for the
+ # actual source skeleton/tag_weapon socket and original imported rotation.
+ var rear_rig: Vector3 = fps_arms_root.to_local(mesh.to_global(SOURCE_REAR_NOTCH))
+ var front_rig: Vector3 = fps_arms_root.to_local(mesh.to_global(front_local))
+ var original_focus: Transform3D = focused_aim_position.transform
+ var start_rear: Vector3 = original_focus * rear_rig
+ var start_front: Vector3 = original_focus * front_rig
+ var source_line: Vector3 = start_front - start_rear
+ if source_line.length() < 0.3 or source_line.length() > 0.7:
+  push_error("BUKKBEEK_MP40_ADS_RED: original physical sight separation invalid")
+  _source_ok = false
+  return
+ # The manager follows camera in ADS; its local -Z is the exact shot ray.
+ # Rotate just enough to align the TWO physical sights onto that ray.
+ var fit: Quaternion = Quaternion(source_line.normalized(), Vector3.FORWARD)
+ var solved_basis: Basis = (Basis(fit) * original_focus.basis).orthonormalized()
+ # Preserve ORIGINAL focused eye relief rather than guessing a new camera
+ # distance, then solve translation to place rear notch on the -Z ray.
+ var depth: float = -start_rear.z
+ if depth < 0.025 or depth > 0.50:
+  push_error("BUKKBEEK_MP40_ADS_RED: source rear sight outside camera eye relief")
+  _source_ok = false
+  return
+ var rear_target := Vector3(0.0, 0.0, -depth)
+ var fitted := Transform3D(solved_basis, rear_target - solved_basis * rear_rig)
+ var rear_result: Vector3 = fitted * rear_rig
+ var front_result: Vector3 = fitted * front_rig
+ var error_rear: float = Vector2(rear_result.x, rear_result.y).length()
+ var error_front: float = Vector2(front_result.x, front_result.y).length()
+ # Also validate the barrel is nearly parallel to the measured sightline.
+ # Front and rear sights are on source +X. Pitch must be physical (~0.961
+ # degrees), NEVER arbitrary +6.6 degrees.
+ var measured_angle_deg: float = rad_to_deg(
+  Vector3.RIGHT.angle_to((SOURCE_FRONT_POST_L + SOURCE_FRONT_POST_R) * 0.5 - SOURCE_REAR_NOTCH)
+ )
+ if (error_rear > 0.00005 or error_front > 0.00005
+  or measured_angle_deg > 2.0):
+  push_error("BUKKBEEK_MP40_ADS_RED: original sight-axis geometry failed")
+  _source_ok = false
+  return
+ focused_aim_position.transform = fitted
+ _source_sight_axis_solved = true
+ set_meta("source_mp40_optical_axis_solved", true)
+ set_meta("source_mp40_rear_sight_rig", rear_rig)
+ set_meta("source_mp40_front_post_rig", front_rig)
+ set_meta("source_mp40_sight_axis_angle_deg", measured_angle_deg)
+ set_meta("source_mp40_sight_rear_error_m", error_rear)
+ set_meta("source_mp40_sight_front_error_m", error_front)
+ print("BUKKBEEK_MP40_SOURCE_OPTICAL_AXIS_GREEN front_rear_sep_m=", source_line.length(),
+  " real_sight_to_barrel_deg=", measured_angle_deg,
+  " error_rear_m=", error_rear, " error_front_m=", error_front,
+  " source=original_viewmodel_glb")
 
 const SOURCE_GUN_ROOT_TRACK := "MP40_SM_ao/Skeleton3D:viewmodel_ger_mp40_smg_LOD0_skel"
 
