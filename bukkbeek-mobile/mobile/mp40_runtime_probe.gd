@@ -38,14 +38,14 @@ func _run() -> void:
  if not bool(mp40.get_meta("source_mp40_bolt_idle_snap_fixed", false)):
   _fail("charging bolt end-of-reload idle pose was not repaired")
   return
- # Source-compatible complete front ring confirmed in the rendered
- # scene. Viewmodel/gameplay camera FOV must also match (test below).
- if absf(float(mp40.get_meta("mp40_ads_fine_x", 0.0)) + 0.004) > 0.0001:
-  _fail("proven source ADS X marker offset missing")
-  return
- if (absf(float(mp40.get_meta("mp40_ads_fine_y", 0.0)) + 0.011) > 0.0001
-  or absf(float(mp40.get_meta("mp40_ads_fine_pitch", 0.0)) - 0.60) > 0.001):
-  _fail("source ADS front ring marker height / pitch missing")
+ # Complete FRONT-RING + REAR-NOTCH optic line measured in actual 1280x720
+ # rendered Godot poses: source front ring centered near (640,360). No SFX
+ # modifications, reticle cheating or authoring GLB changes.
+ if (absf(float(mp40.get_meta("mp40_ads_fine_x", 0.0)) - 0.002) > 0.0001
+  or absf(float(mp40.get_meta("mp40_ads_fine_y", 0.0)) + 0.026) > 0.0001
+  or absf(float(mp40.get_meta("mp40_ads_fine_pitch", 0.0)) - 6.60) > 0.001
+  or absf(float(mp40.get_meta("mp40_ads_fine_yaw", 0.0)) + 2.0) > 0.001):
+  _fail("source MP40 front ring + rear notch camera alignment missing")
   return
  var hip_marker: Marker3D = mp40.get_node_or_null("StandardAimPosition") as Marker3D
  var ads_marker: Marker3D = mp40.get_node_or_null("FocusedAimPosition") as Marker3D
@@ -421,7 +421,7 @@ func _run() -> void:
  if not _magazine_idle_matches_reload_end(gun_anim, idle_gun_clip, empty_gun):
   _fail("magazine re-seats during empty reload charging-handle exit")
   return
- print("BUKKBEEK_MP40_ADS_MAG_SETTLE_GREEN x=-0.004 y=-0.011 pitch=0.60 idle_mag=exact_final_source_pose")
+ print("BUKKBEEK_MP40_ADS_MAG_SETTLE_GREEN x=0.002 y=-0.026 pitch=6.60 yaw=-2.0 idle_mag=exact_final_source_pose")
  print("BUKKBEEK_MP40_LIVE_GREEN "
   + "stock_weapon_count=" + str(weapon_nodes.size() - 1)
   + " hands_bones=" + str(skeleton.get_bone_count())
