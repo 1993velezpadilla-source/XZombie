@@ -5,9 +5,9 @@
 [ext_resource type="PackedScene" path="res://mobile/mp40_source/viewhands.glb" id="3_hands"]
 [ext_resource type="PackedScene" path="res://mobile/mp40_source/viewmodel.glb" id="4_gun"]
 [ext_resource type="AudioStream" path="res://mobile/mp40_source/fire.wav" id="5_fire"]
-[ext_resource type="AudioStream" path="res://mobile/mp40_source/metal_close_01.ogg" id="6_insert"]
-[ext_resource type="AudioStream" path="res://mobile/mp40_source/metal_spring_01.ogg" id="7_bolt_pull"]
-[ext_resource type="AudioStream" path="res://mobile/mp40_source/metal_spring_02.ogg" id="8_bolt_release"]
+[ext_resource type="AudioStream" path="res://mobile/mp40_source/mag_in.wav" id="6_insert"]
+[ext_resource type="AudioStream" path="res://mobile/mp40_source/charge.wav" id="7_bolt_pull"]
+[ext_resource type="AudioStream" path="res://mobile/mp40_source/mag_out.wav" id="8_bolt_release"]
 
 [node name="MP40Source" node_paths=PackedStringArray("fps_arms_root", "animation_player", "firing_sfx", "reload_sfx", "empty_mag_sfx", "muzzle_flash_position") instance=ExtResource("1_base")]
 script = ExtResource("2_mp40")
@@ -42,11 +42,11 @@ volume_db = -7.0
 stream = ExtResource("6_insert")
 volume_db = -9.0
 
-[node name="BoltPullCue" type="AudioStreamPlayer3D" parent="SFX"]
+[node name="BoltChargeCue" type="AudioStreamPlayer3D" parent="SFX"]
 stream = ExtResource("7_bolt_pull")
-volume_db = -10.0
+volume_db = -8.0
 
-[node name="BoltReleaseCue" type="AudioStreamPlayer3D" parent="SFX"]
+[node name="MagazineRemoveCue" type="AudioStreamPlayer3D" parent="SFX"]
 stream = ExtResource("8_bolt_release")
 volume_db = -10.0
 
