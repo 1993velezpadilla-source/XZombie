@@ -2,11 +2,11 @@ extends CanvasLayer
 ## XZIEL official mobile HUD for the pristine Bukkbeek Godot 4.6 FPS template.
 # Never use old generated circles. Original PNG artwork is mandatory.
 const ICONS := "res://mobile/official_png/"
-const OFFICIAL_BUTTON_FILES := PackedStringArray([
+const OFFICIAL_BUTTON_FILES := [
  "aim.png", "aim_fire.png", "crouch.png", "fire.png",
  "grenade.png", "interact.png", "knife.png", "prone.png",
  "reload.png", "slide.png", "vault_jump.png", "weapon_swap.png"
-])
+]
 # Icons are exactly the official-approved individual PNGs.
 # Touch look and analog move are gesture zones, no new/rejected HUD graphics.
 const LAYOUT := {
