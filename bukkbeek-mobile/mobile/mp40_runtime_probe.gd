@@ -40,8 +40,11 @@ func _run() -> void:
   return
  # Pixel-based optical fit from true Godot 1280x720 render (front ring
  # measured ~20px left and below game center; no fake reticle offset).
- if absf(float(mp40.get_meta("mp40_ads_fine_x", 0.0)) - 0.017) > 0.0001:
-  _fail("ADS front sight X center measured fit missing")
+ if absf(float(mp40.get_meta("mp40_ads_fine_x", 0.0)) + 0.001) > 0.0001:
+  _fail("ADS rear sight x calibration missing")
+  return
+ if absf(float(mp40.get_meta("mp40_ads_fine_yaw", 0.0)) + 1.50) > 0.001:
+  _fail("ADS front/rear optical parallax yaw calibration missing")
   return
  if (absf(float(mp40.get_meta("mp40_ads_fine_y", 0.0)) - 0.011) > 0.0001
   or absf(float(mp40.get_meta("mp40_ads_fine_pitch", 0.0)) - 0.60) > 0.001):
@@ -421,7 +424,7 @@ func _run() -> void:
  if not _magazine_idle_matches_reload_end(gun_anim, idle_gun_clip, empty_gun):
   _fail("magazine re-seats during empty reload charging-handle exit")
   return
- print("BUKKBEEK_MP40_ADS_MAG_SETTLE_GREEN x=+0.017 y=+0.011 pitch=0.60 idle_mag=exact_final_source_pose")
+ print("BUKKBEEK_MP40_ADS_MAG_SETTLE_GREEN x=-0.001 yaw=-1.50 y=+0.011 pitch=0.60 idle_mag=exact_final_source_pose")
  print("BUKKBEEK_MP40_LIVE_GREEN "
   + "stock_weapon_count=" + str(weapon_nodes.size() - 1)
   + " hands_bones=" + str(skeleton.get_bone_count())
