@@ -1,0 +1,42 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="PackedScene" path="res://common/weapon/weapon_base.tscn" id="1_base"]
+[ext_resource type="Script" path="res://mobile/mp40_weapon.gd" id="2_mp40"]
+[ext_resource type="PackedScene" path="res://mobile/mp40_source/viewhands.glb" id="3_hands"]
+[ext_resource type="PackedScene" path="res://mobile/mp40_source/viewmodel.glb" id="4_gun"]
+
+[node name="MP40Source" node_paths=PackedStringArray("fps_arms_root", "animation_player", "firing_sfx", "reload_sfx", "empty_mag_sfx", "muzzle_flash_position") instance=ExtResource("1_base")]
+script = ExtResource("2_mp40")
+fps_arms_root = NodePath("FPSHandsRoot")
+animation_player = NodePath("fps_demo_arms/AnimationPlayer")
+muzzle_flash_position = NodePath("FPSHandsRoot/MuzzleFlashPosition")
+bullet_type = 2
+damage = 165.0
+cooldown = 0.112
+burst_mode = true
+mag_capacity = 32
+reload_time = 2.0
+firing_distance = 100.0
+focused_aim_fov = 60.0
+focused_aim_angle = 0.5
+standard_aim_angle = 2.0
+
+[node name="StandardAimPosition" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.05, -0.05, -0.22)
+
+[node name="FocusedAimPosition" parent="." index="1"]
+transform = Transform3D(0.999857, 0.00464, 0.01696, -0.00512, 0.999583, 0.02845, -0.01682, -0.02854, 0.99945, -0.04142, 0.0104, -0.24045)
+
+[node name="fps_demo_arms" parent="." index="6"]
+visible = false
+
+[node name="FPSHandsRoot" type="Node3D" parent="."]
+
+[node name="SourceHands" parent="FPSHandsRoot" instance=ExtResource("3_hands")]
+
+[node name="SourceGun" parent="FPSHandsRoot" instance=ExtResource("4_gun")]
+
+[node name="MuzzleFlashPosition" type="Marker3D" parent="FPSHandsRoot"]
+position = Vector3(0.0, -0.08, -0.65)
+
+[editable path="fps_demo_arms"]
