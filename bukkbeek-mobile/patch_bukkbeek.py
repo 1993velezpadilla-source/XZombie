@@ -51,10 +51,14 @@ architectures/armeabi-v7a=false
 architectures/arm64-v8a=true
 architectures/x86=false
 architectures/x86_64=false
-version/code=1
-version/name="0.1-touch"
-package/unique_name="org.xziel.bukkbeektouch"
-package/name="Bukkbeek XZIEL Touch"
+version/code=2
+version/name="0.2-mp40-ads-fov-magazine"
+# Intentionally separate app ID: each CI build is signed with a NEW ephemeral
+# debug certificate. Reusing the old package prevents Android installing an
+# update over the existing (different-signature) APK.
+# The tested version MUST show a separate "XZIEL MP40 FIX V2" app icon.
+package/unique_name="org.xziel.bukkbeektouch.mp40fixv2"
+package/name="XZIEL MP40 FIX V2"
 package/signed=true
 screen/orientation=4
 screen/immersive_mode=true
