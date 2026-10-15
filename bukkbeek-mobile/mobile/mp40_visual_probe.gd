@@ -135,6 +135,30 @@ func _run() -> void:
  print("MP40_VISUAL_ACTUAL_MESH_VERTEX_GREEN projected_rear=",projected_rear_px,
   " projected_front=",projected_front_px)
  await _capture(root, weapon_view, "ads")
+ # Pixel-comparable one-dimensional optical-distance sweep. NO screenshot
+ # manipulation, no FOV or ADS pitch adjustments, no source asset changes.
+ # Advancing the entire ORIGINAL gun + arms toward the camera along
+ # its ALREADY-CALIBRATED optical axis leaves rear/post x/y ray unchanged.
+ var original_rig_transform: Transform3D = source_rig.transform
+ for towards_camera_metres: float in [0.012, 0.020, 0.028]:
+  source_rig.transform = original_rig_transform
+  source_rig.position.z += towards_camera_metres
+  await create_timer(0.14).timeout
+  var rear_anchor: Vector3 = mp40.get_meta("source_mp40_rear_sight_rig") as Vector3
+  var front_anchor: Vector3 = mp40.get_meta("source_mp40_front_post_rig") as Vector3
+  var px_rear: Vector2 = weapon_camera.unproject_position(source_rig.to_global(rear_anchor))
+  var px_front: Vector2 = weapon_camera.unproject_position(source_rig.to_global(front_anchor))
+  var err_px: float = maxf(px_rear.distance_to(sight_center), px_front.distance_to(sight_center))
+  print("MP40_ADS_PROXIMITY_RENDER offset_m=", towards_camera_metres,
+   " sight_error_px=",err_px,
+   " original_source_marker_z=",mp40.get_meta("source_mp40_marker_source_depth_z"))
+  if err_px > 2.0:
+   push_error("MP40_VISUAL_RED: closer view lost source sight alignment")
+   quit(6)
+   return
+  await _capture(root, weapon_view, "near_" + str(int(towards_camera_metres*1000.0)) + "mm")
+ source_rig.transform = original_rig_transform
+ await create_timer(0.14).timeout
  # TEST ONLY: original Bukkbeek weapon camera FOV was 75 while world FOV
  # zoomed to 60. We had changed BOTH to 60, inflating the near-side weapon
  # and cropping the source hands. Source sightline alignment is independent
