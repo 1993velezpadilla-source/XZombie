@@ -64,6 +64,34 @@ func _run() -> void:
   _fail("source cm-to-meter grip mis-scaled")
   return
 
+ # Diagnostic ONLY: enumerate exact imported PSA tracks to find whether gun
+ # bone/root transform tracks double-drive the tag_weapon grip during FIRE/RELOAD.
+ for animation_mode: String in ["idle", "fire", "reload"]:
+  var name_var: String = ""
+  match animation_mode:
+   "idle":
+    name_var = str(mp40.get("_gun_idle_clip"))
+   "fire":
+    name_var = str(mp40.get("_gun_fire_clip"))
+   "reload":
+    name_var = str(mp40.get("_gun_reload_clip"))
+  if gun_anim.has_animation(name_var):
+   var a: Animation = gun_anim.get_animation(name_var)
+   print("MP40_DIAG_GUN_ANIM role=", animation_mode, " clip=", name_var, " tracks=", a.get_track_count(), " seconds=", a.length)
+   for idx: int in range(mini(a.get_track_count(), 80)):
+    print("MP40_DIAG_GUN_TRACK role=", animation_mode, " n=", idx, " path=", a.track_get_path(idx),
+     " type=", a.track_get_type(idx), " keys=", a.track_get_key_count(idx))
+ print("MP40_DIAG_GUN_PARENT ", gun.get_parent().get_path(), " gun_rot=", gun.rotation_degrees,
+  " hands_rot=", hands.rotation_degrees, " socket_rot=", socket.rotation_degrees)
+ for role: String in ["fire", "reload"]:
+  var clip: String = str(mp40.get("_fire_hands_clip")) if role == "fire" else str(mp40.get("_reload_hands_clip"))
+  var a: Animation = hands_anim.get_animation(clip)
+  print("MP40_DIAG_HANDS_ANIM role=", role, " clip=", clip, " tracks=", a.get_track_count(), " seconds=", a.length)
+  for idx: int in range(mini(a.get_track_count(), 100)):
+   var track_path := str(a.track_get_path(idx))
+   if "tag_weapon" in track_path.to_lower() or "root" in track_path.to_lower() or "tag_view" in track_path.to_lower() or "tag_ads" in track_path.to_lower() or idx < 3:
+    print("MP40_DIAG_HANDS_TRACK role=", role, " n=", idx, " path=", track_path)
+
  var before: int = mp40.get_current_mag()
  var did_try: bool = mp40.try_fire(true)
  var after: int = mp40.get_current_mag()
