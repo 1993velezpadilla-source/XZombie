@@ -23,7 +23,7 @@ assert 'window/size/viewport_width=1920' in txt
 txt=txt.replace('config/name="fps-demo"','config/name="Bukkbeek XZIEL Mobile Touch"')
 txt=txt.replace('window/size/viewport_width=1920','window/size/viewport_width=1280')
 txt=txt.replace('window/size/viewport_height=1080','window/size/viewport_height=720')
-txt+='\n[rendering]\nrenderer/rendering_method.mobile="mobile"\n\n[input_devices]\npointing/emulate_mouse_from_touch=false\n'
+txt+='\n[rendering]\nrenderer/rendering_method.mobile="mobile"\ntextures/vram_compression/import_etc2_astc=true\n\n[input_devices]\npointing/emulate_mouse_from_touch=false\n'
 p.write_text(txt)
 (src/"export_presets.cfg").write_text("""[preset.0]
 name="Android"
