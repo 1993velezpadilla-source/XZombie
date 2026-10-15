@@ -136,6 +136,38 @@ func _run() -> void:
    if "tag_weapon" in track_path.to_lower() or "root" in track_path.to_lower() or "tag_view" in track_path.to_lower() or "tag_ads" in track_path.to_lower() or idx < 3:
     print("MP40_DIAG_HANDS_TRACK role=", role, " n=", idx, " path=", track_path)
 
+ # Source provenance check: determine what MP40 reload clips REALLY animate.
+ # The old Vril demo is not part of this source GLB. Inspect the j_bolt
+ # (charging handle), j_clip (magazine), and both source hand reload variants.
+ var clips_to_inspect := [
+  "PSA_viewmodel_mp40_reload",
+  "PSA_viewmodel_mp40_reload_empty",
+  "PSA_MP40ReloadHands",
+  "PSA_viewmodel_mp40_fire",
+ ]
+ for clip_name: String in clips_to_inspect:
+  for lane: String in ["gun", "hands"]:
+   var ap: AnimationPlayer = gun_anim if lane == "gun" else hands_anim
+   if not ap.has_animation(clip_name):
+    print("MP40_SOURCE_INSPECT lane=", lane, " clip=", clip_name, " absent")
+    continue
+   var animation: Animation = ap.get_animation(clip_name)
+   print("MP40_SOURCE_INSPECT lane=", lane, " clip=", clip_name,
+    " seconds=", animation.length, " tracks=", animation.get_track_count())
+   for track_idx: int in range(animation.get_track_count()):
+    var track_path := str(animation.track_get_path(track_idx))
+    var track_path_lower := track_path.to_lower()
+    if (track_path_lower.contains("j_bolt") or track_path_lower.contains("j_clip")
+     or track_path_lower.contains("tag_weapon") or track_path_lower.contains("tag_view")
+     or track_path_lower.contains("j_hand_le") or track_path_lower.contains("j_wrist_le")
+     or track_path_lower.contains("j_hand_ri")):
+     var count := animation.track_get_key_count(track_idx)
+     var key_preview := ""
+     if count > 0:
+      key_preview = str(animation.track_get_key_value(track_idx, 0))
+     print("MP40_SOURCE_INSPECT_TRACK lane=", lane, " clip=", clip_name,
+      " n=", track_idx, " path=", track_path, " type=",
+      animation.track_get_type(track_idx), " keys=", count, " first=", key_preview)
  var before: int = mp40.get_current_mag()
  var did_try: bool = mp40.try_fire(true)
  var after: int = mp40.get_current_mag()
