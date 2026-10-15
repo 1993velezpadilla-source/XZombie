@@ -18,6 +18,10 @@ jobs:
       - name: Get XZombie overlay
         uses: actions/checkout@v4
 
+      - name: Block build if the 12 approved PNGs are not available
+        run: |
+          python3 bukkbeek-mobile/verify_official_png.py bukkbeek-mobile/official_png
+
       - name: Java 17 for Godot Android
         uses: actions/setup-java@v4
         with:
@@ -27,8 +31,7 @@ jobs:
       - name: Prepare build dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends unzip zip libfontconfig1 libcairo2-dev
-          python3 -m pip install --break-system-packages cairosvg
+          sudo apt-get install -y --no-install-recommends unzip zip libfontconfig1
 
       - name: Fetch pinned pristine Bukkbeek template
         run: |
@@ -39,18 +42,17 @@ jobs:
           git fetch --depth=1 origin 11619794d644e7933f87caa6099f3acc1f085f5d
           git checkout --detach FETCH_HEAD
 
-      - name: Render XZIEL official touch PNGs and apply Android adapter
+      - name: Assert approved PNGs and reject obsolete buttons
         run: |
-          mkdir -p _build/bukkbeek/mobile/icons
-          mkdir -p _build/bukkbeek/tools
+          python3 bukkbeek-mobile/verify_official_png.py bukkbeek-mobile/official_png
+          ! grep -E 'touch_idle|touch_pressed|joystick_ring|touch_fire_idle|touch_fire_pressed' bukkbeek-mobile/mobile/touch_hud.gd
+
+      - name: Install approved PNGs and apply Android input adapter
+        run: |
+          mkdir -p _build/bukkbeek/mobile/official_png
           cp bukkbeek-mobile/mobile/touch_hud.gd _build/bukkbeek/mobile/touch_hud.gd
-          curl --fail --location --retry 3 -o /tmp/build_xziel_icons.py \
-            https://raw.githubusercontent.com/1993velezpadilla-source/config-old-3/751c98b6aab15dbf9d071e83179868bc8d839ce9/scripts/build_xziel_icons.py
-          python3 /tmp/build_xziel_icons.py _build/bukkbeek/mobile/icons
+          cp bukkbeek-mobile/official_png/*.png _build/bukkbeek/mobile/official_png/
           python3 bukkbeek-mobile/patch_bukkbeek.py _build/bukkbeek
-          test -s _build/bukkbeek/mobile/icons/joystick_ring.png
-          test -s _build/bukkbeek/mobile/icons/touch_fire_idle.png
-          test -s _build/bukkbeek/mobile/icons/adsfire.png
           test -s _build/bukkbeek/resources/player/fps_demo_arms.glb
           test -s _build/bukkbeek/resources/undead/fps_demo_undead.glb
 
