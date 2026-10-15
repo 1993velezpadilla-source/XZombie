@@ -18,6 +18,10 @@ var _enabled: bool = false
 var _max_modified_elbow_m: float = 0.0
 var _worst_wrist_anchor_m: float = 0.0
 var _frames: int = 0
+var _callbacks: int = 0
+var _eligible_frames: int = 0
+var _guard_skips: int = 0
+var _solver_attempts: int = 0
 
 func configure(weapon: Node3D, rig: Node3D, reference: Transform3D,
  solved: Transform3D) -> bool:
@@ -46,7 +50,11 @@ func configure(weapon: Node3D, rig: Node3D, reference: Transform3D,
  return true
 
 func _process_modification_with_delta(_delta: float) -> void:
+ _callbacks += 1
  var sk: Skeleton3D = get_skeleton()
+ if _callbacks == 1:
+  print("MP40_ADS_IK_FIRST_CALLBACK active=",active," enabled=",_enabled,
+   " source_skeleton=",sk != null, " original_hand_anim=",str(_weapon.get("_idle_hands_clip")) if _weapon != null else "NONE")
  if not _enabled or sk == null or _weapon == null or not _weapon.is_inside_tree():
   return
  if (not _weapon.visible or not bool(_weapon.get("is_aimed"))
@@ -56,7 +64,9 @@ func _process_modification_with_delta(_delta: float) -> void:
  if player == null:
   return
  if player.current_animation != str(_weapon.get("_idle_hands_clip")):
+  _guard_skips += 1
   return # FIRE, RELOAD and SWAP source PSAs are untouched.
+ _eligible_frames += 1
  var modified: int = 0
  for side: int in range(_shoulder.size()):
   if _correct_arm_chain(sk, side):
@@ -68,6 +78,7 @@ func _process_modification_with_delta(_delta: float) -> void:
     " source_idle=", player.current_animation, " aiming=", _weapon.get("is_aimed"))
 
 func _correct_arm_chain(sk: Skeleton3D, side: int) -> bool:
+ _solver_attempts += 1
  var sh: int = _shoulder[side]
  var el: int = _elbow[side]
  var wr: int = _wrist[side]
