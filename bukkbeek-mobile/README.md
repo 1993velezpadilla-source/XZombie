@@ -17,8 +17,20 @@ commit and verifies each source Git blob SHA. This **does not run**
 glyphs, generic fallbacks or imitations. Touch buttons are rendered directly
 from these exact full PNGs only.
 
-Left analog movement and right touch look are invisible gesture zones.
-Sprint is activated by pushing the left thumb fully forward.
+The Android left analog now has a **visible, responsive thumbstick** (subtle vector
+base/thumb cap, NOT any obsolete touch-action button skins). A left-half touch
+anchors the joystick at that thumb's location; dragging moves the knob and
+drives the original Bukkbeek analog actions. Sprint is activated by pushing
+fully forward. The 12 action buttons remain EXACTLY the official approved PNGs.
+
+**New gesture behavior:** the FIRE or ADS+FIRE thumb may drag while staying
+pressed: the camera tracks its motion at the same time as fire remains held.
+Independent LOOK touches keep working as before.
+
+**ADS-only PNG now defaults to TAP TO TOGGLE**: first touch enters ADS, second
+exits ADS. Releasing the ADS-only button does not cancel ADS. ADS+FIRE remains
+a hold behavior, with proper coexistence if ADS is toggled on already.
+Possible settings for hold mode are deferred as explicitly requested.
 There is no original pause PNG; Android back and an invisible top-right pause
 zone are used instead. No counterfeit icon was added.
 If Bukkbeek lacks gameplay support for slide, prone, or grenades, the original
