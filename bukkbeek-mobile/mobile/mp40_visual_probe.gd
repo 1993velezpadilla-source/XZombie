@@ -134,6 +134,23 @@ func _run() -> void:
  print("MP40_VISUAL_ACTUAL_MESH_VERTEX_GREEN projected_rear=",projected_rear_px,
   " projected_front=",projected_front_px)
  await _capture(root, weapon_view, "ads")
+ # Eye-relief test is a ONE-DIMENSION physical optics measurement. Keep the
+ # source-calibrated rear/front line, orientation and camera ray fixed. The
+ # current 0.473m image is too distant on actual Android, and the user's
+ # hands are small/crossed. Compare realistic source-scale near-eye positions
+ # without touching animation keys. Selected frame will be inspected before
+ # committing any game code. Candidate translations are camera-local Z only.
+ var optical_root: Node3D = mp40.get_node("FPSHandsRoot") as Node3D
+ var saved_optical: Transform3D = optical_root.transform
+ var original_relief: float = float(mp40.get_meta("source_mp40_eye_relief_m", 0.0))
+ for target_relief: float in [0.29, 0.32, 0.35, 0.38, 0.41, 0.44]:
+  optical_root.transform = saved_optical
+  optical_root.position.z += original_relief - target_relief
+  await create_timer(0.14).timeout
+  print("MP40_EYE_RELIEF_DIAGNOSTIC original_m=",original_relief,
+    " render_target_m=",target_relief, " relative_z_change_m=",original_relief-target_relief)
+  await _capture(root, weapon_view, "eye_relief_" + str(int(round(target_relief*1000))))
+ optical_root.transform = saved_optical
  # Optical fit is source-derived; do not run arbitrary X/Y/yaw sweeps.
  # Save real empty-reload samples before and after the hand withdraws.
  root.get_node("Global").emit_signal("aim_mode_changed", false)
