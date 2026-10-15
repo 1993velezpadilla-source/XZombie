@@ -281,21 +281,75 @@ func _derive_optical_ads_from_mesh() -> void:
  # Rotate just enough to align the TWO physical sights onto that ray.
  var fit: Quaternion = Quaternion(source_line.normalized(), Vector3.FORWARD)
  var solved_basis: Basis = (Basis(fit) * original_focus.basis).orthonormalized()
- # LOCK the exact original source ADS marker depth from mp40.tscn:
- #   FocusedAimPosition Z=-0.24045m.
- # The first working near-camera weapon/hands pose was already approved by
- # the player. Its Z must NEVER be overwritten by a new eye-relief guess.
- # We only solve the two lateral coordinates and physically measured
- # front-post / rear-aperture alignment, preserving camera depth exactly.
+ # Full source rig's Z-depth is a contract: original authored ADS Z.
+ # Only ONE FREE ROTATION (ROLL around the actual sight ray) remains after
+ # imposing the original front + rear 3D sightline. Use it to MINIMIZE the
+ # SCREEN-SPACE movement of genuine hand/wrist/elbow/shoulder bones relative
+ # to the source-authored ADS pose. No guessed offsets or eye-relief changes.
  var source_ads_depth_z: float = original_focus.origin.z
- var sight_offset: Vector3 = solved_basis * rear_rig
- var fitted := Transform3D(solved_basis,
-  Vector3(-sight_offset.x, -sight_offset.y, source_ads_depth_z))
- var depth: float = -(fitted * rear_rig).z
- if absf(fitted.origin.z - source_ads_depth_z) > 0.000001:
-  push_error("BUKKBEEK_MP40_ADS_RED: legacy weapon-to-camera distance changed")
+ var observed_points: Array[Vector3] = []
+ var source_screen_points: Array[Vector2] = []
+ var weights: Array[float] = []
+ var sampled_bones: Array[String] = ["j_wrist_le", "j_wrist_ri",
+  "j_elbow_le", "j_elbow_ri", "j_shoulder_le", "j_shoulder_ri"]
+ for name: String in sampled_bones:
+  var bone_id: int = _skeleton.find_bone(name)
+  if bone_id < 0:
+   push_error("BUKKBEEK_MP40_ADS_RED: no original source arm bone " + name)
+   _source_ok = false
+   return
+  var bone_world: Vector3 = _skeleton.to_global(_skeleton.get_bone_global_pose(bone_id).origin)
+  var bone_rig: Vector3 = fps_arms_root.to_local(bone_world)
+  var source_eye: Vector3 = original_focus * bone_rig
+  if source_eye.z >= -0.04:
+   continue # Behind original real camera; cannot compare its 2D projection.
+  observed_points.append(bone_rig)
+  source_screen_points.append(Vector2(source_eye.x, source_eye.y) / -source_eye.z)
+  weights.append(3.0 if "wrist" in name else (1.0 if "elbow" in name else 0.25))
+ if observed_points.size() < 2:
+  push_error("BUKKBEEK_MP40_ADS_RED: source wrist/arm 3D projection unavailable")
   _source_ok = false
   return
+
+ var best_error: float = INF
+ var best_roll_degrees: float = 0.0
+ var fitted: Transform3D = Transform3D.IDENTITY
+ # Scan the remaining single physically valid degree of freedom. Exact front/
+ # rear optical axis stays locked throughout this deterministic 181-pose fit.
+ for step: int in range(181):
+  var roll_deg: float = float(step - 90) * 0.5
+  var candidate_basis: Basis = (
+   Basis(Quaternion(Vector3.FORWARD, deg_to_rad(roll_deg))) * solved_basis
+  ).orthonormalized()
+  var offset_rear: Vector3 = candidate_basis * rear_rig
+  var candidate := Transform3D(candidate_basis,
+   Vector3(-offset_rear.x, -offset_rear.y, source_ads_depth_z))
+  var error: float = 0.0
+  for i: int in range(observed_points.size()):
+   var posed_eye: Vector3 = candidate * observed_points[i]
+   if posed_eye.z >= -0.04:
+    error = INF
+    break
+   var screen: Vector2 = Vector2(posed_eye.x, posed_eye.y) / -posed_eye.z
+   error += weights[i] * screen.distance_squared_to(source_screen_points[i])
+  if error < best_error:
+   best_error = error
+   best_roll_degrees = roll_deg
+   fitted = candidate
+ if not is_finite(best_error):
+  push_error("BUKKBEEK_MP40_ADS_RED: physical original arm pose fit unavailable")
+  _source_ok = false
+  return
+ var depth: float = -(fitted * rear_rig).z
+ if absf(fitted.origin.z - source_ads_depth_z) > 0.000001:
+  push_error("BUKKBEEK_MP40_ADS_RED: legacy ADS distance was modified")
+  _source_ok = false
+  return
+ set_meta("source_mp40_arm_preserving_roll_deg", best_roll_degrees)
+ set_meta("source_mp40_arm_screen_error", best_error)
+ print("BUKKBEEK_MP40_ARMS_SOURCE_FIT roll_deg=", best_roll_degrees,
+  " original_ads_marker_depth=", source_ads_depth_z,
+  " screen_joint_error=", best_error, " hand_joint_count=", observed_points.size())
  var rear_result: Vector3 = fitted * rear_rig
  var front_result: Vector3 = fitted * front_rig
  var error_rear: float = Vector2(rear_result.x, rear_result.y).length()
