@@ -273,11 +273,14 @@ func _derive_optical_ads_from_mesh() -> void:
  # Use calibrated pinhole projection depth = width * focal_px / apparent_px.
  # Never pick a guessed pitch, and never change the source weapon geometry.
  var rear_metal_width_m: float = 0.0094977 - (-0.0345420)
- var target_rear_metal_width_px: float = 58.0
- var weapon_camera: Camera3D = _viewmodel_camera
- var viewport_height_px: float = float(weapon_camera.get_viewport().size.y)
- var focal_length_px: float = viewport_height_px / (2.0 * tan(deg_to_rad(weapon_camera.fov) * 0.5))
- var depth: float = rear_metal_width_m * focal_length_px / target_rear_metal_width_px
+ # The source SubViewport is still only 48px tall during Godot init and
+ # will resize to the real 720px window later. Derive optical depth from a
+ # RESOLUTION-INDEPENDENT reference angular fraction, at the ADS FOV set on
+ # this MP40, instead of the transient 48px startup viewport.
+ var normalized_rear_width: float = 58.0 / 720.0
+ var focal_length_px: float = 1.0 / (2.0 * tan(deg_to_rad(focused_aim_fov) * 0.5))
+ var target_rear_fraction: float = normalized_rear_width
+ var depth: float = rear_metal_width_m * focal_length_px / target_rear_fraction
  if depth < 0.25 or depth > 0.75:
   push_error("BUKKBEEK_MP40_ADS_RED: rear iron sight eye relief is outside source-scale range "+str(depth))
   _source_ok = false
