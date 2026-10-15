@@ -73,6 +73,30 @@ func _run() -> void:
   quit(6)
   return
  await _capture(root, weapon_view, "ads")
+ # REAL SOURCE VISUAL SWEEP: diagnose front post / rear notch occlusion by
+ # actual rendered optical changes, not invented green metadata. This does
+ # NOT modify the exported Android game; marker only changes in this probe.
+ var rig: Node3D = mp40.get_node("FPSHandsRoot") as Node3D
+ var baseline: Transform3D = rig.transform
+ for test in [
+  {"label":"vertical_plus_010","x":0.0,"y":0.010,"pitch":0.0,"yaw":0.0},
+  {"label":"vertical_plus_020","x":0.0,"y":0.020,"pitch":0.0,"yaw":0.0},
+  {"label":"vertical_plus_030","x":0.0,"y":0.030,"pitch":0.0,"yaw":0.0},
+  {"label":"vertical_minus_010","x":0.0,"y":-0.010,"pitch":0.0,"yaw":0.0},
+  {"label":"pitch_up_1","x":0.0,"y":0.0,"pitch":1.0,"yaw":0.0},
+  {"label":"pitch_down_1","x":0.0,"y":0.0,"pitch":-1.0,"yaw":0.0},
+  {"label":"yaw_plus_1","x":0.0,"y":0.0,"pitch":0.0,"yaw":1.0},
+  {"label":"yaw_minus_1","x":0.0,"y":0.0,"pitch":0.0,"yaw":-1.0},
+  {"label":"x_plus_008","x":0.008,"y":0.0,"pitch":0.0,"yaw":0.0},
+  {"label":"x_minus_008","x":-0.008,"y":0.0,"pitch":0.0,"yaw":0.0}
+ ]:
+  rig.transform = baseline
+  rig.position += Vector3(test["x"],test["y"],0.0)
+  rig.rotate_object_local(Vector3.RIGHT, deg_to_rad(float(test["pitch"])))
+  rig.rotate_object_local(Vector3.UP, deg_to_rad(float(test["yaw"])))
+  await create_timer(0.13).timeout
+  await _capture(root, weapon_view, "sight_" + str(test["label"]))
+ rig.transform = baseline
  # Save real empty-reload samples before and after the hand withdraws.
  root.get_node("Global").emit_signal("aim_mode_changed", false)
  await create_timer(0.4).timeout
