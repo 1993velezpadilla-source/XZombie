@@ -134,15 +134,15 @@ func _run() -> void:
  print("MP40_VISUAL_ACTUAL_MESH_VERTEX_GREEN projected_rear=",projected_rear_px,
   " projected_front=",projected_front_px)
  await _capture(root, weapon_view, "ads")
- # Source optical axis remains locked; the calibrated 350mm framing was
- # selected from six real 720p screenshot candidates. No test-only transforms
- # may leak into the released world or into original hand animation tracks.
- var eye_distance_m: float = float(mp40.get_meta("source_mp40_eye_relief_m", -1.0))
- if eye_distance_m < 0.32 or eye_distance_m > 0.38:
-  push_error("MP40_VISUAL_RED: ADS gun too distant from original physical eye position")
+ # Do not move the original world-space MP40 depth to "help" the sight fit.
+ var legacy_ads_z: float = float(mp40.get_meta("source_mp40_marker_source_depth_z", 99.0))
+ var solved_ads_z: float = float(mp40.get_meta("source_mp40_marker_solved_depth_z", -99.0))
+ if absf(legacy_ads_z + 0.24045) > 0.0005 or absf(solved_ads_z - legacy_ads_z) > 0.000001:
+  push_error("MP40_VISUAL_RED: original Source MP40 ADS depth lost")
   quit(6)
   return
- print("MP40_VISUAL_EYE_RELIEF_GREEN verified_real_source_m=", eye_distance_m)
+ print("MP40_VISUAL_LEGACY_DISTANCE_GREEN original_marker_z=", legacy_ads_z,
+    " final_marker_z=", solved_ads_z)
  # Optical fit is source-derived; do not run arbitrary X/Y/yaw sweeps.
  # Save real empty-reload samples before and after the hand withdraws.
  root.get_node("Global").emit_signal("aim_mode_changed", false)
