@@ -39,7 +39,19 @@ func _run() -> void:
   _fail("charging bolt end-of-reload idle pose was not repaired")
   return
  if absf(float(mp40.get_meta("mp40_ads_fine_x", 0.0)) + 0.004) > 0.0001:
-  _fail("4mm reversible ADS calibration missing")
+  _fail("4mm reversible ADS X calibration missing")
+  return
+ if (absf(float(mp40.get_meta("mp40_ads_fine_y", 0.0)) + 0.011) > 0.0001
+  or absf(float(mp40.get_meta("mp40_ads_fine_pitch", 0.0)) - 0.60) > 0.001):
+  _fail("ADS Y drop + front sight pitch not applied")
+  return
+ var hip_marker: Marker3D = mp40.get_node_or_null("StandardAimPosition") as Marker3D
+ var ads_marker: Marker3D = mp40.get_node_or_null("FocusedAimPosition") as Marker3D
+ if hip_marker == null or ads_marker == null:
+  _fail("original Bukkbeek ADS and HIP markers missing")
+  return
+ if not bool(mp40.get_meta("source_mp40_mag_idle_contract_ready", false)):
+  _fail("j_clip authentic magazine end-to-idle pose contract not loaded")
   return
  for cue_name: String in ["MagazineRemoveCue", "MagazineInsertCue", "BoltChargeCue"]:
   var cue: AudioStreamPlayer3D = mp40.get_node_or_null("SFX/" + cue_name) as AudioStreamPlayer3D
@@ -238,6 +250,12 @@ func _run() -> void:
  # real keyframes. This is an independent source animation pair, NOT old Vril.
  reload_timer.stop()
  mp40.call("_on_reload_timer_timeout")
+ if str(mp40.get_meta("source_mp40_mag_idle_matched_clip", "")) != normal_gun:
+  _fail("normal magazine idle pose did not inherit source normal ending")
+  return
+ if not _magazine_idle_matches_reload_end(gun_anim, idle_clip, normal_gun):
+  _fail("magazine re-seats between normal reload and gun idle")
+  return
  mp40.set("current_mag", 0)
  mp40.call("start_reload")
  if not bool(mp40.get("is_reloading")):
@@ -334,6 +352,18 @@ func _run() -> void:
    return
   print("BUKKBEEK_MP40_SFX_LIVE_GREEN event=", event["name"],
    " triggered_at=", event["when"])
+ # Complete the empty clip and ensure the original magazine cannot visibly
+ # re-seat for a SECOND time when j_bolt finishes and the hand withdraws.
+ gun_anim.seek(empty_length, true)
+ reload_timer.stop()
+ mp40.call("_on_reload_timer_timeout")
+ if str(mp40.get_meta("source_mp40_mag_idle_matched_clip", "")) != empty_gun:
+  _fail("empty reload was not selected for the idle magazine handoff")
+  return
+ if not _magazine_idle_matches_reload_end(gun_anim, idle_gun_clip, empty_gun):
+  _fail("magazine re-seats during empty reload charging-handle exit")
+  return
+ print("BUKKBEEK_MP40_ADS_MAG_SETTLE_GREEN y=-0.011 pitch=0.60 idle_mag=exact_final_source_pose")
  print("BUKKBEEK_MP40_LIVE_GREEN "
   + "stock_weapon_count=" + str(weapon_nodes.size() - 1)
   + " hands_bones=" + str(skeleton.get_bone_count())
@@ -341,3 +371,35 @@ func _run() -> void:
   + " hands_source_animations=" + str(hands_anim.get_animation_list().size())
   + " hip_fire=triggered reload=running world_scale=" + str(world_size))
  quit(0)
+
+# Independent source-bone continuity check for BOTH tactical and empty reload.
+# A 0.12s blend to an incorrect idle j_clip is the unwanted second seating.
+func _magazine_idle_matches_reload_end(player: AnimationPlayer, idle_clip: String, source_clip: String) -> bool:
+ var idle: Animation = player.get_animation(idle_clip)
+ var source: Animation = player.get_animation(source_clip)
+ if idle == null or source == null:
+  return false
+ for kind: int in [Animation.TYPE_POSITION_3D, Animation.TYPE_ROTATION_3D]:
+  var idle_idx := -1
+  var end_idx := -1
+  for i: int in range(idle.get_track_count()):
+   if str(idle.track_get_path(i)).ends_with(":j_clip") and idle.track_get_type(i) == kind:
+    idle_idx = i
+    break
+  for i: int in range(source.get_track_count()):
+   if str(source.track_get_path(i)).ends_with(":j_clip") and source.track_get_type(i) == kind:
+    end_idx = i
+    break
+  if idle_idx < 0 or end_idx < 0 or idle.track_get_key_count(idle_idx) != 1:
+   return false
+  if kind == Animation.TYPE_POSITION_3D:
+   var final_position: Vector3 = source.position_track_interpolate(end_idx, source.length)
+   var idle_position: Vector3 = idle.track_get_key_value(idle_idx, 0) as Vector3
+   if idle_position.distance_to(final_position) > 0.0005:
+    return false
+  else:
+   var final_rotation: Quaternion = source.rotation_track_interpolate(end_idx, source.length)
+   var idle_rotation: Quaternion = idle.track_get_key_value(idle_idx, 0) as Quaternion
+   if rad_to_deg(idle_rotation.angle_to(final_rotation)) > 0.05:
+    return false
+ return true
