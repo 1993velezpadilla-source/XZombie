@@ -109,6 +109,28 @@ manager_src = manager_src.replace(
     '\tcurrent_weapon_index = weapons_array.size() - 1 if OS.get_name() == "Android" and weapons_array.size() == 6 else 0\n\t_setup_current_weapon()',
     1,
 )
+# Real rendered Linux proof diagnosed 479,810m weapon displacement during a
+# ~130ms software-renderer frame. Upstream weapon manager uses unbounded
+# Vector3.lerp / Basis.slerp(follow_speed * delta). A frame > 20ms at the
+# user's effective 50Hz follow factor produces t>1, extrapolates, and can
+# then diverge exponentially after further frame hitches on Android.
+# Clamp the mathematically legal interpolation interval to [0, 1]; the
+# original 5 weapons, movement speeds, aim controls and assets are untouched.
+source_lerp = "global_position = global_position.lerp(target_transform.origin, follow_speed * _delta)"
+source_slerp = "global_transform.basis = current_basis.slerp(target_basis, follow_speed * _delta)"
+assert manager_src.count(source_lerp) == 1 and manager_src.count(source_slerp) == 1, (
+    "Bukkbeek camera-follow math changed; refuse to patch without inspection"
+)
+manager_src = manager_src.replace(
+    source_lerp,
+    "global_position = global_position.lerp(target_transform.origin, clampf(follow_speed * _delta, 0.0, 1.0))",
+    1,
+).replace(
+    source_slerp,
+    "global_transform.basis = current_basis.slerp(target_basis, clampf(follow_speed * _delta, 0.0, 1.0))",
+    1,
+)
 manager.write_text(manager_src)
+print("BUKKBEEK_MP40_CAMERA_FOLLOW_CLAMP_GREEN: no extrapolation on Android frame drops")
 print("BUKKBEEK_MP40_PATCH_GREEN: sixth Bukkbeek weapon, Android starts MP40, knife remains index=0, old five remain")
 
