@@ -22,6 +22,10 @@ var _reload_hands_clip: String = ""
 var _gun_idle_clip: String = ""
 var _gun_fire_clip: String = ""
 var _gun_reload_clip: String = ""
+var _hands_reload_empty_clip: String = ""
+var _gun_reload_empty_clip: String = ""
+var _active_reload_hands_clip: String = ""
+var _active_reload_gun_clip: String = ""
 var _source_ok: bool = false
 
 func _ready() -> void:
@@ -52,8 +56,13 @@ func _ready() -> void:
  _gun_idle_clip = _clip(_gun_anim, "PSA_HandIdleMP40")
  _gun_fire_clip = _clip(_gun_anim, "PSA_viewmodel_mp40_fire")
  _gun_reload_clip = _clip(_gun_anim, "PSA_viewmodel_mp40_reload")
- if _gun_reload_clip.is_empty():
-  _gun_reload_clip = _clip(_gun_anim, "PSA_MP40ReloadHands")
+ # Explicitly pair the two COMPLETE source reloads; do not borrow the short
+ # gun-side 0.04s MP40ReloadHands stub in place of a full reload animation.
+ _hands_reload_empty_clip = _clip(_hands_anim, "PSA_viewmodel_mp40_reload_empty")
+ _gun_reload_empty_clip = _clip(_gun_anim, "PSA_viewmodel_mp40_reload_empty")
+ if (_hands_reload_empty_clip.is_empty() != _gun_reload_empty_clip.is_empty()):
+  push_error("BUKKBEEK_MP40_RED: only one empty reload source PSA is present")
+  return
  if _fire_hands_clip.is_empty() or _reload_hands_clip.is_empty() or _gun_fire_clip.is_empty() or _gun_reload_clip.is_empty():
   push_error("BUKKBEEK_MP40_RED: missing source fire or reload PSA")
   return
@@ -91,13 +100,20 @@ func _ready() -> void:
  animation_player = _hands_anim
  animation_fire = _fire_hands_clip
  animation_reload = _reload_hands_clip
- if _hands_anim.has_animation(_reload_hands_clip):
-  reload_time = maxf(0.2, _hands_anim.get_animation(_reload_hands_clip).length)
+ # Source gun reload runs one 24fps frame longer than the hands (3.291667
+ # vs 3.25s). Waiting for the LONGER real track prevents the bolt snap caused
+ # by switching to the idle key one frame too early.
+ reload_time = _synchronized_reload_seconds(_reload_hands_clip, _gun_reload_clip)
  _hands_anim.animation_finished.connect(_hands_anim_finished)
  _source_ok = true
  set_meta("source_mp40_ready", true)
  set_meta("source_mp40_textured_gun_meshes", textured_gun)
  set_meta("source_mp40_textured_hands_meshes", textured_hands)
+ set_meta("source_mp40_normal_reload_pair", [_reload_hands_clip, _gun_reload_clip])
+ set_meta("source_mp40_empty_reload_pair", [_hands_reload_empty_clip, _gun_reload_empty_clip])
+ set_meta("source_mp40_reload_normal_duration", reload_time)
+ set_meta("source_mp40_reload_empty_duration",
+  _synchronized_reload_seconds(_hands_reload_empty_clip, _gun_reload_empty_clip))
  print("BUKKBEEK_MP40_SOURCE_READY gun=", textured_gun, " hands=", textured_hands,
   " source_hand_fire=", _fire_hands_clip, " source_hand_reload=", _reload_hands_clip,
   " original_gun_reload=", _gun_reload_clip)
@@ -126,7 +142,10 @@ func _normalize_source_gun_root_basis() -> bool:
  if not idle_found:
   return false
 
- for clip: String in [_gun_fire_clip, _gun_reload_clip]:
+ var source_animated_clips: Array[String] = [_gun_fire_clip, _gun_reload_clip]
+ if not _gun_reload_empty_clip.is_empty():
+  source_animated_clips.append(_gun_reload_empty_clip)
+ for clip: String in source_animated_clips:
   if not _gun_anim.has_animation(clip):
    return false
   var animation: Animation = _gun_anim.get_animation(clip)
@@ -139,8 +158,10 @@ func _normalize_source_gun_root_basis() -> bool:
     return false  # Never strip legitimate animated multi-key weapon rotations.
    var source_quat: Quaternion = animation.track_get_key_value(track_idx, 0) as Quaternion
    var mismatch_degrees := rad_to_deg(neutral_quat.angle_to(source_quat))
-   if mismatch_degrees < 70.0 or mismatch_degrees > 110.0:
-    return false  # Fail closed if upstream PSA differs from proven -90 source.
+   # Imported PSA sometimes already uses idle orientation, but the observed
+   # original MP40 fire/normal reload root carries exactly -90 degrees.
+   if mismatch_degrees > 1.0 and (mismatch_degrees < 70.0 or mismatch_degrees > 110.0):
+    return false  # Fail closed if source/axis contract changed.
    animation.track_set_key_value(track_idx, 0, neutral_quat)
    root_found = true
    print("BUKKBEEK_MP40_SOURCE_ROOT_FIXED clip=", clip,
@@ -209,13 +230,24 @@ func _sync_grip() -> void:
  if unit_scale.x > 0.000001 and unit_scale.y > 0.000001 and unit_scale.z > 0.000001:
   _gun_root.scale = Vector3(1.0 / unit_scale.x, 1.0 / unit_scale.y, 1.0 / unit_scale.z)
 
+func _synchronized_reload_seconds(hands_clip: String, gun_clip: String) -> float:
+ if (hands_clip.is_empty() or gun_clip.is_empty()
+  or not _hands_anim.has_animation(hands_clip)
+  or not _gun_anim.has_animation(gun_clip)):
+  return 0.0
+ return maxf(_hands_anim.get_animation(hands_clip).length,
+  _gun_anim.get_animation(gun_clip).length)
+
+
 func _play_idle() -> void:
  if not _source_ok:
   return
  if not _idle_hands_clip.is_empty():
-  _hands_anim.play(_idle_hands_clip, 0.06)
+  _hands_anim.play(_idle_hands_clip, 0.12)
  if not _gun_idle_clip.is_empty():
-  _gun_anim.play(_gun_idle_clip, 0.06)
+  # This blends the j_bolt end pose back to source idle, rather than popping
+  # instantly to a different static bolt pose at the end of the reload.
+  _gun_anim.play(_gun_idle_clip, 0.12)
 
 func _hands_anim_finished(finished: StringName) -> void:
  if str(finished) != _idle_hands_clip and _source_ok and not is_reloading:
@@ -233,15 +265,42 @@ func fire_weapon() -> void:
  _gun_anim.play(_gun_fire_clip, 0.02)
 
 func start_reload() -> void:
- if not _source_ok:
+ if not _source_ok or is_reloading:
   return
+ # The gun's original *EMPTY* clip has eight charging-handle keys and a
+ # matching 4.2083s hands PSA. The normal 3.29s reload has just one static
+ # j_bolt key, so NEVER fake a left-hand handle pull for a tactical reload.
+ var empty_mag := current_mag == 0
+ var selected_hands := _reload_hands_clip
+ var selected_gun := _gun_reload_clip
+ if empty_mag and not _hands_reload_empty_clip.is_empty():
+  selected_hands = _hands_reload_empty_clip
+  selected_gun = _gun_reload_empty_clip
+ var required_seconds := _synchronized_reload_seconds(selected_hands, selected_gun)
+ if required_seconds < 0.2:
+  push_error("BUKKBEEK_MP40_RED: selected source reload pair is invalid")
+  return
+ # Source strings are reassigned BEFORE Bukkbeek starts its AnimationPlayer
+ # and timer, so both hands and gun run their corresponding original variant.
+ animation_reload = selected_hands
+ reload_time = required_seconds
  var was_reloading := is_reloading
  super.start_reload()
  if is_reloading and not was_reloading:
-  _gun_anim.play(_gun_reload_clip, 0.04)
-  print("BUKKBEEK_MP40_REAL_RELOAD hands=", _reload_hands_clip, " gun=", _gun_reload_clip)
+  _active_reload_hands_clip = selected_hands
+  _active_reload_gun_clip = selected_gun
+  _gun_anim.play(selected_gun, 0.04)
+  _gun_anim.seek(0.0, true)
+  _hands_anim.seek(0.0, true)
+  set_meta("source_mp40_reload_active_variant", "empty" if empty_mag else "normal")
+  set_meta("source_mp40_reload_active_duration", required_seconds)
+  print("BUKKBEEK_MP40_REAL_RELOAD variant=", "EMPTY" if empty_mag else "NORMAL",
+   " hands=", selected_hands, " gun=", selected_gun, " duration=", required_seconds)
+
 
 func _on_reload_timer_timeout() -> void:
  super._on_reload_timer_timeout()
+ _active_reload_hands_clip = ""
+ _active_reload_gun_clip = ""
  if _source_ok:
   _play_idle()
