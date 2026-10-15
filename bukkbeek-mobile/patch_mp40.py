@@ -23,14 +23,13 @@ expected = {
 import hashlib
 for filename, (length, git_sha) in expected.items():
     blob = (mp40 / filename).read_bytes()
-    actual = hashlib.sha1(("blob %d\\0" % len(blob)).encode()+blob).hexdigest()
     # Code in this script must contain a literal null byte in the Git hash prefix.
     actual = hashlib.sha1(("blob %d" % len(blob)).encode()+bytes([0])+blob).hexdigest()
     assert len(blob) == length and actual == git_sha, f"ORIGINAL_MP40_SOURCE_RED {filename}"
     if filename.endswith(".glb"):
         assert blob[:4] == b"glTF", f"not an authentic GLB {filename}"
     elif filename.endswith(".png"):
-        assert blob[:8] == b"\\x89PNG\\r\\n\\x1a\\n", f"not a PNG {filename}"
+        assert blob[:8] == b"\x89PNG\r\n\x1a\n", f"not a PNG {filename}"
 print("ORIGINAL_MP40_GIT_BLOBS_GREEN: 9/9 original source assets exact")
 
 player = source / "player/player.tscn"
@@ -38,13 +37,13 @@ content = player.read_text()
 ext_anchor = '[ext_resource type="PackedScene" uid="uid://c5cmenins5u2w" path="res://weapons/knife.tscn" id="8_yllr7"]'
 ext_add = '[ext_resource type="PackedScene" path="res://weapons/mp40.tscn" id="mp40_real_source"]'
 assert content.count(ext_anchor) == 1, "Bukkbeek weapon scene upstream changed"
-content = content.replace(ext_anchor, ext_anchor + "\\n" + ext_add, 1)
+content = content.replace(ext_anchor, ext_anchor + "\n" + ext_add, 1)
 old_weapons = 'weapons_array = [NodePath("Knife"), NodePath("Pistol"), NodePath("AssualtRifle"), NodePath("AssualtBurstRifle"), NodePath("LMG")]'
 new_weapons = old_weapons[:-1] + ', NodePath("MP40")]'
 assert content.count(old_weapons) == 1, "Bukkbeek source list changed"
 content = content.replace(old_weapons, new_weapons, 1)
 assert content.count('[node name="LMG" parent="WeaponsManager"') == 1
-content += '\\n[node name="MP40" parent="WeaponsManager" instance=ExtResource("mp40_real_source")]\\n'
+content += '\n[node name="MP40" parent="WeaponsManager" instance=ExtResource("mp40_real_source")]\n'
 player.write_text(content)
 
 weapon_scene = """[gd_scene load_steps=8 format=3]
