@@ -5,7 +5,7 @@ from pathlib import Path
 src = Path(sys.argv[1]).resolve()
 inp = src / "common/managers/input_manager.gd"
 txt = inp.read_text()
-anchor = "func _ready() -> void:\\n\\tInput.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)"
+anchor = "func _ready() -> void:\n\tInput.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)"
 replacement = """func _ready() -> void:
 \tif OS.get_name() == "Android":
 \t\tInput.set_mouse_mode(Input.MOUSE_MODE_VISIBLE)
