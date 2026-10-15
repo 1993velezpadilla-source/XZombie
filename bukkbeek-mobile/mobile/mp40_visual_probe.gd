@@ -26,6 +26,24 @@ func _capture(root_window: Window, v: SubViewport, label: String) -> void:
   quit(6)
   return
  isolated.save_png(folder + label + "_weapon_only.png")
+ # Quantitative real-render regression gate, NOT a guessed aiming coordinate:
+ # original stable MP40 ADS occupied 8.03% alpha of this 1280x720 viewmodel,
+ # but the source-landmark solver occupied 58.39% and put hands in camera.
+ # Fail BEFORE Android export even if source markers project perfectly.
+ if label == "ads":
+  var viewport_pixels: int = isolated.get_width() * isolated.get_height()
+  var occupied_pixels: int = 0
+  for yy: int in range(isolated.get_height()):
+   for xx: int in range(isolated.get_width()):
+    if isolated.get_pixel(xx, yy).a > 0.04:
+     occupied_pixels += 1
+  var alpha_coverage: float = float(occupied_pixels) / float(viewport_pixels)
+  print("MP40_VISUAL_ACTUAL_ADS_COVERAGE fraction=", alpha_coverage,
+   " prior_visible_reference=0.0803 candidate_failed=0.5839")
+  if alpha_coverage > 0.30:
+   push_error("MP40_VISUAL_RED: optical solver moved source MP40 inside camera. No APK release.")
+   quit(6)
+   return
  print("MP40_VISUAL_SCREENSHOT_GREEN ", label, " ", image.get_width(), "x", image.get_height())
 
 func _run() -> void:
