@@ -11,6 +11,7 @@ const GUN_SPECULAR := "res://mobile/mp40_source/_weapon_mp40_mp_s-rgb_weapon__08
 
 var _hands_root: Node3D
 var _gun_root: Node3D
+var _viewmodel_camera: Camera3D
 var _hands_anim: AnimationPlayer
 var _gun_anim: AnimationPlayer
 var _skeleton: Skeleton3D
@@ -27,8 +28,25 @@ var _gun_reload_empty_clip: String = ""
 var _active_reload_hands_clip: String = ""
 var _active_reload_gun_clip: String = ""
 var _source_ok: bool = false
-# Small reversible on-device ADS calibration, not a source asset modification.
-@export_range(-0.015, 0.015, 0.001) var ads_fine_x_metres: float = -0.004
+# Reversible camera/weapon ADS fit only; source geometry and weapon ballistics
+# are untouched. Small vertical drop reveals the forward front-sight post,
+# while modest muzzle-up pitch prevents it hiding behind the receiver sight.
+# Measured against 1280x720 actual Godot renders in visual gauntlet:
+# front ring was obstructed in V2. Tested 25 source-geometry poses (NO fake
+# sights or textures). Candidate p6_ym015_x006_yaw_m2 shows original front
+# ring fully visible centered on the world 640,360 aim ray, with rear notch
+# below and aligned. Includes prior V2 base offset/pitch in final defaults.
+# ADS ONLY; hip position / original hand rig / genuine source PSAs unchanged.
+@export_range(-0.035, 0.035, 0.001) var ads_fine_x_metres: float = 0.002
+@export_range(-0.065, 0.065, 0.001) var ads_fine_y_metres: float = -0.026
+@export_range(-10.0, 10.0, 0.05) var ads_fine_pitch_degrees: float = 6.60
+@export_range(-5.0, 5.0, 0.1) var ads_fine_yaw_degrees: float = -2.0
+# The idle j_clip pose can disagree with a reload's FINAL magazine pose.
+# Cache each source pair's genuine final bone transforms and copy ONLY those
+# 1-key idle values immediately before blending to idle (no source PSAs edited).
+var _mag_idle_position_track: int = -1
+var _mag_idle_rotation_track: int = -1
+var _mag_source_end_poses: Dictionary = {}
 # The ONLY allowed reload sounds for MP40 are the exact Project Aether sound
 # assets gr_mp40_mag_out, gr_mp40_mag_in and gr_mp40_charge (source .ubulk).
 # Never synthesize or route CC0 metal spring/close or Magnum sounds here.
@@ -44,11 +62,24 @@ var _cue_charge_played: bool = false
 
 func _ready() -> void:
  super._ready()
- # Old MP40 ADS screenshot has the iron sight slightly camera-right.
- # Shift only the Bukkbeek dedicated ADS Marker by 4 mm; HIP untouched.
+ # Bukkbeek has a SECOND dedicated weapon renderer. Its camera was held at
+ # 75 degrees even as the gameplay camera zoomed to 60 in ADS. The two views
+ # must use the SAME FOV or iron-sight screen geometry cannot match the target.
+ _viewmodel_camera = get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
+ if _viewmodel_camera == null:
+  push_error("BUKKBEEK_MP40_RED: dedicated weapon subviewport camera unavailable")
+  return
+ # Keep HIP untouched. ADS-only marker adjustment for the missing front post.
+ # Positive local X pitch raises the muzzle to reveal the ORIGINAL iron sight.
  if focused_aim_position != null:
   focused_aim_position.position.x += ads_fine_x_metres
+  focused_aim_position.position.y += ads_fine_y_metres
+  focused_aim_position.rotate_object_local(Vector3.RIGHT, deg_to_rad(ads_fine_pitch_degrees))
+  focused_aim_position.rotate_object_local(Vector3.UP, deg_to_rad(ads_fine_yaw_degrees))
+  set_meta("mp40_ads_fine_yaw", ads_fine_yaw_degrees)
   set_meta("mp40_ads_fine_x", ads_fine_x_metres)
+  set_meta("mp40_ads_fine_y", ads_fine_y_metres)
+  set_meta("mp40_ads_fine_pitch", ads_fine_pitch_degrees)
  # Bukkbeek stock reload sample is unrelated to MP40. Suppress it here:
  # real Aether magazine-out plays at j_clip removal time below instead.
  reload_sfx = null
@@ -109,6 +140,17 @@ func _ready() -> void:
   return
  if not _normalize_source_bolt_idle_pose():
   push_error("BUKKBEEK_MP40_RED: cannot preserve authentic charging-handle final pose")
+  return
+ if not _cache_source_magazine_end_poses():
+  push_error("BUKKBEEK_MP40_RED: source magazine j_clip source/idle contract invalid")
+  return
+ if not _smooth_source_magazine_late_second_seat():
+  push_error("BUKKBEEK_MP40_RED: cannot smooth the source j_clip late 50mm reseat")
+  return
+ # Pre-seat the idle magazine using the ACTUAL normal reload ending, not an
+ # invented magazine transform; future reloads select their own ending pose.
+ if not _align_idle_magazine_to_source_end(_gun_reload_clip):
+  push_error("BUKKBEEK_MP40_RED: initial j_clip source pose not aligned")
   return
 
  var textured_gun: int = _texture_source(_gun_root, GUN_ALBEDO, GUN_NORMAL, 0.40, 0.31)
@@ -276,6 +318,119 @@ func _normalize_source_bolt_idle_pose() -> bool:
   " original_empty_end=", empty_end, " prior_snap_m=", error_m)
  return true
 
+
+# On Android the magazine appears to re-seat a second time during the LAST
+# 0.12-second idle blend, after the bolt and hand have finished. The gun idle
+# track can have a different source conversion basis than the magazine's real
+# post-insertion pose. Read the authentic j_clip ending for EACH original
+# reload variant and align only the idle pose at the handoff. No sound changes,
+# no edits to the 56/59-key animated magazine movement or source GLB.
+func _mag_bone_track(a: Animation, kind: int) -> int:
+ if a == null:
+  return -1
+ for track_idx: int in range(a.get_track_count()):
+  if (str(a.track_get_path(track_idx)).ends_with(":j_clip")
+   and a.track_get_type(track_idx) == kind):
+   return track_idx
+ return -1
+
+func _cache_source_magazine_end_poses() -> bool:
+ var idle: Animation = _gun_anim.get_animation(_gun_idle_clip)
+ _mag_idle_position_track = _mag_bone_track(idle, Animation.TYPE_POSITION_3D)
+ _mag_idle_rotation_track = _mag_bone_track(idle, Animation.TYPE_ROTATION_3D)
+ if (_mag_idle_position_track < 0 or _mag_idle_rotation_track < 0
+  or idle.track_get_key_count(_mag_idle_position_track) != 1
+  or idle.track_get_key_count(_mag_idle_rotation_track) != 1):
+  return false # Never flatten a genuinely animated idle magazine.
+ for clip: String in [_gun_reload_clip, _gun_reload_empty_clip]:
+  if clip.is_empty() or not _gun_anim.has_animation(clip):
+   return false
+  var source: Animation = _gun_anim.get_animation(clip)
+  var position_idx := _mag_bone_track(source, Animation.TYPE_POSITION_3D)
+  var rotation_idx := _mag_bone_track(source, Animation.TYPE_ROTATION_3D)
+  if (position_idx < 0 or rotation_idx < 0
+   or source.track_get_key_count(position_idx) < 50
+   or source.track_get_key_count(rotation_idx) < 50):
+   return false # Real hand/mag animation must remain present.
+  var end_position: Vector3 = source.position_track_interpolate(position_idx, source.length)
+  var end_rotation: Quaternion = source.rotation_track_interpolate(rotation_idx, source.length)
+  if not end_position.is_finite() or not end_rotation.is_finite():
+   return false
+  _mag_source_end_poses[clip] = {"position": end_position, "rotation": end_rotation}
+  print("BUKKBEEK_MP40_MAG_SOURCE_END clip=", clip,
+   " end_position=", end_position, " end_rotation=", end_rotation)
+ set_meta("source_mp40_mag_idle_contract_ready", true)
+ return true
+
+# Source-authored j_clip has a SECOND, late ~50mm magazine seating step at
+# 2.58s, after the magazine has already been inserted to the well at 2.08s.
+# That's the second visible "rearrangement" reported when the hand leaves.
+# Move ONLY the trailing seat (roughly 2.15..2.58s) into a short continuous
+# completion of the FIRST insertion. Keep all source key TIMES and counts,
+# every pre-insert magazine movement, bolt movement, hand PSAs and audio intact.
+func _smooth_source_magazine_late_second_seat() -> bool:
+ var report: Dictionary = {}
+ for clip: String in [_gun_reload_clip, _gun_reload_empty_clip]:
+  var source: Animation = _gun_anim.get_animation(clip)
+  var position_idx: int = _mag_bone_track(source, Animation.TYPE_POSITION_3D)
+  if position_idx < 0 or source.track_get_key_count(position_idx) < 50:
+   return false
+  var insert_at: float = _source_magazine_insert_time(clip)
+  if insert_at < 1.8 or insert_at > 2.4:
+   return false # Only this EXACT imported MP40 PSA timing.
+  var begin: float = insert_at + 0.11
+  var finish: float = begin + 0.30
+  var final_pose: Vector3 = (_mag_source_end_poses[clip] as Dictionary)["position"] as Vector3
+  var initial_pose: Vector3 = source.position_track_interpolate(position_idx, begin)
+  var late_gap_m: float = initial_pose.distance_to(final_pose)
+  if late_gap_m < 0.025 or late_gap_m > 0.095:
+   return false # Original residual is ~50mm. Do not edit other clips.
+  var corrected_keys: int = 0
+  # The original late-key 2.58s jump would otherwise remain in the source.
+  for key_idx: int in range(source.track_get_key_count(position_idx)):
+   var t: float = source.track_get_key_time(position_idx, key_idx)
+   if t <= begin or t > 2.64:
+    continue
+   var blend: float = clampf((t - begin) / (finish - begin), 0.0, 1.0)
+   # Single monotonic, continuous seating instead of hold and second snap.
+   blend = blend * blend * (3.0 - 2.0 * blend)
+   source.track_set_key_value(position_idx, key_idx, initial_pose.lerp(final_pose, blend))
+   corrected_keys += 1
+  if corrected_keys < 4:
+   return false
+  report[clip] = {
+   "original_late_displacement_m": late_gap_m,
+   "retimed_keys": corrected_keys,
+   "fully_seated_by": finish,
+  }
+  print("BUKKBEEK_MP40_MAG_SECOND_SEAT_REMOVED clip=", clip,
+   " late_gap_m=", late_gap_m,
+   " original_second_seat_at=2.58s",
+   " first_insert_full_seat_by=", finish,
+   " changed_keys=", corrected_keys)
+ set_meta("source_mp40_late_second_seat_removed", report)
+ return true
+
+
+func _align_idle_magazine_to_source_end(clip: String) -> bool:
+ if not _mag_source_end_poses.has(clip):
+  return false
+ var idle: Animation = _gun_anim.get_animation(_gun_idle_clip)
+ var settled: Dictionary = _mag_source_end_poses[clip] as Dictionary
+ var previous_pos: Vector3 = idle.track_get_key_value(_mag_idle_position_track, 0) as Vector3
+ var previous_rot: Quaternion = idle.track_get_key_value(_mag_idle_rotation_track, 0) as Quaternion
+ var final_pos: Vector3 = settled["position"] as Vector3
+ var final_rot: Quaternion = settled["rotation"] as Quaternion
+ idle.track_set_key_value(_mag_idle_position_track, 0, final_pos)
+ idle.track_set_key_value(_mag_idle_rotation_track, 0, final_rot)
+ set_meta("source_mp40_mag_idle_matched_clip", clip)
+ set_meta("source_mp40_mag_idle_translation_delta_m", previous_pos.distance_to(final_pos))
+ set_meta("source_mp40_mag_idle_rotation_delta_deg", rad_to_deg(previous_rot.angle_to(final_rot)))
+ print("BUKKBEEK_MP40_MAG_NO_DOUBLE_SEAT clip=", clip,
+  " prior_jump_m=", previous_pos.distance_to(final_pos),
+  " prior_jump_deg=", rad_to_deg(previous_rot.angle_to(final_rot)))
+ return true
+
 func _texture_source(root: Node3D, albedo_path: String, normal_path: String, metallic: float, roughness: float) -> int:
  var albedo: Texture2D = load(albedo_path) as Texture2D
  var normal: Texture2D = load(normal_path) as Texture2D
@@ -353,6 +508,10 @@ func _play_idle() -> void:
   _gun_anim.play(_gun_idle_clip, 0.12)
 
 func _process(_delta: float) -> void:
+ # Unlike the old 4mm optical guess, this repairs the TWO-camera ADS mismatch.
+ # Only the ACTIVE MP40 changes the viewmodel camera; stock guns untouched.
+ if _source_ok and visible and main_camera != null and _viewmodel_camera != null:
+  _viewmodel_camera.fov = main_camera.fov
  if not _source_ok or not is_reloading or _gun_anim == null:
   return
  var elapsed := _gun_anim.current_animation_position
@@ -454,6 +613,13 @@ func activate(current_aim_mode: bool = false) -> void:
  if _source_ok:
   _play_idle()
 
+func deactivate() -> void:
+ super.deactivate()
+ # Return the shared viewport to Bukkbeek's original fixed viewmodel FOV.
+ # Other five weapons retain exactly their pre-MP40 renderer behavior.
+ if _viewmodel_camera != null:
+  _viewmodel_camera.fov = 75.0
+
 func fire_weapon() -> void:
  if not _source_ok:
   return
@@ -514,6 +680,11 @@ func start_reload() -> void:
 
 
 func _on_reload_timer_timeout() -> void:
+ # Update the idle magazine's static pose BEFORE the 0.12s idle blend.
+ # Do not overwrite original 56/59-key j_clip reload tracks.
+ if _source_ok and not _active_reload_gun_clip.is_empty():
+  if not _align_idle_magazine_to_source_end(_active_reload_gun_clip):
+   push_error("BUKKBEEK_MP40_RED: failed final j_clip idle handoff")
  super._on_reload_timer_timeout()
  _active_reload_hands_clip = ""
  _active_reload_gun_clip = ""

@@ -51,10 +51,10 @@ architectures/armeabi-v7a=false
 architectures/arm64-v8a=true
 architectures/x86=false
 architectures/x86_64=false
-version/code=1
-version/name="0.1-touch"
-package/unique_name="org.xziel.bukkbeektouch"
-package/name="Bukkbeek XZIEL Touch"
+version/code=3
+version/name="0.3-mp40-optical-sights"
+package/unique_name="org.xziel.bukkbeektouch.mp40adsv3"
+package/name="XZIEL MP40 ADS V3"
 package/signed=true
 screen/orientation=4
 screen/immersive_mode=true
@@ -109,6 +109,52 @@ manager_src = manager_src.replace(
     '\tcurrent_weapon_index = weapons_array.size() - 1 if OS.get_name() == "Android" and weapons_array.size() == 6 else 0\n\t_setup_current_weapon()',
     1,
 )
+# Real rendered Linux proof diagnosed 479,810m weapon displacement during a
+# ~130ms software-renderer frame. Upstream weapon manager uses unbounded
+# Vector3.lerp / Basis.slerp(follow_speed * delta). A frame > 20ms at the
+# user's effective 50Hz follow factor produces t>1, extrapolates, and can
+# then diverge exponentially after further frame hitches on Android.
+# Clamp the mathematically legal interpolation interval to [0, 1]; the
+# original 5 weapons, movement speeds, aim controls and assets are untouched.
+source_lerp = "global_position = global_position.lerp(target_transform.origin, follow_speed * _delta)"
+source_slerp = "global_transform.basis = current_basis.slerp(target_basis, follow_speed * _delta)"
+assert manager_src.count(source_lerp) == 1 and manager_src.count(source_slerp) == 1, (
+    "Bukkbeek camera-follow math changed; refuse to patch without inspection"
+)
+manager_src = manager_src.replace(
+    source_lerp,
+    "global_position = global_position.lerp(target_transform.origin, clampf(follow_speed * _delta, 0.0, 1.0))",
+    1,
+).replace(
+    source_slerp,
+    "global_transform.basis = current_basis.slerp(target_basis, clampf(follow_speed * _delta, 0.0, 1.0))",
+    1,
+)
+# Lock original iron sight to the gameplay camera during ADS. The source
+# follow block remains exactly as-is for HIP and the five other weapons.
+tab = chr(9)
+nl = chr(10)
+follow_start = manager_src.index(tab + "# Lerp position" + nl)
+follow_end = manager_src.index(tab + "# Continuous firing for automatic weapons", follow_start)
+follow_block = manager_src[follow_start:follow_end]
+assert follow_block.count("clampf(follow_speed * _delta, 0.0, 1.0)") == 2
+nested_follow = "".join(
+    (tab + line if line.strip() else line)
+    for line in follow_block.splitlines(keepends=True)
+)
+rigid_branch = (
+    tab + 'if current_weapon and current_weapon.name == "MP40Source" and current_aim_mode and not is_switching:' + nl
+    + tab * 2 + "global_transform = target_transform" + nl
+    + tab + "else:" + nl
+)
+manager_src = (
+    manager_src[:follow_start]
+    + rigid_branch
+    + nested_follow
+    + manager_src[follow_end:]
+)
 manager.write_text(manager_src)
+print("BUKKBEEK_MP40_RIGID_ADS_GREEN: camera-follow lag disabled only while MP40 ADS")
+print("BUKKBEEK_MP40_CAMERA_FOLLOW_CLAMP_GREEN: no extrapolation on Android frame drops")
 print("BUKKBEEK_MP40_PATCH_GREEN: sixth Bukkbeek weapon, Android starts MP40, knife remains index=0, old five remain")
 

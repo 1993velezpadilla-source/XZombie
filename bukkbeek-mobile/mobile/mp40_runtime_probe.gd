@@ -38,9 +38,50 @@ func _run() -> void:
  if not bool(mp40.get_meta("source_mp40_bolt_idle_snap_fixed", false)):
   _fail("charging bolt end-of-reload idle pose was not repaired")
   return
- if absf(float(mp40.get_meta("mp40_ads_fine_x", 0.0)) + 0.004) > 0.0001:
-  _fail("4mm reversible ADS calibration missing")
+ # Complete FRONT-RING + REAR-NOTCH optic line measured in actual 1280x720
+ # rendered Godot poses: source front ring centered near (640,360). No SFX
+ # modifications, reticle cheating or authoring GLB changes.
+ if (absf(float(mp40.get_meta("mp40_ads_fine_x", 0.0)) - 0.002) > 0.0001
+  or absf(float(mp40.get_meta("mp40_ads_fine_y", 0.0)) + 0.026) > 0.0001
+  or absf(float(mp40.get_meta("mp40_ads_fine_pitch", 0.0)) - 6.60) > 0.001
+  or absf(float(mp40.get_meta("mp40_ads_fine_yaw", 0.0)) + 2.0) > 0.001):
+  _fail("source MP40 front ring + rear notch camera alignment missing")
   return
+ var hip_marker: Marker3D = mp40.get_node_or_null("StandardAimPosition") as Marker3D
+ var ads_marker: Marker3D = mp40.get_node_or_null("FocusedAimPosition") as Marker3D
+ if hip_marker == null or ads_marker == null:
+  _fail("original Bukkbeek ADS and HIP markers missing")
+  return
+ if not bool(mp40.get_meta("source_mp40_mag_idle_contract_ready", false)):
+  _fail("j_clip authentic magazine end-to-idle pose contract not loaded")
+  return
+ var reseat_report: Dictionary = mp40.get_meta("source_mp40_late_second_seat_removed", {}) as Dictionary
+ if reseat_report.size() != 2:
+  _fail("two source reload variants have no late second seating correction")
+  return
+ var gun_ap: AnimationPlayer = mp40.get("_gun_anim") as AnimationPlayer
+ for variant: String in [str(mp40.get("_gun_reload_clip")), str(mp40.get("_gun_reload_empty_clip"))]:
+  if not reseat_report.has(variant):
+   _fail("missing magazine late-seating correction for " + variant)
+   return
+  var orig_gap: float = float((reseat_report[variant] as Dictionary).get("original_late_displacement_m", -1))
+  if orig_gap < 0.025 or orig_gap > 0.095:
+   _fail("source late 50mm magazine motion provenance invalid: " + variant)
+   return
+  var a: Animation = gun_ap.get_animation(variant)
+  var mag_pos_track: int = -1
+  for i: int in range(a.get_track_count()):
+   if str(a.track_get_path(i)).ends_with(":j_clip") and a.track_get_type(i) == Animation.TYPE_POSITION_3D:
+    mag_pos_track = i
+    break
+  if mag_pos_track < 0 or a.track_get_key_count(mag_pos_track) < 50:
+   _fail("original >50 j_clip position keys were removed")
+   return
+  var late_pose: Vector3 = a.position_track_interpolate(mag_pos_track, 2.55)
+  var final_pose: Vector3 = a.position_track_interpolate(mag_pos_track, a.length)
+  if late_pose.distance_to(final_pose) > 0.002:
+   _fail("MP40 magazine still has second seat after 2.55s: " + variant)
+   return
  for cue_name: String in ["MagazineRemoveCue", "MagazineInsertCue", "BoltChargeCue"]:
   var cue: AudioStreamPlayer3D = mp40.get_node_or_null("SFX/" + cue_name) as AudioStreamPlayer3D
   if cue == null or cue.stream == null:
@@ -131,6 +172,49 @@ func _run() -> void:
  if world_size.x < 0.2 or world_size.x > 5.0 or world_size.y < 0.2 or world_size.y > 5.0 or world_size.z < 0.2 or world_size.z > 5.0:
   _fail("source cm-to-meter grip mis-scaled")
   return
+
+ # The TWO cameras used to disagree (world=60° ADS, weapon=75°).
+ # Exercise real Bukkbeek global ADS signal and assert synchronized optics.
+ var globals_node: Node = root.get_node_or_null("Global")
+ if globals_node == null:
+  _fail("Bukkbeek autoload Global unavailable for ADS test")
+  return
+ globals_node.emit_signal("aim_mode_changed", true)
+ await create_timer(0.48).timeout
+ var main_cam: Camera3D = player.get_node("CameraPivot/CameraHolder/MainCamera")
+ var view_cam: Camera3D = player.get_node("WeaponSubViewport/SubViewport/Camera3D")
+ if (main_cam.fov < 57 or main_cam.fov > 65
+  or absf(main_cam.fov - view_cam.fov) > 0.75):
+  _fail("world and weapon camera ADS FOV do not match: "+ str(main_cam.fov)+" vs "+str(view_cam.fov))
+  return
+ print("BUKKBEEK_MP40_TWO_CAMERA_ADS_GREEN world_fov=", main_cam.fov, " weapon_fov=", view_cam.fov)
+ # Real source iron sights must not lag behind the ray when player looks
+ # around on touchscreen; original Bukkbeek smoothed-follow still works in HIP.
+ await create_timer(0.35).timeout
+ var cam_pivot: Node3D = player.get_node("CameraPivot") as Node3D
+ cam_pivot.rotate_y(deg_to_rad(12.0))
+ manager.call("_process", 0.008)
+ var ads_follow_error_m: float = manager.global_position.distance_to(main_cam.global_position)
+ var ads_forward_error_deg: float = rad_to_deg(manager.global_transform.basis.z.normalized().angle_to(main_cam.global_transform.basis.z.normalized()))
+ cam_pivot.rotate_y(-deg_to_rad(12.0))
+ manager.call("_process", 0.008)
+ if ads_follow_error_m > 0.0005 or ads_forward_error_deg > 0.05:
+  _fail("ADS sight drifts from world aim while turning; pos_m="+str(ads_follow_error_m)+" angle_deg="+str(ads_forward_error_deg))
+  return
+ print("BUKKBEEK_MP40_RIGID_ADS_TURN_GREEN angle_deg=", ads_forward_error_deg, " pos_m=", ads_follow_error_m)
+ globals_node.emit_signal("aim_mode_changed", false)
+ await create_timer(0.25).timeout
+
+ # Simulate a bad 170ms renderer stall. The upstream manager's
+ # lerp(t = 50 * 0.17 = 8.5) explodes offscreen; the patched renderer MUST
+ # clamp the camera-follow coefficient to <= 1 and snap back safely.
+ manager.global_position = main_cam.global_position + Vector3(1.0, 0.0, 0.0)
+ manager.call("_process", 0.17)
+ var camera_follow_error: float = manager.global_position.distance_to(main_cam.global_position)
+ if camera_follow_error > 0.005:
+  _fail("weapon/camera follow extrapolates on low FPS; error_m="+str(camera_follow_error))
+  return
+ print("BUKKBEEK_MP40_CAMERA_FOLLOW_STALL_GREEN delta=0.17s error_m=", camera_follow_error)
 
  # Diagnostic ONLY: enumerate exact imported PSA tracks to find whether gun
  # bone/root transform tracks double-drive the tag_weapon grip during FIRE/RELOAD.
@@ -238,6 +322,12 @@ func _run() -> void:
  # real keyframes. This is an independent source animation pair, NOT old Vril.
  reload_timer.stop()
  mp40.call("_on_reload_timer_timeout")
+ if str(mp40.get_meta("source_mp40_mag_idle_matched_clip", "")) != normal_gun:
+  _fail("normal magazine idle pose did not inherit source normal ending")
+  return
+ if not _magazine_idle_matches_reload_end(gun_anim, idle_clip, normal_gun):
+  _fail("magazine re-seats between normal reload and gun idle")
+  return
  mp40.set("current_mag", 0)
  mp40.call("start_reload")
  if not bool(mp40.get("is_reloading")):
@@ -334,6 +424,18 @@ func _run() -> void:
    return
   print("BUKKBEEK_MP40_SFX_LIVE_GREEN event=", event["name"],
    " triggered_at=", event["when"])
+ # Complete the empty clip and ensure the original magazine cannot visibly
+ # re-seat for a SECOND time when j_bolt finishes and the hand withdraws.
+ gun_anim.seek(empty_length, true)
+ reload_timer.stop()
+ mp40.call("_on_reload_timer_timeout")
+ if str(mp40.get_meta("source_mp40_mag_idle_matched_clip", "")) != empty_gun:
+  _fail("empty reload was not selected for the idle magazine handoff")
+  return
+ if not _magazine_idle_matches_reload_end(gun_anim, idle_gun_clip, empty_gun):
+  _fail("magazine re-seats during empty reload charging-handle exit")
+  return
+ print("BUKKBEEK_MP40_ADS_MAG_SETTLE_GREEN x=0.002 y=-0.026 pitch=6.60 yaw=-2.0 idle_mag=exact_final_source_pose")
  print("BUKKBEEK_MP40_LIVE_GREEN "
   + "stock_weapon_count=" + str(weapon_nodes.size() - 1)
   + " hands_bones=" + str(skeleton.get_bone_count())
@@ -341,3 +443,35 @@ func _run() -> void:
   + " hands_source_animations=" + str(hands_anim.get_animation_list().size())
   + " hip_fire=triggered reload=running world_scale=" + str(world_size))
  quit(0)
+
+# Independent source-bone continuity check for BOTH tactical and empty reload.
+# A 0.12s blend to an incorrect idle j_clip is the unwanted second seating.
+func _magazine_idle_matches_reload_end(player: AnimationPlayer, idle_clip: String, source_clip: String) -> bool:
+ var idle: Animation = player.get_animation(idle_clip)
+ var source: Animation = player.get_animation(source_clip)
+ if idle == null or source == null:
+  return false
+ for kind: int in [Animation.TYPE_POSITION_3D, Animation.TYPE_ROTATION_3D]:
+  var idle_idx := -1
+  var end_idx := -1
+  for i: int in range(idle.get_track_count()):
+   if str(idle.track_get_path(i)).ends_with(":j_clip") and idle.track_get_type(i) == kind:
+    idle_idx = i
+    break
+  for i: int in range(source.get_track_count()):
+   if str(source.track_get_path(i)).ends_with(":j_clip") and source.track_get_type(i) == kind:
+    end_idx = i
+    break
+  if idle_idx < 0 or end_idx < 0 or idle.track_get_key_count(idle_idx) != 1:
+   return false
+  if kind == Animation.TYPE_POSITION_3D:
+   var final_position: Vector3 = source.position_track_interpolate(end_idx, source.length)
+   var idle_position: Vector3 = idle.track_get_key_value(idle_idx, 0) as Vector3
+   if idle_position.distance_to(final_position) > 0.0005:
+    return false
+  else:
+   var final_rotation: Quaternion = source.rotation_track_interpolate(end_idx, source.length)
+   var idle_rotation: Quaternion = idle.track_get_key_value(idle_idx, 0) as Quaternion
+   if rad_to_deg(idle_rotation.angle_to(final_rotation)) > 0.05:
+    return false
+ return true

@@ -9,10 +9,16 @@ on:
       - fix/bukkbeek-mp40-source-reload-sync-20261015
       - fix/bukkbeek-mp40-bolt-audio-ads-20261015
       - fix/bukkbeek-mp40-authentic-aether-sounds-20261015
+      - fix/bukkbeek-mp40-ads-mag-settle-20261015
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
   workflow_dispatch:
+
+# Don't spend the user's free GitHub minutes on stale intermediary MP40 builds.
+concurrency:
+  group: bukkbeek-xziel-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   android-debug-arm64:
@@ -78,6 +84,7 @@ jobs:
           cp bukkbeek-mobile/mobile/virtual_joystick.gd _build/bukkbeek/mobile/virtual_joystick.gd
           cp bukkbeek-mobile/mobile/mp40_weapon.gd _build/bukkbeek/mobile/mp40_weapon.gd
           cp bukkbeek-mobile/mobile/mp40_runtime_probe.gd _build/bukkbeek/mobile/mp40_runtime_probe.gd
+          cp bukkbeek-mobile/mobile/mp40_visual_probe.gd _build/bukkbeek/mobile/mp40_visual_probe.gd
           cp bukkbeek-mobile/mobile/mp40.tscn _build/bukkbeek/mobile/mp40.tscn
           python3 bukkbeek-mobile/verify_mp40_source.py _build/bukkbeek/mobile/mp40_source
           # No user-facing test APK unless THESE EXACT 3 Project Aether files
@@ -137,6 +144,28 @@ jobs:
           if grep -E 'BUKKBEEK_MP40_LIVE_RED|BUKKBEEK_MP40_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/bukkbeek-mp40-runtime.log; then
             exit 4
           fi
+
+      - name: Render real 2D pixel captures of MP40 in ADS and empty-reload frames
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri
+          mkdir -p _build/bukkbeek/visual_probes
+          set -o pipefail
+          timeout 90s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 --script res://mobile/mp40_visual_probe.gd \
+            2>&1 | tee /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_VISUAL_SCREENSHOT_GREEN ads' /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_VISUAL_SCREENSHOT_GREEN reload_finished_idle' /tmp/bukkbeek-mp40-visual.log
+          test -s _build/bukkbeek/visual_probes/ads.png
+
+      - name: Publish MP40 visual proof (do not confuse with on-phone validation)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bukkbeek-MP40-ADS-Reload-Visual-Probe
+          path: _build/bukkbeek/visual_probes/
+          retention-days: 14
 
       - name: Export debug Android arm64 APK
         env:
