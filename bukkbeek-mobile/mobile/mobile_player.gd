@@ -133,7 +133,7 @@ func _physics_process(delta: float) -> void:
 
 func _xz_throw_grenade() -> void:
  if not Bullets._consume_ammo(Bullets.AmmoType.HAND_GRENADE, 1): return
- var bomb: RigidBody3D = preload("res://mobile/mobile_grenade.gd").new()
+ var bomb = preload("res://mobile/mobile_grenade.gd").new()
  bomb.fuse_remaining = maxf(0.05, 3.2 - _xz_grenade_cooked_for)
  get_tree().current_scene.add_child(bomb)
  var launch: Vector3 = -camera.global_transform.basis.z
