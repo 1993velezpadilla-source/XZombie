@@ -62,11 +62,17 @@ func _run() -> void:
  var original_marker_z: float = float(mp40.get_meta("source_mp40_marker_source_depth_z", 99.0))
  var new_marker_z: float = float(mp40.get_meta("source_mp40_marker_solved_depth_z", -99.0))
  if (absf(original_marker_z + 0.24045) > 0.0005
-  or absf(float(mp40.get_meta("source_mp40_ads_proximity_m", -1.0)) - 0.020) > 0.0001
-  or absf(new_marker_z - original_marker_z - 0.020) > 0.00001):
-  _fail("MP40 ADS optics proximity not exactly +20mm: source_z="+str(original_marker_z)+" final_z="+str(new_marker_z))
+  or absf(float(mp40.get_meta("source_mp40_ads_proximity_m", -1.0)) - 0.056) > 0.0001
+  or absf(new_marker_z - original_marker_z - 0.056) > 0.00001):
+  _fail("MP40 ADS optics proximity not exactly +56mm (12cm rear sight test): source_z="+str(original_marker_z)+" final_z="+str(new_marker_z))
   return
- print("BUKKBEEK_MP40_ORIGINAL_ADS_DISTANCE_GREEN source_z=",original_marker_z," closer_z=",new_marker_z," delta_m=0.02")
+ var physical_rear_depth: float = float(mp40.get_meta("source_mp40_12cm_eye_distance_test", -1.0))
+ if physical_rear_depth < 0.105 or physical_rear_depth > 0.135:
+  _fail("ADS rear sight NOT near 12cm from actual camera: "+str(physical_rear_depth))
+  return
+ print("BUKKBEEK_MP40_12CM_REAL_REAR_DISTANCE_GREEN measured_m=",physical_rear_depth,
+  " original_marker_z=",original_marker_z," closer_z=",new_marker_z,
+  " rigid_source_optic=true")
  print("BUKKBEEK_MP40_ORIGINAL_SIGHT_AXIS_GREEN physical_angle_deg=", optic_pitch)
  var hip_marker: Marker3D = mp40.get_node_or_null("StandardAimPosition") as Marker3D
  var ads_marker: Marker3D = mp40.get_node_or_null("FocusedAimPosition") as Marker3D
