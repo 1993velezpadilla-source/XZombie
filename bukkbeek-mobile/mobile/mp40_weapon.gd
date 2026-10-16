@@ -973,3 +973,23 @@ func _on_reload_timer_timeout() -> void:
  _cue_bolt_charge_at = -1.0
  if _source_ok:
   _play_idle()
+
+# Android tactical interruption: keep original unspent rounds; never invent a
+# replacement reload animation or audio. Empty magazines cannot cancel reload.
+func cancel_tactical_reload() -> bool:
+ if not _source_ok or not is_reloading or current_mag <= 0:
+  return false
+ reload_timer.stop()
+ is_reloading = false
+ if reload_sfx != null: reload_sfx.stop()
+ if _mag_remove_sfx != null: _mag_remove_sfx.stop()
+ if _mag_insert_sfx != null: _mag_insert_sfx.stop()
+ if _bolt_charge_sfx != null: _bolt_charge_sfx.stop()
+ _active_reload_hands_clip = ""
+ _active_reload_gun_clip = ""
+ _cue_mag_remove_at = -1.0
+ _cue_mag_insert_at = -1.0
+ _cue_bolt_charge_at = -1.0
+ _play_idle()
+ print("XZIEL_MP40_TACTICAL_RELOAD_CANCEL source_tracks_restored=true ammo=", current_mag)
+ return true
