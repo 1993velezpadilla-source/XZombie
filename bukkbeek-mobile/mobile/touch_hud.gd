@@ -193,6 +193,8 @@ func _up(index: int) -> void:
   release_fire_fingers.erase(index)
   Global.fire_input.emit()
   _release(role)
+ elif role == "ads" and str(profile.get("ads_mode", "toggle")) == "hold":
+  _release(role)
  elif HELD.has(role) and not paused:
   _release(role)
  elif role in ["slide","prone","grenade"]:
