@@ -16,6 +16,14 @@ var _xz_capsule: CapsuleShape3D
 var _xz_stance: String = "stand"
 var _xz_slide_remaining: float = 0.0
 var _xz_slide_velocity: Vector3 = Vector3.ZERO
+var _xz_grenade_cooking: bool = false
+var _xz_grenade_cooked_for: float = 0.0
+
+func _ready() -> void:
+ super._ready()
+ for action_name in ["prone", "slide", "cook_grenade"]:
+  if not InputMap.has_action(action_name): InputMap.add_action(action_name)
+
 
 func _ensure_capsule() -> void:
  if _xz_capsule != null: return
@@ -34,6 +42,14 @@ func _ceiling_clear(desired_height: float) -> bool:
 func _physics_process(delta: float) -> void:
  _ensure_capsule()
  if not is_alive: return
+ if Input.is_action_just_pressed("cook_grenade") and Bullets._get_ammo(Bullets.AmmoType.HAND_GRENADE) != 0:
+  _xz_grenade_cooking = true
+  _xz_grenade_cooked_for = 0.0
+ if _xz_grenade_cooking:
+  _xz_grenade_cooked_for += delta
+  if Input.is_action_just_released("cook_grenade") or _xz_grenade_cooked_for >= 3.2:
+   _xz_throw_grenade()
+   _xz_grenade_cooking = false
  if not is_on_floor():
   velocity.y += GRAVITY * delta
  if is_on_floor() and not was_on_floor and audio_manager:
@@ -114,3 +130,13 @@ func _physics_process(delta: float) -> void:
  if _xz_slide_remaining <= 0.0: _handle_footsteps(delta)
  Global.player_velocity_changed.emit(velocity)
  move_and_slide()
+
+func _xz_throw_grenade() -> void:
+ if not Bullets._consume_ammo(Bullets.AmmoType.HAND_GRENADE, 1): return
+ var bomb: RigidBody3D = preload("res://mobile/mobile_grenade.gd").new()
+ bomb.fuse_remaining = maxf(0.05, 3.2 - _xz_grenade_cooked_for)
+ get_tree().current_scene.add_child(bomb)
+ var launch: Vector3 = -camera.global_transform.basis.z
+ bomb.global_position = camera.global_position + launch * 0.55 - Vector3.UP * 0.10
+ bomb.linear_velocity = launch * 14.0 + Vector3.UP * 2.8 + velocity
+ Global.bullets_changed.emit()
