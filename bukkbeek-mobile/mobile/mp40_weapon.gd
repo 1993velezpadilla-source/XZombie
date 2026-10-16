@@ -322,6 +322,7 @@ func _derive_optical_ads_from_mesh() -> void:
 
  var best_error: float = INF
  var best_roll_degrees: float = 0.0
+ var best_behind_camera_count: int = -1
  var fitted: Transform3D = Transform3D.IDENTITY
  # Scan the remaining single physically valid degree of freedom. Exact front/
  # rear optical axis stays locked throughout this deterministic 181-pose fit.
@@ -334,16 +335,23 @@ func _derive_optical_ads_from_mesh() -> void:
   var candidate := Transform3D(candidate_basis,
    Vector3(-offset_rear.x, -offset_rear.y, source_ads_depth_z + ADS_OPTICAL_PROXIMITY_M))
   var error: float = 0.0
+  var clipped_joints: int = 0
   for i: int in range(observed_points.size()):
    var posed_eye: Vector3 = candidate * observed_points[i]
    if posed_eye.z >= -0.04:
-    error = INF
-    break
+    # This 12cm PROBE may put an original shoulder/forearm behind the
+    # camera. Don't pretend the roll solver is physically impossible:
+    # explicitly penalize its clipping and capture the real frame. No
+    # APK may be released until the visual size/hand-pose is approved.
+    error += weights[i] * (50.0 + 20.0 * absf(posed_eye.z + 0.04))
+    clipped_joints += 1
+    continue
    var screen: Vector2 = Vector2(posed_eye.x, posed_eye.y) / -posed_eye.z
    error += weights[i] * screen.distance_squared_to(source_screen_points[i])
   if error < best_error:
    best_error = error
    best_roll_degrees = roll_deg
+   best_behind_camera_count = clipped_joints
    fitted = candidate
  if not is_finite(best_error):
   push_error("BUKKBEEK_MP40_ADS_RED: physical original arm pose fit unavailable")
@@ -356,6 +364,10 @@ func _derive_optical_ads_from_mesh() -> void:
   return
  set_meta("source_mp40_arm_preserving_roll_deg", best_roll_degrees)
  set_meta("source_mp40_arm_screen_error", best_error)
+ set_meta("source_mp40_original_arm_clipped_joints", best_behind_camera_count)
+ print("BUKKBEEK_MP40_12CM_ARM_CLIP_DIAGNOSTIC original_arm_joints_in_near_plane=",
+  best_behind_camera_count, " of=", observed_points.size(),
+  " needs_actual_screenshot_review=", best_behind_camera_count > 0)
  print("BUKKBEEK_MP40_ARMS_SOURCE_FIT roll_deg=", best_roll_degrees,
   " original_ads_marker_depth=", source_ads_depth_z,
   " screen_joint_error=", best_error, " hand_joint_count=", observed_points.size())
