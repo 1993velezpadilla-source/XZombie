@@ -282,7 +282,8 @@ func _release(role: String) -> void:
 func _precision_release_mode() -> bool:
  if str(profile.get("precision_fire", "release")) != "release": return false
  if not is_instance_valid(Global.player): return false
- var weapon = Global.player.weapons_manager.current_weapon
+ var player = Global.player
+ var weapon = player.weapons_manager.current_weapon
  if weapon == null: return false
  var name_lower := str(weapon.name).to_lower()
  var family := str(weapon.get_meta("weapon_family", "")).to_lower()
