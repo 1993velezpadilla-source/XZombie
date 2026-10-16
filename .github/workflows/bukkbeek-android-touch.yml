@@ -15,6 +15,7 @@ on:
       - experiment/mp40-original-arm-pose-projection-20261015
       - experiment/mp40-ads-arm-ik-source-v1-20261015
       - experiment/mp40-ads-proximity-original-axis-20261015
+      - experiment/mp40-ads-12cm-source-optics-v5-20261015
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
