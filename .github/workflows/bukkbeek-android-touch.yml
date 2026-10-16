@@ -168,6 +168,9 @@ jobs:
           grep -q 'MP40_VISUAL_SCREENSHOT_GREEN reload_finished_idle' /tmp/bukkbeek-mp40-visual.log
           grep -q 'MP40_VISUAL_SCREENSHOT_GREEN v6_sprint_source_hands' /tmp/bukkbeek-mp40-visual.log
           grep -q 'MP40_VISUAL_SCREENSHOT_GREEN v6_ads_return_12cm' /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_V6_REAL_ANDROID_INPUT_SPRINT_GREEN' /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_V6_REAL_SPRINT_RELOAD_GREEN' /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_VISUAL_SCREENSHOT_GREEN v6_real_sprint_input' /tmp/bukkbeek-mp40-visual.log
           test -s _build/bukkbeek/visual_probes/ads.png
 
       - name: Publish MP40 visual proof (do not confuse with on-phone validation)
