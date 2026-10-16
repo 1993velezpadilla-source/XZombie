@@ -49,11 +49,14 @@ const SOURCE_REAR_CLEAR_APERTURE_Y := 0.060
 const SOURCE_FRONT_POST_L := Vector3(0.366805, 0.053975, -0.013497)
 const SOURCE_FRONT_POST_R := Vector3(0.366805, 0.053975, -0.011572)
 const SOURCE_FLASH_TAG := Vector3(0.393835, 0.023172, -0.012254)
-# Approved original near-eye composition is immutable HIP; a small controlled
-# +20mm ADS-ONLY optical-ray translation gives a closer MP40 view without
-# changing FOV, pitch, source grip or animations. Three real frame sizes
-# (12/20/28 mm) were rendered first, not JPEG/PNG crops.
-const ADS_OPTICAL_PROXIMITY_M := 0.020
+# Original source HIP composition / 75 degree weapon FOV / genuine skinned
+# arms are immutable. V4 test establishes physical rear-sight camera relief
+# 0.15559 m at +20 mm. User reported V4 still too far away. Compute for
+# proposed 0.120 m physical distance: +20 mm + (155.59-120.0) mm =
+# +55.59 mm, rounded to 56 mm from ORIGINAL source ADS marker.
+# Front and rear iron sight stay on original source-measured -Z aim ray.
+# Do NOT treat this as an official COD viewmodel measurement.
+const ADS_OPTICAL_PROXIMITY_M := 0.056
 var _source_sight_axis_solved: bool = false
 var _ads_arm_modifier: SkeletonModifier3D
 # The idle j_clip pose can disagree with a reload's FINAL magazine pose.
@@ -319,6 +322,7 @@ func _derive_optical_ads_from_mesh() -> void:
 
  var best_error: float = INF
  var best_roll_degrees: float = 0.0
+ var best_behind_camera_count: int = -1
  var fitted: Transform3D = Transform3D.IDENTITY
  # Scan the remaining single physically valid degree of freedom. Exact front/
  # rear optical axis stays locked throughout this deterministic 181-pose fit.
@@ -331,16 +335,23 @@ func _derive_optical_ads_from_mesh() -> void:
   var candidate := Transform3D(candidate_basis,
    Vector3(-offset_rear.x, -offset_rear.y, source_ads_depth_z + ADS_OPTICAL_PROXIMITY_M))
   var error: float = 0.0
+  var clipped_joints: int = 0
   for i: int in range(observed_points.size()):
    var posed_eye: Vector3 = candidate * observed_points[i]
    if posed_eye.z >= -0.04:
-    error = INF
-    break
+    # This 12cm PROBE may put an original shoulder/forearm behind the
+    # camera. Don't pretend the roll solver is physically impossible:
+    # explicitly penalize its clipping and capture the real frame. No
+    # APK may be released until the visual size/hand-pose is approved.
+    error += weights[i] * (50.0 + 20.0 * absf(posed_eye.z + 0.04))
+    clipped_joints += 1
+    continue
    var screen: Vector2 = Vector2(posed_eye.x, posed_eye.y) / -posed_eye.z
    error += weights[i] * screen.distance_squared_to(source_screen_points[i])
   if error < best_error:
    best_error = error
    best_roll_degrees = roll_deg
+   best_behind_camera_count = clipped_joints
    fitted = candidate
  if not is_finite(best_error):
   push_error("BUKKBEEK_MP40_ADS_RED: physical original arm pose fit unavailable")
@@ -353,6 +364,10 @@ func _derive_optical_ads_from_mesh() -> void:
   return
  set_meta("source_mp40_arm_preserving_roll_deg", best_roll_degrees)
  set_meta("source_mp40_arm_screen_error", best_error)
+ set_meta("source_mp40_original_arm_clipped_joints", best_behind_camera_count)
+ print("BUKKBEEK_MP40_12CM_ARM_CLIP_DIAGNOSTIC original_arm_joints_in_near_plane=",
+  best_behind_camera_count, " of=", observed_points.size(),
+  " needs_actual_screenshot_review=", best_behind_camera_count > 0)
  print("BUKKBEEK_MP40_ARMS_SOURCE_FIT roll_deg=", best_roll_degrees,
   " original_ads_marker_depth=", source_ads_depth_z,
   " screen_joint_error=", best_error, " hand_joint_count=", observed_points.size())
@@ -396,6 +411,11 @@ func _derive_optical_ads_from_mesh() -> void:
  set_meta("source_mp40_marker_source_depth_z", source_ads_depth_z)
  set_meta("source_mp40_marker_solved_depth_z", fitted.origin.z)
  set_meta("source_mp40_ads_proximity_m", ADS_OPTICAL_PROXIMITY_M)
+ if depth < 0.105 or depth > 0.135:
+  push_error("BUKKBEEK_MP40_ADS_RED: source rear-sight eye distance outside 12cm test target: " + str(depth))
+  _source_ok = false
+  return
+ set_meta("source_mp40_12cm_eye_distance_test", depth)
  set_meta("source_mp40_original_unchanged_marker_z", original_focus.origin.z)
  print("MP40_ADS_OPTICAL_PROXIMITY_SOURCE_GREEN original_marker_z=",source_ads_depth_z,
   " new_marker_z=",fitted.origin.z, " additional_m=",ADS_OPTICAL_PROXIMITY_M)

@@ -172,11 +172,17 @@ func _run() -> void:
  var legacy_ads_z: float = float(mp40.get_meta("source_mp40_marker_source_depth_z", 99.0))
  var solved_ads_z: float = float(mp40.get_meta("source_mp40_marker_solved_depth_z", -99.0))
  if (absf(legacy_ads_z + 0.24045) > 0.0005
-  or absf(solved_ads_z - legacy_ads_z - 0.020) > 0.00001):
-  push_error("MP40_VISUAL_RED: expected original source ADS rig plus exact 20mm forward")
+  or absf(solved_ads_z - legacy_ads_z - 0.056) > 0.00001):
+  push_error("MP40_VISUAL_RED: expected original source ADS rig plus 56mm camera proximity")
+  quit(6)
+  return
+ var eye_rear_m: float = float(mp40.get_meta("source_mp40_12cm_eye_distance_test", -1.0))
+ if eye_rear_m < 0.105 or eye_rear_m > 0.135:
+  push_error("MP40_VISUAL_RED: physical rear sight camera relief is not near 12cm")
   quit(6)
   return
  print("MP40_VISUAL_PROXIMITY_GREEN source_z=",legacy_ads_z,
+    " real_rear_depth_m=",eye_rear_m,
     " original_sight_axis_unchanged=true", " closer_z=",solved_ads_z)
  # Optical fit is source-derived; do not run arbitrary X/Y/yaw sweeps.
  # Save real empty-reload samples before and after the hand withdraws.
