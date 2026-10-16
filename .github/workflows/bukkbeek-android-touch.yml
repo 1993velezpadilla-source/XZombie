@@ -16,6 +16,7 @@ on:
       - experiment/mp40-ads-arm-ik-source-v1-20261015
       - experiment/mp40-ads-proximity-original-axis-20261015
       - experiment/mp40-ads-12cm-source-optics-v5-20261015
+      - feature/mp40-universal-motion-v6-20261015
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -89,6 +90,7 @@ jobs:
           cp bukkbeek-mobile/mobile/touch_hud.gd _build/bukkbeek/mobile/touch_hud.gd
           cp bukkbeek-mobile/mobile/virtual_joystick.gd _build/bukkbeek/mobile/virtual_joystick.gd
           cp bukkbeek-mobile/mobile/mp40_weapon.gd _build/bukkbeek/mobile/mp40_weapon.gd
+          cp bukkbeek-mobile/mobile/universal_weapon_motion.gd _build/bukkbeek/mobile/universal_weapon_motion.gd
           cp bukkbeek-mobile/mobile/mp40_ads_arm_modifier.gd _build/bukkbeek/mobile/mp40_ads_arm_modifier.gd
           cp bukkbeek-mobile/mobile/mp40_runtime_probe.gd _build/bukkbeek/mobile/mp40_runtime_probe.gd
           cp bukkbeek-mobile/mobile/mp40_visual_probe.gd _build/bukkbeek/mobile/mp40_visual_probe.gd
@@ -164,6 +166,8 @@ jobs:
             2>&1 | tee /tmp/bukkbeek-mp40-visual.log
           grep -q 'MP40_VISUAL_SCREENSHOT_GREEN ads' /tmp/bukkbeek-mp40-visual.log
           grep -q 'MP40_VISUAL_SCREENSHOT_GREEN reload_finished_idle' /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_VISUAL_SCREENSHOT_GREEN v6_sprint_source_hands' /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_VISUAL_SCREENSHOT_GREEN v6_ads_return_12cm' /tmp/bukkbeek-mp40-visual.log
           test -s _build/bukkbeek/visual_probes/ads.png
 
       - name: Publish MP40 visual proof (do not confuse with on-phone validation)
