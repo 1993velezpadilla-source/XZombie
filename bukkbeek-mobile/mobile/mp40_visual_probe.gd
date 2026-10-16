@@ -185,9 +185,56 @@ func _run() -> void:
     " real_rear_depth_m=",eye_rear_m,
     " original_sight_axis_unchanged=true", " closer_z=",solved_ads_z)
  # Optical fit is source-derived; do not run arbitrary X/Y/yaw sweeps.
- # Save real empty-reload samples before and after the hand withdraws.
+ # V6: source-geometry images from ONE SAME renderer at original resolution.
+ # No photo crops. Check walking and sprint sway move full hands+gun together
+ # and ADS returns to V5's exact optical center before reloading.
  root.get_node("Global").emit_signal("aim_mode_changed", false)
  await create_timer(0.4).timeout
+ var loc: Node3D = mp40.get("_universal_motion") as Node3D
+ if loc == null:
+  push_error("MP40_VISUAL_RED no authentic universal source locomotion")
+  quit(6)
+  return
+ for i: int in range(62):
+  loc.call("_tick_motion", 1.0/60.0, 0.55, false, false, false, 0.1)
+ await _capture(root, weapon_view, "v6_walk_source_hands")
+ for i: int in range(80):
+  loc.call("_tick_motion", 1.0/60.0, 1.0, true, false, false, 0.0)
+ if loc.position.length() < 0.015:
+  push_error("MP40_VISUAL_RED sprint still stiff, zero first-person hands motion")
+  quit(6)
+  return
+ await _capture(root, weapon_view, "v6_sprint_source_hands")
+ # REAL gamepad/Android touchscreen path: full-forward virtual joystick
+ # generates Input actions forward+sprint. This must trigger LIVE motion
+ # via CharacterBody3D velocity, not only our deterministic test helper.
+ for i: int in range(75):
+  loc.call("_tick_motion", 1.0/60.0, 0.0, false, false, false, 0.0)
+ Input.action_press("forward")
+ Input.action_press("sprint")
+ await create_timer(0.40).timeout
+ if str(loc.get("_motion_state")) != "sprint":
+  push_error("MP40_VISUAL_RED: real Bukkbeek player sprint input failed to move MP40; state="+str(loc.get("_motion_state")))
+  Input.action_release("forward")
+  Input.action_release("sprint")
+  quit(6)
+  return
+ print("MP40_V6_REAL_ANDROID_INPUT_SPRINT_GREEN state=",loc.get("_motion_state"),
+  " source_pivot_motion_m=",loc.position.length())
+ await _capture(root, weapon_view, "v6_real_sprint_input")
+ Input.action_release("forward")
+ Input.action_release("sprint")
+ await create_timer(0.24).timeout
+ for i: int in range(95):
+  loc.call("_tick_motion", 1.0/60.0, 0.0, false, true, false, 0.0)
+ root.get_node("Global").emit_signal("aim_mode_changed", true)
+ await create_timer(0.45).timeout
+ await _capture(root, weapon_view, "v6_ads_return_12cm")
+ root.get_node("Global").emit_signal("aim_mode_changed", false)
+ await create_timer(0.35).timeout
+ for i: int in range(75):
+  loc.call("_tick_motion", 1.0/60.0, 0.0, false, false, false, 0.0)
+ # Existing verified real EMPTY source animation remains the authority.
  mp40.set("current_mag", 0)
  mp40.call("start_reload")
  var hands_ap: AnimationPlayer = mp40.get("_hands_anim") as AnimationPlayer
@@ -196,6 +243,23 @@ func _run() -> void:
   push_error("MP40_VISUAL_RED no real source reload")
   quit(3)
   return
+ # Sprint absolutely MUST NOT interrupt real original EMPTY source reload.
+ # Use the SAME actions as the official full-throttle analog joystick.
+ Input.action_press("forward")
+ Input.action_press("sprint")
+ await create_timer(0.31).timeout
+ if not mp40.get("is_reloading") or mp40.get_node("ReloadTimer").is_stopped():
+  push_error("MP40_VISUAL_RED source empty reload CANCELED by real sprint")
+  Input.action_release("forward")
+  Input.action_release("sprint")
+  quit(6)
+  return
+ print("MP40_V6_REAL_SPRINT_RELOAD_GREEN source_hands_clip=",hands_ap.current_animation,
+  " source_gun_clip=",gun_ap.current_animation)
+ await _capture(root, weapon_view, "v6_sprint_during_real_empty_reload")
+ Input.action_release("forward")
+ Input.action_release("sprint")
+ await create_timer(0.15).timeout
  var timepoints: Array = [2.2, 3.7, 4.12]
  for t in timepoints:
   hands_ap.seek(t, true)

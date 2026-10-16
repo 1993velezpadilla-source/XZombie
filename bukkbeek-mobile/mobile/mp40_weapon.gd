@@ -59,6 +59,7 @@ const SOURCE_FLASH_TAG := Vector3(0.393835, 0.023172, -0.012254)
 const ADS_OPTICAL_PROXIMITY_M := 0.056
 var _source_sight_axis_solved: bool = false
 var _ads_arm_modifier: SkeletonModifier3D
+var _universal_motion: Node3D
 # The idle j_clip pose can disagree with a reload's FINAL magazine pose.
 # Cache each source pair's genuine final bone transforms and copy ONLY those
 # 1-key idle values immediately before blending to idle (no source PSAs edited).
@@ -104,6 +105,20 @@ func _ready() -> void:
  if _hands_root == null or _gun_root == null:
   push_error("BUKKBEEK_MP40_RED: missing real hand or gun source")
   return
+ # A single additive child moves authentic SOURCE HANDS AND THE ATTACHED GUN
+ # in unison while walking/running. It NEVER modifies the authoritative
+ # FPSHandsRoot ADS/hip transform, existing grip, bullet ray or any PSA keys.
+ # Reparent before applying original animation/grip binding.
+ _universal_motion = preload("res://mobile/universal_weapon_motion.gd").new() as Node3D
+ _universal_motion.name = "UniversalWeaponMotion"
+ fps_arms_root.add_child(_universal_motion)
+ _hands_root.reparent(_universal_motion, false)
+ _gun_root.reparent(_universal_motion, false)
+ # The real MP40 firing VFX marker follows the SAME weapon movement pivot,
+ # otherwise muzzle flash visibly detaches from the gun while sprinting.
+ if muzzle_flash_position != null:
+  muzzle_flash_position.reparent(_universal_motion, false)
+ set_meta("mp40_v6_source_locomotion_pivot", true)
  # Both source PSA sets use +X barrel-forward, whereas Godot cameras look -Z.
  _hands_root.rotation_degrees.y = 90.0
  _hands_anim = _find_anim_player(_hands_root)
@@ -122,6 +137,16 @@ func _ready() -> void:
  _reload_hands_clip = _clip(_hands_anim, "PSA_MP40ReloadHands")
  if _reload_hands_clip.is_empty():
   _reload_hands_clip = _clip(_hands_anim, "PSA_viewmodel_mp40_reload_empty")
+ # Audit authentic imported animation names, without inventing a native
+ # sprint clip. Universal motion fills missing walk/run on ONE shared pivot.
+ var genuine_movement_psas: Array[String] = []
+ for psa: StringName in _hands_anim.get_animation_list():
+  var actual: String = str(psa)
+  if "sprint" in actual.to_lower() or "walk" in actual.to_lower() or "run" in actual.to_lower():
+   genuine_movement_psas.append(actual)
+ set_meta("mp40_v6_source_movement_psas", genuine_movement_psas)
+ print("MP40_V6_SOURCE_MOVEMENT_PSA_AUDIT found=", genuine_movement_psas,
+  " total_hand_psas=", _hands_anim.get_animation_list().size())
  _gun_idle_clip = _clip(_gun_anim, "PSA_HandIdleMP40")
  _gun_fire_clip = _clip(_gun_anim, "PSA_viewmodel_mp40_fire")
  _gun_reload_clip = _clip(_gun_anim, "PSA_viewmodel_mp40_reload")
@@ -387,6 +412,15 @@ func _derive_optical_ads_from_mesh() -> void:
   _source_ok = false
   return
  focused_aim_position.transform = fitted
+ # Activate additive locomotion ONLY after V5's approved skinned-gun optical
+ # calibration, so the source rear/front landmarks never move during fit.
+ var source_player: CharacterBody3D = get_parent().get_parent() as CharacterBody3D
+ if _universal_motion == null or source_player == null or not bool(
+  _universal_motion.call("configure", source_player, self)):
+  push_error("BUKKBEEK_MP40_V6_RED: original player locomotion source unavailable")
+  _source_ok = false
+  return
+ set_meta("mp40_v6_universal_motion_ready", true)
  # Godot 4.6 SkeletonModifier3D runs AFTER the source hand AnimationPlayer
  # and before GPU skinning. The modifier never edits source PSAs, grips or
  # magazine; while stable ADS idle only, it changes SHOULDER/ELBOW geometry

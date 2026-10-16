@@ -255,6 +255,66 @@ func _run() -> void:
  globals_node.emit_signal("aim_mode_changed", false)
  await create_timer(0.25).timeout
 
+ # V6 motion is a SHARED PARENT of source marine hands / original gun.
+ # The V5 ADS rig must be exactly unchanged by the independent swing layer.
+ var motion: Node3D = mp40.get("_universal_motion") as Node3D
+ if (motion == null or motion.get_parent() != mp40.get_node("FPSHandsRoot")
+  or not bool(mp40.get_meta("mp40_v6_universal_motion_ready", false))):
+  _fail("V6 universal locomotion not attached to source MP40 rig")
+  return
+ var hand_root: Node3D = mp40.get("_hands_root") as Node3D
+ var gun_root: Node3D = mp40.get("_gun_root") as Node3D
+ if hand_root.get_parent() != motion or not gun_root.is_ancestor_of(hand_root) and not hand_root.is_ancestor_of(gun_root):
+  # Gun is an authentic child of the hands' tag_weapon socket.
+  if hand_root.get_parent() != motion or not hand_root.is_ancestor_of(gun_root):
+   _fail("sprint does not move original MP40 gun together with the source hands")
+   return
+ var approved_ads_marker: Transform3D = mp40.get_node("FocusedAimPosition").transform
+ var approved_hip_marker: Transform3D = mp40.get_node("StandardAimPosition").transform
+ var old_hands_clip: String = (mp40.get("_hands_anim") as AnimationPlayer).current_animation
+ for i: int in range(95):
+  motion.call("_tick_motion", 1.0/60.0, 0.50, false, false, false, 0.08)
+ if int(motion.get("_sprint_frames")) != 0 or str(motion.get("_motion_state")) != "walk":
+  _fail("V6 procedural WALK missing/playing SPRINT while walking")
+  return
+ var walk_displacement_m: float = motion.position.length()
+ for i: int in range(95):
+  motion.call("_tick_motion", 1.0/60.0, 1.0, true, false, false, 0.0)
+ var sprint_offset_m: float = motion.position.length()
+ if (str(motion.get("_motion_state")) != "sprint"
+  or int(motion.get("_sprint_frames")) < 20
+  or sprint_offset_m < 0.014 or sprint_offset_m > 0.09):
+  _fail("V6 authentic combined source gun/hands sprint not animated. offset_m="+str(sprint_offset_m))
+  return
+ print("BUKKBEEK_MP40_V6_SPRINT_GREEN walk_offset_m=",walk_displacement_m,
+  " sprint_offset_m=",sprint_offset_m," real_frames=",motion.get("_sprint_frames"))
+ # Sprint while reloading MUST preserve source reload and timer: motion only
+ # adds low-amplitude walking bob. No weapon state is changed by motion.
+ var reload_before: bool = bool(mp40.get("is_reloading"))
+ for i: int in range(30):
+  motion.call("_tick_motion", 1.0/60.0, 1.0, true, false, true, 0.0)
+ if (str(motion.get("_motion_state")) != "reload_moving"
+  or bool(mp40.get("is_reloading")) != reload_before):
+  _fail("V6 sprint canceled or altered source MP40 reload state")
+  return
+ print("BUKKBEEK_MP40_V6_RELOAD_WHILE_MOVING_GREEN source_reload_unchanged=true")
+ # Movement must disappear in ADS and produce no permanent optical offset.
+ for i: int in range(110):
+  motion.call("_tick_motion", 1.0/60.0, 0.0, false, true, false, 0.0)
+ if (str(motion.get("_motion_state")) != "ads" or motion.position.length() > 0.001
+  or not mp40.get_node("FocusedAimPosition").transform.is_equal_approx(approved_ads_marker)
+  or not mp40.get_node("StandardAimPosition").transform.is_equal_approx(approved_hip_marker)
+  or (mp40.get("_hands_anim") as AnimationPlayer).current_animation != old_hands_clip):
+  _fail("V6 sprint ruined approved 12cm MP40 ADS or original hand PSA")
+  return
+ print("BUKKBEEK_MP40_V6_ADS_LOCK_GREEN original_fov=75 source_rear=12cm source_PSA_unchanged=true")
+ for i: int in range(80):
+  motion.call("_tick_motion", 1.0/60.0, 0.0, false, false, false, 0.0)
+ if motion.position.length() > 0.001:
+  _fail("V6 weapon cannot recover original idle pose after sprint")
+  return
+ print("BUKKBEEK_MP40_V6_IDLE_SETTLE_GREEN rest_offset_m=",motion.position.length())
+
  # Simulate a bad 170ms renderer stall. The upstream manager's
  # lerp(t = 50 * 0.17 = 8.5) explodes offscreen; the patched renderer MUST
  # clamp the camera-follow coefficient to <= 1 and snap back safely.
