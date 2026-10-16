@@ -17,6 +17,7 @@ on:
       - experiment/mp40-ads-proximity-original-axis-20261015
       - experiment/mp40-ads-12cm-source-optics-v5-20261015
       - feature/mp40-universal-motion-v6-20261015
+      - feature/bukkbeek-mobile-controls-v7-20261016
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -88,6 +89,9 @@ jobs:
         run: |
           mkdir -p _build/bukkbeek/mobile/official_png
           cp bukkbeek-mobile/mobile/touch_hud.gd _build/bukkbeek/mobile/touch_hud.gd
+          cp bukkbeek-mobile/mobile/mobile_settings.gd _build/bukkbeek/mobile/mobile_settings.gd
+          cp bukkbeek-mobile/mobile/mobile_player.gd _build/bukkbeek/mobile/mobile_player.gd
+          cp bukkbeek-mobile/mobile/mobile_grenade.gd _build/bukkbeek/mobile/mobile_grenade.gd
           cp bukkbeek-mobile/mobile/virtual_joystick.gd _build/bukkbeek/mobile/virtual_joystick.gd
           cp bukkbeek-mobile/mobile/mp40_weapon.gd _build/bukkbeek/mobile/mp40_weapon.gd
           cp bukkbeek-mobile/mobile/universal_weapon_motion.gd _build/bukkbeek/mobile/universal_weapon_motion.gd
@@ -103,6 +107,8 @@ jobs:
           ! grep -Ei 'metal_(spring|close)|rubberduck|CC0' bukkbeek-mobile/mobile/mp40.tscn bukkbeek-mobile/mobile/mp40_weapon.gd
           cp bukkbeek-mobile/official_png/*.png _build/bukkbeek/mobile/official_png/
           python3 bukkbeek-mobile/patch_bukkbeek.py _build/bukkbeek
+          python3 bukkbeek-mobile/patch_mobile_v7.py _build/bukkbeek
+          python3 bukkbeek-mobile/verify_mobile_v7.py _build/bukkbeek
           test -s _build/bukkbeek/resources/player/fps_demo_arms.glb
           test -s _build/bukkbeek/resources/undead/fps_demo_undead.glb
           grep -q 'NodePath("MP40Source")' _build/bukkbeek/player/player.tscn
