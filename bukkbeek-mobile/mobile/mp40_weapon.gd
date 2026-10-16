@@ -49,11 +49,14 @@ const SOURCE_REAR_CLEAR_APERTURE_Y := 0.060
 const SOURCE_FRONT_POST_L := Vector3(0.366805, 0.053975, -0.013497)
 const SOURCE_FRONT_POST_R := Vector3(0.366805, 0.053975, -0.011572)
 const SOURCE_FLASH_TAG := Vector3(0.393835, 0.023172, -0.012254)
-# Approved original near-eye composition is immutable HIP; a small controlled
-# +20mm ADS-ONLY optical-ray translation gives a closer MP40 view without
-# changing FOV, pitch, source grip or animations. Three real frame sizes
-# (12/20/28 mm) were rendered first, not JPEG/PNG crops.
-const ADS_OPTICAL_PROXIMITY_M := 0.020
+# Original source HIP composition / 75 degree weapon FOV / genuine skinned
+# arms are immutable. V4 test establishes physical rear-sight camera relief
+# 0.15559 m at +20 mm. User reported V4 still too far away. Compute for
+# proposed 0.120 m physical distance: +20 mm + (155.59-120.0) mm =
+# +55.59 mm, rounded to 56 mm from ORIGINAL source ADS marker.
+# Front and rear iron sight stay on original source-measured -Z aim ray.
+# Do NOT treat this as an official COD viewmodel measurement.
+const ADS_OPTICAL_PROXIMITY_M := 0.056
 var _source_sight_axis_solved: bool = false
 var _ads_arm_modifier: SkeletonModifier3D
 # The idle j_clip pose can disagree with a reload's FINAL magazine pose.
@@ -396,6 +399,11 @@ func _derive_optical_ads_from_mesh() -> void:
  set_meta("source_mp40_marker_source_depth_z", source_ads_depth_z)
  set_meta("source_mp40_marker_solved_depth_z", fitted.origin.z)
  set_meta("source_mp40_ads_proximity_m", ADS_OPTICAL_PROXIMITY_M)
+ if depth < 0.105 or depth > 0.135:
+  push_error("BUKKBEEK_MP40_ADS_RED: source rear-sight eye distance outside 12cm test target: " + str(depth))
+  _source_ok = false
+  return
+ set_meta("source_mp40_12cm_eye_distance_test", depth)
  set_meta("source_mp40_original_unchanged_marker_z", original_focus.origin.z)
  print("MP40_ADS_OPTICAL_PROXIMITY_SOURCE_GREEN original_marker_z=",source_ads_depth_z,
   " new_marker_z=",fitted.origin.z, " additional_m=",ADS_OPTICAL_PROXIMITY_M)
