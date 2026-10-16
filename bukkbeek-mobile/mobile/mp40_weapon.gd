@@ -114,6 +114,10 @@ func _ready() -> void:
  fps_arms_root.add_child(_universal_motion)
  _hands_root.reparent(_universal_motion, false)
  _gun_root.reparent(_universal_motion, false)
+ # The real MP40 firing VFX marker follows the SAME weapon movement pivot,
+ # otherwise muzzle flash visibly detaches from the gun while sprinting.
+ if muzzle_flash_position != null:
+  muzzle_flash_position.reparent(_universal_motion, false)
  set_meta("mp40_v6_source_locomotion_pivot", true)
  # Both source PSA sets use +X barrel-forward, whereas Godot cameras look -Z.
  _hands_root.rotation_degrees.y = 90.0
