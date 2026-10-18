@@ -18,6 +18,7 @@ on:
       - experiment/mp40-ads-12cm-source-optics-v5-20261015
       - feature/mp40-universal-motion-v6-20261015
       - feature/bukkbeek-mobile-controls-v7-20261016
+      - feature/xziel-multiweapon-aether-v8-20261018
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -94,6 +95,8 @@ jobs:
           cp bukkbeek-mobile/mobile/mobile_grenade.gd _build/bukkbeek/mobile/mobile_grenade.gd
           cp bukkbeek-mobile/mobile/virtual_joystick.gd _build/bukkbeek/mobile/virtual_joystick.gd
           cp bukkbeek-mobile/mobile/mp40_weapon.gd _build/bukkbeek/mobile/mp40_weapon.gd
+          cp bukkbeek-mobile/mobile/source_weapon.gd _build/bukkbeek/mobile/source_weapon.gd
+          cp bukkbeek-mobile/mobile/weapon_pack_runtime_probe.gd _build/bukkbeek/mobile/weapon_pack_runtime_probe.gd
           cp bukkbeek-mobile/mobile/universal_weapon_motion.gd _build/bukkbeek/mobile/universal_weapon_motion.gd
           cp bukkbeek-mobile/mobile/mp40_ads_arm_modifier.gd _build/bukkbeek/mobile/mp40_ads_arm_modifier.gd
           cp bukkbeek-mobile/mobile/mp40_runtime_probe.gd _build/bukkbeek/mobile/mp40_runtime_probe.gd
@@ -109,6 +112,8 @@ jobs:
           python3 bukkbeek-mobile/patch_bukkbeek.py _build/bukkbeek
           python3 bukkbeek-mobile/patch_mobile_v7.py _build/bukkbeek
           python3 bukkbeek-mobile/verify_mobile_v7.py _build/bukkbeek
+          python3 bukkbeek-mobile/stage_aether_weapon_pack.py _build/bukkbeek
+          python3 bukkbeek-mobile/verify_multiweapon_v8.py _build/bukkbeek
           test -s _build/bukkbeek/resources/player/fps_demo_arms.glb
           test -s _build/bukkbeek/resources/undead/fps_demo_undead.glb
           grep -q 'NodePath("MP40Source")' _build/bukkbeek/player/player.tscn
@@ -160,6 +165,16 @@ jobs:
             exit 4
           fi
 
+      - name: Verify actual Bukkbeek multiweapon scene and exact source PSA bindings
+        run: |
+          set -o pipefail
+          timeout 120s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/weapon_pack_runtime_probe.gd 2>&1 | tee /tmp/bukkbeek-multiweapon-runtime.log
+          grep -q 'XZIEL_MULTIWEAPON_RUNTIME_GREEN' /tmp/bukkbeek-multiweapon-runtime.log
+          if grep -E 'XZIEL_MULTIWEAPON_RUNTIME_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/bukkbeek-multiweapon-runtime.log; then
+            exit 7
+          fi
+
       - name: Render real 2D pixel captures of MP40 in ADS and empty-reload frames
         run: |
           sudo apt-get update -qq
@@ -208,7 +223,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Bukkbeek-XZIEL-MP40-Android-ARM64
+          name: Bukkbeek-XZIEL-MultiWeapon-V8-Android-ARM64
           path: _build/bukkbeek/build/bukkbeek_xziel_touch_arm64.apk
           retention-days: 14
 
@@ -216,7 +231,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Bukkbeek-XZIEL-MP40-Godot-Source
+          name: Bukkbeek-XZIEL-MultiWeapon-V8-Godot-Source
           path: |
             _build/bukkbeek/
             !_build/bukkbeek/.godot/
