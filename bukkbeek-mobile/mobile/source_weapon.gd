@@ -106,9 +106,11 @@ func _ready() -> void:
  set_meta("source_weapon_id", source_weapon_id)
  _hand_anim.animation_finished.connect(_on_hand_clip_finished)
  _gun_anim.animation_finished.connect(_on_gun_clip_finished)
- var player = Global.player
- if player != null and _motion_pivot.has_method("configure"):
-  _motion_pivot.call("configure", player, self)
+ var source_player: CharacterBody3D = get_parent().get_parent() as CharacterBody3D
+ if source_player == null or not bool(_motion_pivot.call("configure", source_player, self)):
+  push_error("XZIEL_WEAPON_RED source movement controller unavailable " + source_weapon_id)
+  _source_ready = false
+  return
  _play_source_idle()
  print("XZIEL_SOURCE_WEAPON_BOUND id=", source_weapon_id, " pairedPSA=true real_audio=true")
  
