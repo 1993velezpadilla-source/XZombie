@@ -1,0 +1,513 @@
+{
+  "version": 1,
+  "asset_source": {
+    "repo": "1993velezpadilla-source/config-old-3",
+    "commit": "5c8093db6c5eab64d653f715813f1d70915d393f",
+    "authority": "Project Aether UE5.7 / World at War T4 Marine, NOT verified BO3",
+    "note": "Confirm rights before publicly redistributing original game-derived assets."
+  },
+  "weapons": [
+    {
+      "id": "colt",
+      "name": "Colt",
+      "family": "pistol",
+      "playable_gate": "candidate",
+      "gameplay": {
+        "magazine": 8,
+        "cooldown": 0.17,
+        "damage": 24,
+        "reload_time_catalog": 1.48,
+        "automatic": false,
+        "range_m": 95,
+        "ads_fov": 49
+      },
+      "animations": {
+        "gun": [
+          "PSA_Colt1911Idle",
+          "PSA_Colt45Shoot",
+          "PSA_Colt45WAWBringOut",
+          "PSA_Colt45WAWBringOut.001",
+          "PSA_Colt45WAWPutaway",
+          "PSA_ColtIdleHandHold",
+          "PSA_viewmodel_colt45_ads_fire",
+          "PSA_viewmodel_colt45_ads_fire.001",
+          "PSA_viewmodel_colt45_fire",
+          "PSA_viewmodel_colt45_fire.001",
+          "PSA_viewmodel_colt45_lastshot",
+          "PSA_viewmodel_colt45_lastshot.001",
+          "PSA_viewmodel_colt45_lastshot.002",
+          "PSA_viewmodel_colt45_reload_notempty",
+          "PSA_viewmodel_colt45_reload_notempty.001",
+          "PSA_viewmodel_colt45_reload_notempty.002",
+          "PSA_viewmodel_colt45_reloadempty",
+          "PSA_viewmodel_colt45_reloadempty.001",
+          "PSA_viewmodel_colt45_reloadempty.002"
+        ],
+        "hands": [
+          "PSA_Colt45WAWBringOut",
+          "PSA_Colt45WAWBringOut.001",
+          "PSA_Colt45WAWPutaway",
+          "PSA_ColtIdleHandHold",
+          "PSA_viewmodel_colt45_ads_fire",
+          "PSA_viewmodel_colt45_ads_fire.001",
+          "PSA_viewmodel_colt45_fire",
+          "PSA_viewmodel_colt45_fire.001",
+          "PSA_viewmodel_colt45_lastshot",
+          "PSA_viewmodel_colt45_lastshot.001",
+          "PSA_viewmodel_colt45_reload_notempty",
+          "PSA_viewmodel_colt45_reload_notempty.001",
+          "PSA_viewmodel_colt45_reloadempty",
+          "PSA_viewmodel_colt45_reloadempty.001"
+        ]
+      },
+      "bone": "tag_weapon",
+      "materials": [
+        {
+          "source_material": "mtl_weapon_colt45_Inst",
+          "albedo": "res://assets/weapons/aether_waw_textures/colt45_c.png",
+          "normal": "res://assets/weapons/aether_waw_textures/colt45_n_normal.png",
+          "specular": "res://assets/weapons/aether_waw_textures/_colt45_s-rgb_colt45_g-l-11.png",
+          "metallic": 0.34,
+          "roughness": 0.42,
+          "normal_scale": 1.33,
+          "two_sided": false
+        }
+      ],
+      "source_files": [
+        {
+          "path": "xogot/assets/weapons/aether_waw_real/colt/viewmodel.glb",
+          "sha": "3f5ebe22bcf997149085959e3a5340d6c786951e",
+          "bytes": 538212
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_hands/t4_marine/colt/viewhands.glb",
+          "sha": "01c1402ab6cfd34511077f98baa728dc7c2e384a",
+          "bytes": 1438152
+        },
+        {
+          "path": "xogot/assets/audio/weapons/mapmod/colt/fire.wav",
+          "sha": "647ffca829d268188fff278644344e59c601e3cc",
+          "bytes": 71232
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/colt45_c.png",
+          "sha": "031508e2ff3cd16065ff18c8cea770ed7edd6f86",
+          "bytes": 205953
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/colt45_n_normal.png",
+          "sha": "df386676e01cb3370db3440f71594053711f69f8",
+          "bytes": 122356
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/_colt45_s-rgb_colt45_g-l-11.png",
+          "sha": "47c026a0b3af7d6223e17389222bcd33c7b42312",
+          "bytes": 447720
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_hands/t4_marine/common/textures/viewmodel_usa_marine_c.png",
+          "sha": "91d95e6b711258c048768234dae9e6e71c86952d",
+          "bytes": 2176739
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_hands/t4_marine/common/textures/viewmodel_usa_marine_n.png",
+          "sha": "bc1cd8e91a18be04309aea0f9ee8e7376940f903",
+          "bytes": 2413151
+        }
+      ]
+    },
+    {
+      "id": "thompson",
+      "name": "Thompson",
+      "family": "smg",
+      "playable_gate": "candidate",
+      "gameplay": {
+        "magazine": 30,
+        "cooldown": 0.09,
+        "damage": 36,
+        "reload_time_catalog": 1.82,
+        "automatic": true,
+        "range_m": 110,
+        "ads_fov": 45
+      },
+      "animations": {
+        "gun": [
+          "PSA_viewmodel_thompson_fire",
+          "PSA_viewmodel_thompson_fire.001",
+          "PSA_viewmodel_thompson_fire.002",
+          "PSA_viewmodel_thompson_fire_ads",
+          "PSA_viewmodel_thompson_fire_ads.001",
+          "PSA_viewmodel_thompson_idle",
+          "PSA_viewmodel_thompson_idle.001",
+          "PSA_viewmodel_thompson_lastshot",
+          "PSA_viewmodel_thompson_pullout",
+          "PSA_viewmodel_thompson_pullout.001",
+          "PSA_viewmodel_thompson_pullout.002",
+          "PSA_viewmodel_thompson_putaway",
+          "PSA_viewmodel_thompson_putaway.001",
+          "PSA_viewmodel_thompson_putaway.002",
+          "PSA_viewmodel_thompson_reload",
+          "PSA_viewmodel_thompson_reload.001",
+          "PSA_viewmodel_thompson_reload.002",
+          "PSA_viewmodel_thompson_reload_empty",
+          "PSA_viewmodel_thompson_reload_empty.001",
+          "PSA_viewmodel_thompson_reload_empty.002"
+        ],
+        "hands": [
+          "PSA_viewmodel_thompson_fire",
+          "PSA_viewmodel_thompson_fire.001",
+          "PSA_viewmodel_thompson_fire_ads",
+          "PSA_viewmodel_thompson_fire_ads.001",
+          "PSA_viewmodel_thompson_idle",
+          "PSA_viewmodel_thompson_pullout",
+          "PSA_viewmodel_thompson_pullout.001",
+          "PSA_viewmodel_thompson_putaway",
+          "PSA_viewmodel_thompson_putaway.001",
+          "PSA_viewmodel_thompson_reload",
+          "PSA_viewmodel_thompson_reload.001",
+          "PSA_viewmodel_thompson_reload_empty",
+          "PSA_viewmodel_thompson_reload_empty.001"
+        ]
+      },
+      "bone": "tag_weapon",
+      "materials": [
+        {
+          "source_material": "mtl_weapon_mp_thompson_Inst",
+          "albedo": "res://assets/weapons/aether_waw_textures/w_tommy_c.png",
+          "normal": "res://assets/weapons/aether_waw_textures/w_tommy_n_normal.png",
+          "specular": "res://assets/weapons/aether_waw_textures/_w_tommy_s-rgb_w_tommy_g-l-11.png",
+          "metallic": 0.34,
+          "roughness": 0.35,
+          "normal_scale": 1,
+          "two_sided": false
+        }
+      ],
+      "source_files": [
+        {
+          "path": "xogot/assets/weapons/aether_waw_real/thompson/viewmodel.glb",
+          "sha": "2dda02bb523e98519a7bf2682d86f03bd62a9488",
+          "bytes": 773288
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_hands/t4_marine/thompson/viewhands.glb",
+          "sha": "fc838513b3f2e347e81766c79fb847f6bbf237b9",
+          "bytes": 1442660
+        },
+        {
+          "path": "xogot/assets/audio/weapons/mapmod/thompson/fire.wav",
+          "sha": "93d6a2d346830cc17693125eb00ff788d83a1410",
+          "bytes": 61484
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/w_tommy_c.png",
+          "sha": "7b2e3ed2f0104888af387f8f4b69b02734ba4417",
+          "bytes": 241773
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/w_tommy_n_normal.png",
+          "sha": "3592be020489810bf38c62cf1a50c4db261c1b36",
+          "bytes": 470170
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/_w_tommy_s-rgb_w_tommy_g-l-11.png",
+          "sha": "69d006d9adaa0f28f7fee6b7aa285cc570a68a52",
+          "bytes": 508496
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_hands/t4_marine/common/textures/viewmodel_usa_marine_c.png",
+          "sha": "91d95e6b711258c048768234dae9e6e71c86952d",
+          "bytes": 2176739
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_hands/t4_marine/common/textures/viewmodel_usa_marine_n.png",
+          "sha": "bc1cd8e91a18be04309aea0f9ee8e7376940f903",
+          "bytes": 2413151
+        }
+      ]
+    },
+    {
+      "id": "kar98k",
+      "name": "Kar98k",
+      "family": "sniper",
+      "playable_gate": "candidate",
+      "gameplay": {
+        "magazine": 5,
+        "cooldown": 0.82,
+        "damage": 132,
+        "reload_time_catalog": 2.6,
+        "automatic": false,
+        "range_m": 245,
+        "ads_fov": 30
+      },
+      "animations": {
+        "gun": [
+          "PSA_viewmodel_kar98_fire",
+          "PSA_viewmodel_kar98_fire.001",
+          "PSA_viewmodel_kar98_fire.002",
+          "PSA_viewmodel_kar98_fire_ads",
+          "PSA_viewmodel_kar98_fire_ads.001",
+          "PSA_viewmodel_kar98_first_raise",
+          "PSA_viewmodel_kar98_first_raise.001",
+          "PSA_viewmodel_kar98_first_raise.002",
+          "PSA_viewmodel_kar98_idle",
+          "PSA_viewmodel_kar98_idle.001",
+          "PSA_viewmodel_kar98_pullout",
+          "PSA_viewmodel_kar98_pullout.001",
+          "PSA_viewmodel_kar98_pullout.002",
+          "PSA_viewmodel_kar98_putaway",
+          "PSA_viewmodel_kar98_putaway.001",
+          "PSA_viewmodel_kar98_putaway.002",
+          "PSA_viewmodel_kar98_rechamber",
+          "PSA_viewmodel_kar98_rechamber.001",
+          "PSA_viewmodel_kar98_rechamber.002",
+          "PSA_viewmodel_kar98_reload",
+          "PSA_viewmodel_kar98_reload.001",
+          "PSA_viewmodel_kar98_reload.002"
+        ],
+        "hands": [
+          "PSA_viewmodel_kar98_fire",
+          "PSA_viewmodel_kar98_fire.001",
+          "PSA_viewmodel_kar98_fire_ads",
+          "PSA_viewmodel_kar98_fire_ads.001",
+          "PSA_viewmodel_kar98_first_raise",
+          "PSA_viewmodel_kar98_first_raise.001",
+          "PSA_viewmodel_kar98_idle",
+          "PSA_viewmodel_kar98_pullout",
+          "PSA_viewmodel_kar98_pullout.001",
+          "PSA_viewmodel_kar98_putaway",
+          "PSA_viewmodel_kar98_putaway.001",
+          "PSA_viewmodel_kar98_rechamber",
+          "PSA_viewmodel_kar98_rechamber.001",
+          "PSA_viewmodel_kar98_reload",
+          "PSA_viewmodel_kar98_reload.001"
+        ]
+      },
+      "bone": "tag_weapon",
+      "materials": [
+        {
+          "source_material": "mtl_weapon_k98round_c",
+          "albedo": "res://assets/weapons/aether_waw_textures/k98round_c.png",
+          "normal": "res://assets/weapons/aether_waw_textures/_normal_linear.png",
+          "specular": "res://assets/weapons/aether_waw_textures/k98round_c.png",
+          "metallic": 1,
+          "roughness": 0,
+          "normal_scale": 1,
+          "two_sided": false
+        },
+        {
+          "source_material": "mtl_weapon_stripper_clip_c",
+          "albedo": "res://assets/weapons/aether_waw_textures/stripper_clip_c.png",
+          "normal": "",
+          "specular": "res://assets/weapons/aether_waw_textures/stripper_clip_c.png",
+          "metallic": 0.5,
+          "roughness": 0.42,
+          "normal_scale": 1,
+          "two_sided": false
+        },
+        {
+          "source_material": "mtl_weapon_mp_kar98_Inst",
+          "albedo": "res://assets/weapons/aether_waw_textures/weapon_kar98_c.png",
+          "normal": "res://assets/weapons/aether_waw_textures/_identitynormalmap.png",
+          "specular": "res://assets/weapons/aether_waw_textures/_weapon_kar98_s-rgb_weapon_kar98_cp-l.png",
+          "metallic": 0.35,
+          "roughness": 0.25,
+          "normal_scale": 1,
+          "two_sided": false
+        },
+        {
+          "source_material": "mtl_weapon_mp_kar98_Inst1",
+          "albedo": "res://assets/weapons/aether_waw_textures/weapon_kar98_c.png",
+          "normal": "res://assets/weapons/aether_waw_textures/weapon_kar98_n_normal.png",
+          "specular": "res://assets/weapons/aether_waw_textures/_weapon_kar98_s-rgb_weapon_kar98_cp-l.png",
+          "metallic": 0.34,
+          "roughness": 0.42,
+          "normal_scale": 1,
+          "two_sided": false
+        }
+      ],
+      "source_files": [
+        {
+          "path": "xogot/assets/weapons/aether_waw_real/kar98k/viewmodel.glb",
+          "sha": "e71aebac3336324b657e41f3466678cb738d0b45",
+          "bytes": 674920
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_hands/t4_marine/kar98k/viewhands.glb",
+          "sha": "3bf4b9bebf1838291d4b7af065c03dda43ca52a7",
+          "bytes": 1516332
+        },
+        {
+          "path": "xogot/assets/audio/weapons/mapmod/kar98k/fire.wav",
+          "sha": "b50740da71cab6ebe0794aaf3e80af1a02bd1a9c",
+          "bytes": 204360
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/k98round_c.png",
+          "sha": "83483a783eb4a743ede0341befad147e9914ae13",
+          "bytes": 6099
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/_normal_linear.png",
+          "sha": "8f77d229f09d507738111fb9713ef48932e7b5c0",
+          "bytes": 94
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/stripper_clip_c.png",
+          "sha": "d4ccb8bab7cdec3e93947b2ebacd150a2d506c18",
+          "bytes": 25597
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/weapon_kar98_c.png",
+          "sha": "9ee0039f6eac57d0e83c4f0cc864ea1bb823e663",
+          "bytes": 485520
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/_identitynormalmap.png",
+          "sha": "72b6cea431d9031345ad7864e36e19f8f1b3bb93",
+          "bytes": 94
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/_weapon_kar98_s-rgb_weapon_kar98_cp-l.png",
+          "sha": "32208995f344b7d1519201d4040add4a553bd49b",
+          "bytes": 1035929
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/weapon_kar98_n_normal.png",
+          "sha": "2f79012165e1eca579377956a9863b62fca3d3af",
+          "bytes": 9170
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_hands/t4_marine/common/textures/viewmodel_usa_marine_c.png",
+          "sha": "91d95e6b711258c048768234dae9e6e71c86952d",
+          "bytes": 2176739
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_hands/t4_marine/common/textures/viewmodel_usa_marine_n.png",
+          "sha": "bc1cd8e91a18be04309aea0f9ee8e7376940f903",
+          "bytes": 2413151
+        }
+      ]
+    },
+    {
+      "id": "mg42",
+      "name": "MG42",
+      "family": "lmg",
+      "playable_gate": "missing_source_fire_audio",
+      "gameplay": {
+        "magazine": 125,
+        "cooldown": 0.07,
+        "damage": 48,
+        "reload_time_catalog": 4.45,
+        "automatic": true,
+        "range_m": 145,
+        "ads_fov": 45
+      },
+      "animations": {
+        "gun": [
+          "PSA_MG42Equip",
+          "PSA_MG42Equip.001",
+          "PSA_MG42Idle",
+          "PSA_MG42Unequip",
+          "PSA_MG42Unequip.001",
+          "PSA_viewmodel_mg42_ads_fire",
+          "PSA_viewmodel_mg42_ads_fire.001",
+          "PSA_viewmodel_mg42_fire",
+          "PSA_viewmodel_mg42_fire.001",
+          "PSA_viewmodel_mg42_fire.002",
+          "PSA_viewmodel_mg42_idle",
+          "PSA_viewmodel_mg42_reload",
+          "PSA_viewmodel_mg42_reload.001",
+          "PSA_viewmodel_mg42_reload.002"
+        ],
+        "hands": [
+          "PSA_MG42Equip",
+          "PSA_MG42Equip.001",
+          "PSA_MG42Idle",
+          "PSA_MG42Unequip",
+          "PSA_MG42Unequip.001",
+          "PSA_viewmodel_mg42_ads_fire",
+          "PSA_viewmodel_mg42_ads_fire.001",
+          "PSA_viewmodel_mg42_fire",
+          "PSA_viewmodel_mg42_fire.001",
+          "PSA_viewmodel_mg42_reload",
+          "PSA_viewmodel_mg42_reload.001"
+        ]
+      },
+      "bone": "tag_weapon",
+      "materials": [
+        {
+          "source_material": "mtl_weapon_mp_mg42_Inst",
+          "albedo": "res://assets/weapons/aether_waw_textures/ger_mg_mg42_c.png",
+          "normal": "res://assets/weapons/aether_waw_textures/ger_mg_mg42_n.png",
+          "specular": "res://assets/weapons/aether_waw_textures/_ger_mg_mg42_mp_s-rgb_ger_mg__2659e04c.png",
+          "metallic": 0.4,
+          "roughness": 0.42,
+          "normal_scale": 1,
+          "two_sided": false
+        },
+        {
+          "source_material": "mtl_weapon_mp_drumclip_mg42_Inst",
+          "albedo": "res://assets/weapons/aether_waw_textures/ger_mg_mg42_drumclip_c.png",
+          "normal": "res://assets/weapons/aether_waw_textures/ger_mg_mg42_drumclip_n_normal.png",
+          "specular": "res://assets/weapons/aether_waw_textures/_ger_mg_mg42_drumclip_s-rgb_g_4bb30c2b.png",
+          "metallic": 0.4,
+          "roughness": 0.42,
+          "normal_scale": 1,
+          "two_sided": false
+        }
+      ],
+      "source_files": [
+        {
+          "path": "xogot/assets/weapons/aether_waw_real/mg42/viewmodel.glb",
+          "sha": "c61aec0c85ca00d46e43750f06a48242ea598ea6",
+          "bytes": 864860
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_hands/t4_marine/mg42/viewhands.glb",
+          "sha": "ffb858b275e223909a44792a68c06eb6a17b581b",
+          "bytes": 1339840
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/ger_mg_mg42_c.png",
+          "sha": "da13ca4a84e99823fcc83140b4b26dbcdf76957a",
+          "bytes": 298450
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/ger_mg_mg42_n.png",
+          "sha": "0d6111ff8c8b6d6a8cc3c0ddebd7900a3c6c690d",
+          "bytes": 274650
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/_ger_mg_mg42_mp_s-rgb_ger_mg__2659e04c.png",
+          "sha": "409bd3a73e66b1fc753f76b0b171f8d8e280bf37",
+          "bytes": 944289
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/ger_mg_mg42_drumclip_c.png",
+          "sha": "053369ef99698a7aa139945f7343d55e1282b392",
+          "bytes": 166666
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/ger_mg_mg42_drumclip_n_normal.png",
+          "sha": "d6f96766e7383ddc39d229a1eab62c7c0d4467eb",
+          "bytes": 84452
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_textures/_ger_mg_mg42_drumclip_s-rgb_g_4bb30c2b.png",
+          "sha": "cfb36018193b83993181a7e0c1615143be480d8e",
+          "bytes": 366954
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_hands/t4_marine/common/textures/viewmodel_usa_marine_c.png",
+          "sha": "91d95e6b711258c048768234dae9e6e71c86952d",
+          "bytes": 2176739
+        },
+        {
+          "path": "xogot/assets/weapons/aether_waw_hands/t4_marine/common/textures/viewmodel_usa_marine_n.png",
+          "sha": "bc1cd8e91a18be04309aea0f9ee8e7376940f903",
+          "bytes": 2413151
+        }
+      ]
+    }
+  ]
+}
