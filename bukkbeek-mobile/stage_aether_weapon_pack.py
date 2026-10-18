@@ -183,15 +183,16 @@ for n, ident in enumerate(active):
     resource = f'[ext_resource type="PackedScene" path="res://mobile/{ident}.tscn" id="{ext_id}"]'
     assert resource not in s
     # Add external scene refs before source nodes.
-    scene_ext_anchor = '[node name="Player" type="CharacterBody3D"'
+    scene_ext_anchor = '[sub_resource type="CapsuleShape3D"'
     assert s.count(scene_ext_anchor) == 1
     s = s.replace(scene_ext_anchor, resource + "\n\n" + scene_ext_anchor, 1)
     extras.append(f'[node name="{name}" parent="WeaponsManager" instance=ExtResource("{ext_id}")]')
-    before = 'NodePath("MP40Source")]'
-    if before not in s:
-        before = ', '.join([])
-        raise AssertionError("MP40 weapon collection not found")
-    s = s.replace(before, f'NodePath("MP40Source"), NodePath("{name}")]')
+# Atomically append all source weapons to the ORIGINAL six Bukkbeek nodes.
+weapons_end = 'NodePath("MP40Source")]'
+assert s.count(weapons_end) == 1, "Original 6 weapon entries changed"
+all_names = {"colt":"ColtSource","thompson":"ThompsonSource","kar98k":"Kar98kSource"}
+paths = ', '.join('NodePath("' + all_names[id] + '")' for id in active)
+s = s.replace(weapons_end, 'NodePath("MP40Source"), ' + paths + ']', 1)
 s = s.replace(anchor, "\n\n".join(extras) + "\n\n" + anchor, 1)
 scene.write_text(s)
 
