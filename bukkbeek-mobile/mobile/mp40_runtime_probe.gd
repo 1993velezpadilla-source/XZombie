@@ -26,7 +26,7 @@ func _run() -> void:
   _fail("real player is missing sixth MP40")
   return
  var weapon_nodes: Array = manager.get("weapons_array")
- if weapon_nodes.size() != 6 or not weapon_nodes.has(mp40):
+ if weapon_nodes.size() < 6 or not weapon_nodes.has(mp40) or weapon_nodes[5] != mp40:
   _fail("five old guns plus new MP40 were not registered")
   return
  if not bool(mp40.get_meta("source_mp40_ready", false)):
