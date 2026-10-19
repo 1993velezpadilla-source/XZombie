@@ -90,6 +90,19 @@ func _run() -> void:
    if int(weapon.get("all",0))<500 or int(arm.get("all",0))<500:
     push_error("XZIEL_REAL_FIDELITY_RED original gun or hands not actually rendered "+capture_id)
     quit(5);return
+   # Refuse an APK when a sight marker projects to center but the WHOLE
+   # rifle body is behind the camera, or giant Marine sleeves hide handgun.
+   # These are the exact failures missed by V8/V9 optical-only GREEN.
+   if state=="ads":
+    if int(weapon.get("bottom",0))<1800:
+     push_error("XZIEL_REAL_FIDELITY_RED missing gun receiver/barrel in bottom ADS id="+id+
+      " gun_bottom_px="+str(weapon.get("bottom",0)))
+     quit(5);return
+    var arms_over_gun:=float(arm.get("all",0))/maxf(1.0,float(weapon.get("all",0)))
+    if arms_over_gun>5.5:
+     push_error("XZIEL_REAL_FIDELITY_RED Marines sleeves overwhelm actual 3D gun id="+id+
+      " arm_over_gun="+str(arms_over_gun))
+     quit(5);return
    var center_g:=float(weapon["center"])
    var center_h:=float(arm["center"])
    var ratio:=center_h/maxf(1.0,center_g)
