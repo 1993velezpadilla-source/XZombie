@@ -384,6 +384,8 @@ jobs:
             echo 'MP40_PIXEL_SOURCE_LOWRES_WARNING: original 1448x1086 image not yet in GitHub'
           fi
           python3 bukkbeek-mobile/repair_mp40_pixel_matte.py _build/bukkbeek
+          # V5.2 user phone review: no reload ghosts or opaque ADS sight plug.
+          python3 bukkbeek-mobile/guard_mp40_pixel_frames.py _build/bukkbeek
           cp bukkbeek-mobile/mobile/mp40_pixel_runtime_probe.gd _build/bukkbeek/mobile/
           cp bukkbeek-mobile/mobile/mp40_pixel_visual_probe.gd _build/bukkbeek/mobile/
           timeout 180s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --import 2>&1 | tee /tmp/mp40-pixel-import.log
