@@ -5,6 +5,7 @@ Real animation binding and MP40 regression run in Godot separately.
 from pathlib import Path
 import json
 import sys
+import re
 
 root = Path(sys.argv[1])
 manifest = json.loads((Path(__file__).parent / "weapon_library/source_library_manifest.json").read_text())
@@ -15,6 +16,24 @@ manager = (root / "common/managers/weapons_manager.gd").read_text()
 assert 'NodePath("MP40Source"), NodePath("ColtSource"), NodePath("ThompsonSource"), NodePath("Kar98kSource")' in player_scene
 assert 'current_weapon_index = 5' in manager and 'weapons_array[5].name == "MP40Source"' in manager
 assert (root / "mobile/mp40_weapon.gd").is_file()
+
+# MP40 V6 is the real source-viewmodel UX authority, not demo Bukkbeek.
+# Fail immediately when a newly generated source gun inherits its generic
+# base StandardAimPosition/FocusedAimPosition instead of true MP40 poses.
+def inherited_marker(scene: str, name: str) -> str:
+    hit = re.search(r'\\[node name="' + re.escape(name)
+      + r'"[^\\n]*\\]\\ntransform = (Transform3D\\([^\\n]*\\))', scene)
+    assert hit is not None, f"Source scene missing authoritative {name}"
+    return hit.group(1)
+
+mp40_scn = (root / "mobile/mp40.tscn").read_text()
+for weapon_id in ["colt", "thompson", "kar98k"]:
+    actual_scn = (root / "mobile" / (weapon_id + ".tscn")).read_text()
+    for marker_name in ["StandardAimPosition", "FocusedAimPosition"]:
+        assert inherited_marker(actual_scn, marker_name) == inherited_marker(mp40_scn, marker_name), (
+          f"{weapon_id} reintroduced generic Bukkbeek {marker_name}: MP40 V6 baseline lost"
+        )
+    print("XZIEL_V14_MP40_POSE_AUTHORITY_GREEN "+weapon_id)
 assert (root / "mobile/source_weapon.gd").is_file()
 for w in manifest["weapons"]:
     ident = w["id"]
