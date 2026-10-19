@@ -403,6 +403,12 @@ jobs:
           grep -q 'MP40_PIXEL_TEST_GREEN' /tmp/mp40-pixel-runtime.log
           timeout 45s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --script res://mobile/mp40_25d/motion_probe.gd > /tmp/mp40-25d-motion.log 2>&1 || { cat /tmp/mp40-25d-motion.log; exit 57; }
           grep -q 'MP40_25D_REFERENCE_TIMELINE_GREEN' /tmp/mp40-25d-motion.log
+          # V8: code must import and remain disabled while source sheets are absent.
+          cp bukkbeek-mobile/mobile/mp40_25d/sprite_deck.gd _build/bukkbeek/mobile/mp40_25d/
+          cp bukkbeek-mobile/mobile/mp40_25d/sprite_deck_probe.gd _build/bukkbeek/mobile/mp40_25d/
+          timeout 30s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --script res://mobile/mp40_25d/sprite_deck_probe.gd > /tmp/mp40-25d-deck.log 2>&1 || { cat /tmp/mp40-25d-deck.log; exit 59; }
+          grep -q 'MP40_25D_STREAMING_DECK_GREEN' /tmp/mp40-25d-deck.log
+          cat /tmp/mp40-25d-deck.log
           cat /tmp/mp40-25d-motion.log
           if grep -E 'MP40_PIXEL_TEST_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/mp40-pixel-runtime.log; then exit 41; fi
 
