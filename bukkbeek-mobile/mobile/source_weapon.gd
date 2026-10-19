@@ -20,6 +20,8 @@ var _rechamber_pending: bool = false
 var _source_calibration_done: bool = false
 var _offstage_reload_materials: Array[StandardMaterial3D] = []
 var _saved_viewmodel_near: float = -1.0
+var _source_ads_ik: SkeletonModifier3D
+var _source_ik_tween: Tween
 
 func _ready() -> void:
  super._ready()
@@ -97,6 +99,9 @@ func _ready() -> void:
   return
  if not _apply_source_materials(_hands, false):
   push_error("XZIEL_WEAPON_RED hands missing original material/texture " + source_weapon_id)
+  return
+ if not _check_real_gun_texture_identity():
+  push_error("XZIEL_WEAPON_RED original gun got overwritten with Marine HAND albedo "+source_weapon_id)
   return
  reload_sfx = null # Upstream stock reload != real source; never substitute it.
  animation_player = _hand_anim
@@ -184,12 +189,28 @@ func _calibrate_original_source_geometry() -> void:
   set_meta("source_weapon_bound",false)
   set_meta("source_weapon_status","RED_ORIGINAL_SIGHT_CALIBRATION")
   return
+ # Full MP40 pipeline: preserve real 113-bone source hand wrists while
+ # keeping source elbows and sleeves in their source-authored HIP framing.
+ # Only safe additive SkeletonModifier3D, never touch original PSA keys.
+ var ik:SkeletonModifier3D=preload("res://mobile/source_weapon_ads_ik.gd").new()
+ ik.name="SourceWeaponADSArmIK_"+source_weapon_id
+ ik.influence=0.0
+ _hand_skeleton.add_child(ik)
+ if not bool(ik.call("configure",self,fps_arms_root,
+  standard_aim_position.transform,focused_aim_position.transform)):
+  push_error("XZIEL_WEAPON_RED original hand arm IK unavailable "+source_weapon_id)
+  ik.queue_free()
+  _source_ready=false
+  set_meta("source_weapon_bound",false)
+  return
+ _source_ads_ik=ik
  _source_calibration_done=true
- set_meta("source_weapon_status","SOURCE_OPTICS_SOLVED_NEEDS_VISUAL_APPROVAL")
+ set_meta("source_weapon_status","SOURCE_OPTICS_IK_SOLVED_NEEDS_VISUAL_APPROVAL")
  # If weapon is already equipped, place existing Bukkbeek pivot in the
  # calibrated pose, NOT the stale camera-near original default ADS marker.
  if visible and fps_arms_root!=null:
   fps_arms_root.transform=focused_aim_position.transform if is_aimed else standard_aim_position.transform
+  _source_ads_ik.influence=1.0 if is_aimed else 0.0
 
 func _find_animation_player(root: Node) -> AnimationPlayer:
  for n: Node in root.find_children("*", "AnimationPlayer", true, false):
@@ -223,6 +244,12 @@ func _apply_source_materials(root: Node3D, gun_mesh: bool) -> bool:
  var colored := 0
  for n: Node in root.find_children("*", "MeshInstance3D", true, false):
   var mesh := n as MeshInstance3D
+  # MP40 colors the hand rig BEFORE attaching its gun. Our generic adapter
+  # attached the gun first; source gun becomes a descendant of hand skeleton.
+  # Without this guard, HAND_MATERIAL overwrites genuine gun albedo and
+  # makes metal/wood look like a Marine uniform. Exact V8/V9 screenshot bug.
+  if not gun_mesh and _gun != null and _gun.is_ancestor_of(mesh):
+   continue
   mesh.layers = 2
   if mesh.mesh == null: continue
   for surface in range(mesh.mesh.get_surface_count()):
@@ -250,11 +277,13 @@ func _apply_source_materials(root: Node3D, gun_mesh: bool) -> bool:
    var albedo_path := str(spec.get("albedo", ""))
    var normal_path := str(spec.get("normal", ""))
    var diffuse: Texture2D = load(albedo_path) as Texture2D
-   var normals: Texture2D = load(normal_path) as Texture2D
-   if diffuse == null or normals == null: continue
+   # Some real source submaterials (Kar98k stripper clip) have NO normal map;
+   # retaining their albedo is mandatory, never invent replacement normals.
+   var normals: Texture2D = load(normal_path) as Texture2D if not normal_path.is_empty() else null
+   if diffuse == null or (not normal_path.is_empty() and normals == null): continue
    var m := StandardMaterial3D.new()
    m.albedo_texture = diffuse
-   m.normal_enabled = true
+   m.normal_enabled = normals != null
    m.normal_texture = normals
    m.metallic = float(spec.get("metallic", 0.0))
    m.roughness = float(spec.get("roughness", 0.7))
@@ -277,6 +306,26 @@ func _set_original_reload_props_visible(enabled: bool) -> void:
  for material in _offstage_reload_materials:
   if is_instance_valid(material):
    material.albedo_color=Color(1.0,1.0,1.0,1.0 if enabled else 0.0)
+
+func _check_real_gun_texture_identity() -> bool:
+ var valid:Array[String]=[]
+ for spec in _profile.get("materials",[]):
+  valid.append(str(spec.get("albedo","")))
+ var count:=0
+ for n:Node in _gun.find_children("*","MeshInstance3D",true,false):
+  var mesh:=n as MeshInstance3D
+  if mesh.mesh==null:continue
+  for surface in range(mesh.mesh.get_surface_count()):
+   var material:=mesh.get_surface_override_material(surface) as StandardMaterial3D
+   if material==null or material.albedo_texture==null:return false
+   var uri:=str(material.albedo_texture.resource_path)
+   if not valid.has(uri):
+    push_error("XZIEL_GUN_TEXTURE_RED id="+source_weapon_id+" shader="+uri+" expected="+str(valid))
+    return false
+   count+=1
+ set_meta("source_original_gun_materials_verified",count>0)
+ print("XZIEL_SOURCE_GUN_TEXTURE_GREEN id=",source_weapon_id," actual_original_surfaces=",count)
+ return count>0
 
 func _reload_length(hand: String, gun: String) -> float:
  if hand.is_empty() or gun.is_empty(): return 0.0
@@ -302,8 +351,19 @@ func _on_gun_clip_finished(name: StringName) -> void:
  if str(name) != str(_gun_clips["idle"]):
   _play_source_idle()
 
+func _on_aim_mode_changed(aim_mode: bool) -> void:
+ super._on_aim_mode_changed(aim_mode)
+ if not visible or _source_ads_ik==null:return
+ if _source_ik_tween!=null and _source_ik_tween.is_running():
+  _source_ik_tween.kill()
+ _source_ik_tween=create_tween()
+ _source_ik_tween.set_trans(Tween.TRANS_CUBIC)
+ _source_ik_tween.set_ease(Tween.EASE_IN_OUT)
+ _source_ik_tween.tween_property(_source_ads_ik,"influence",1.0 if aim_mode else 0.0,0.2)
+
 func activate(current_aim_mode: bool = false) -> void:
  super.activate(current_aim_mode)
+ if _source_ads_ik!=null:_source_ads_ik.influence=1.0 if current_aim_mode else 0.0
  if source_weapon_id == "kar98k":
   var camera := get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
   if camera != null:
@@ -316,6 +376,8 @@ func activate(current_aim_mode: bool = false) -> void:
  if _source_ready: _play_source_idle()
 
 func deactivate() -> void:
+ if _source_ik_tween!=null and _source_ik_tween.is_running():_source_ik_tween.kill()
+ if _source_ads_ik!=null:_source_ads_ik.influence=0.0
  super.deactivate()
  if source_weapon_id == "kar98k" and _saved_viewmodel_near>0.0:
   var camera := get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D

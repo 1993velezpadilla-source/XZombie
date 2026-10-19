@@ -20,6 +20,7 @@ on:
       - feature/bukkbeek-mobile-controls-v7-20261016
       - feature/xziel-multiweapon-aether-v8-20261018
       - fix/xziel-source-weapon-optical-fit-v9-20261018
+      - fix/v10-source-weapon-visual-fidelity-audit-20261018
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -98,7 +99,10 @@ jobs:
           cp bukkbeek-mobile/mobile/mp40_weapon.gd _build/bukkbeek/mobile/mp40_weapon.gd
           cp bukkbeek-mobile/mobile/source_weapon.gd _build/bukkbeek/mobile/source_weapon.gd
           cp bukkbeek-mobile/mobile/source_weapon_fit.gd _build/bukkbeek/mobile/source_weapon_fit.gd
+          cp bukkbeek-mobile/mobile/source_weapon_ads_ik.gd _build/bukkbeek/mobile/source_weapon_ads_ik.gd
           cp bukkbeek-mobile/mobile/weapon_pack_visual_probe.gd _build/bukkbeek/mobile/weapon_pack_visual_probe.gd
+          cp bukkbeek-mobile/mobile/weapon_fidelity_probe.gd _build/bukkbeek/mobile/weapon_fidelity_probe.gd
+          cp bukkbeek-mobile/mobile/source_camera_authority_probe.gd _build/bukkbeek/mobile/source_camera_authority_probe.gd
           cp bukkbeek-mobile/mobile/weapon_pack_runtime_probe.gd _build/bukkbeek/mobile/weapon_pack_runtime_probe.gd
           cp bukkbeek-mobile/mobile/weapon_source_geometry_probe.gd _build/bukkbeek/mobile/weapon_source_geometry_probe.gd
           cp bukkbeek-mobile/mobile/universal_weapon_motion.gd _build/bukkbeek/mobile/universal_weapon_motion.gd
@@ -239,6 +243,38 @@ jobs:
         with:
           name: XZIEL-V9-Three-Guns-HIP-ADS-Real-Frames
           path: _build/bukkbeek/visual_probes/v9_*.png
+          retention-days: 14
+
+      - name: Recover original WaW source camera, sight and grip tag transforms
+        run: |
+          set -o pipefail
+          timeout 80s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/source_camera_authority_probe.gd \
+            2>&1 | tee /tmp/xziel-source-camera-bones.log
+          grep -q 'XZIEL_SOURCE_CAMERA_AUDIT_DONE' /tmp/xziel-source-camera-bones.log
+          if grep -E 'XZIEL_SOURCE_CAMERA_AUDIT_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-source-camera-bones.log; then
+            exit 12
+          fi
+
+      - name: Audit each original weapon versus original arms for visibility
+        run: |
+          set -o pipefail
+          timeout 145s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/weapon_fidelity_probe.gd \
+            2>&1 | tee /tmp/xziel-weapon-fidelity.log
+          grep -q 'XZIEL_REAL_FIDELITY_AUDIT_CAPTURED' /tmp/xziel-weapon-fidelity.log
+          if grep -E 'XZIEL_REAL_FIDELITY_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-weapon-fidelity.log; then
+            exit 11
+          fi
+
+      - name: Upload isolated hand versus gun screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-V10-Diagnostic-Source-Gun-VS-Hands
+          path: _build/bukkbeek/visual_probes/*_*_*.png
           retention-days: 14
 
       - name: Export debug Android arm64 APK

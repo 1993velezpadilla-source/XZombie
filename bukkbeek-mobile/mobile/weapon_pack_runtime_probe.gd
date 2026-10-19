@@ -39,6 +39,8 @@ func _run() -> void:
   var gun: Node3D = arr[6 + i] as Node3D
   if gun == null or str(gun.name) != expected[i]:
    _red("source weapon scene order changed "+expected[i]); return
+  if not bool(gun.get_meta("source_original_gun_materials_verified", false)):
+   _red("gun surface original material overlaid by Marine HANDS tex "+source_ids[i]);return
   if not bool(gun.get_meta("source_optics_calibrated", false)):
    _red("source vertex-to-GPU-skinned optical ADS and hip solver RED "+source_ids[i]); return
   if not bool(gun.get_meta("source_root_import_repaired", false)):
