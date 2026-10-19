@@ -70,10 +70,10 @@ func _run() -> void:
   if not bool(gun.get_meta("source_optics_calibrated",false)):
    _fail(id+" source vertex fit not completed");return
   if not await _capture(player,gun,"v9_"+id+"_hip",false):return
-  main.get_node("Global").emit_signal("aim_mode_changed",true)
+  root.get_node("Global").emit_signal("aim_mode_changed",true)
   await create_timer(0.55).timeout
   if not await _capture(player,gun,"v9_"+id+"_ads",true):return
-  main.get_node("Global").emit_signal("aim_mode_changed",false)
+  root.get_node("Global").emit_signal("aim_mode_changed",false)
   await create_timer(0.25).timeout
  print("XZIEL_MULTI_GUN_VISUAL_GREEN genuineCameras=3 sourceWeapons=3")
  quit(0)
