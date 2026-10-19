@@ -26,10 +26,10 @@ var _solver_attempts: int = 0
 func configure(weapon: Node3D, rig: Node3D, reference: Transform3D,
  solved: Transform3D) -> bool:
  var sk: Skeleton3D = get_skeleton()
- if sk == null or weapon == null or rig == null or _source_idle_clip.is_empty():
-  return false
- _weapon = weapon
+ if sk == null or weapon == null or rig == null: return false
  _source_idle_clip = str((weapon.get("_hands_clips") as Dictionary).get("idle", ""))
+ if _source_idle_clip.is_empty(): return false
+ _weapon = weapon
  _rig = rig
  _original_focus = reference
  _solved_focus = solved
