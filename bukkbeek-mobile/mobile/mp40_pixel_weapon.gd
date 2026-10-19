@@ -18,7 +18,11 @@ const ADS_TIME := 0.20
 ## Measured directly from the original transparent 400x200 ADS frame.
 ## Sight center is at x ~= 250 / 400; centering sprite bounds is WRONG.
 const ADS_SIGHT_X := 0.625
-const ADS_SIGHT_Y := 0.075
+const ADS_SIGHT_Y := 0.090
+## The supplied FIRE PNG is reframed: its front post is x~=220/472,
+## y~=110/301, NOT the idle post at x~=255/400, y~=18/200.
+const ADS_FIRE_SIGHT_X := 0.466
+const ADS_FIRE_SIGHT_Y := 0.365
 
 var textures: Array[Texture2D] = []
 var sprite_canvas: CanvasLayer
@@ -204,8 +208,10 @@ func _render() -> void:
  var ads_height := ads_width * _ads_aspect(shot_remaining > 0.0)
  ads_sprite.scale = Vector2(ads_width / float(a_frame.get_width()),
   ads_height / float(a_frame.get_height()))
- ads_sprite.position = Vector2(view.x * 0.50 - ads_width * ADS_SIGHT_X,
-  view.y * 0.50 - ads_height * ADS_SIGHT_Y)
+ var sight_x := ADS_FIRE_SIGHT_X if shot_remaining > 0.0 else ADS_SIGHT_X
+ var sight_y := ADS_FIRE_SIGHT_Y if shot_remaining > 0.0 else ADS_SIGHT_Y
+ ads_sprite.position = Vector2(view.x * 0.50 - ads_width * sight_x,
+  view.y * 0.50 - ads_height * sight_y)
  var w := ads_weight if can_ads else 0.0
  hip_sprite.modulate.a = clampf(1.0 - w, 0.0, 1.0)
  ads_sprite.modulate.a = clampf(w, 0.0, 1.0)
@@ -213,13 +219,12 @@ func _render() -> void:
  hip_sprite.visible = w < 0.999
 
 func _hip_aspect(frame: int) -> float:
- match frame:
-  HIP_FIRE: return 302.0 / 497.0
-  SPRINT: return 244.0 / 512.0
-  RELOAD_01: return 308.0 / 503.0
-  RELOAD_01 + 1: return 322.0 / 508.0
-  RELOAD_01 + 2: return 323.0 / 512.0
-  RELOAD_01 + 3: return 323.0 / 509.0
+ if frame == HIP_FIRE: return 302.0 / 497.0
+ if frame == SPRINT: return 244.0 / 512.0
+ if frame == RELOAD_01: return 308.0 / 503.0
+ if frame == RELOAD_01 + 1: return 322.0 / 508.0
+ if frame == RELOAD_01 + 2: return 323.0 / 512.0
+ if frame == RELOAD_01 + 3: return 323.0 / 509.0
  return 290.0 / 504.0
 
 func _ads_aspect(firing: bool) -> float:
