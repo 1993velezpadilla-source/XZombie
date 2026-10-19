@@ -104,6 +104,7 @@ jobs:
           cp bukkbeek-mobile/mobile/weapon_pack_visual_probe.gd _build/bukkbeek/mobile/weapon_pack_visual_probe.gd
           cp bukkbeek-mobile/mobile/weapon_fidelity_probe.gd _build/bukkbeek/mobile/weapon_fidelity_probe.gd
           cp bukkbeek-mobile/mobile/weapon_depth_sweep_probe.gd _build/bukkbeek/mobile/weapon_depth_sweep_probe.gd
+          cp bukkbeek-mobile/mobile/weapon_kar98_ads_pose_probe.gd _build/bukkbeek/mobile/weapon_kar98_ads_pose_probe.gd
           cp bukkbeek-mobile/mobile/source_camera_authority_probe.gd _build/bukkbeek/mobile/source_camera_authority_probe.gd
           cp bukkbeek-mobile/mobile/weapon_pack_runtime_probe.gd _build/bukkbeek/mobile/weapon_pack_runtime_probe.gd
           cp bukkbeek-mobile/mobile/weapon_source_geometry_probe.gd _build/bukkbeek/mobile/weapon_source_geometry_probe.gd
@@ -276,6 +277,25 @@ jobs:
           path: |
             _build/bukkbeek/visual_probes/*_shift*.png
             _build/bukkbeek/visual_probes/kar98k_deep*.png
+          retention-days: 14
+
+      - name: Compare original Kar98k ADS-specific hand and gun PSA pose against idle rig
+        run: |
+          set -o pipefail
+          timeout 100s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/weapon_kar98_ads_pose_probe.gd \
+            2>&1 | tee /tmp/xziel-kar-source-ads-psa.log
+          grep -q 'XZIEL_KAR_SOURCE_PSA_SWEEP_DONE' /tmp/xziel-kar-source-ads-psa.log
+          if grep -E 'XZIEL_KAR_PSA_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-kar-source-ads-psa.log; then exit 14; fi
+
+      - name: Upload genuine Kar98k alternate source ADS hand/bolt poses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-V11-Kar98k-Original-ADS-PSA-Pose-Frames
+          path: _build/bukkbeek/visual_probes/kar98k_source_*.png
           retention-days: 14
 
       - name: Audit each original weapon versus original arms for visibility
