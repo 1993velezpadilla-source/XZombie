@@ -10,6 +10,30 @@ atlas=source/"pixel_assets"/"atlas.png"
 assert atlas.is_file(), "MP40_PIXEL_RED: user-approved PNG atlas missing"
 (root/"mobile"/"mp40_pixel").mkdir(parents=True,exist_ok=True)
 (root/"mobile"/"mp40_pixel"/"atlas.png").write_bytes(atlas.read_bytes())
+
+# Prefer INDIVIDUAL, full-resolution original PNGs when installed.
+# The tiny low-res atlas is a smoke-test FALLBACK, never considered final art.
+# No touching the 3D MP40 scene, its rig or any existing weapon texture.
+from struct import unpack
+names=("idle_hip_01","ads_idle","fire_hip_01","ads_fire_01","sprint_01",
+       "reload_01","reload_02","reload_03","reload_04")
+frames=source/"pixel_assets"/"frames"
+installed=0
+if frames.exists():
+    (root/"mobile"/"mp40_pixel"/"frames").mkdir(parents=True,exist_ok=True)
+    for name in names:
+        origin=frames/(name+".png")
+        if not origin.exists():
+            continue
+        data=origin.read_bytes()
+        assert data[:8]==b"\\x89PNG\\r\\n\\x1a\\n", "MP40_PIXEL_RED corrupt PNG: "+name
+        width,height=unpack(">II",data[16:24])
+        assert width>=256 and height>=160, "MP40_PIXEL_RED low-resolution source: "+name
+        (root/"mobile"/"mp40_pixel"/"frames"/origin.name).write_bytes(data)
+        installed+=1
+assert installed in (0,9), "MP40_PIXEL_RED partial high-resolution pack; all 9 required"
+print("MP40_PIXEL_SPRITES_INSTALLED high_resolution=",installed," / 9",
+      " source=",str(frames)," legacy_atlas_fallback=",installed==0)
 for audio in ("fire.wav", "mag_out.wav", "mag_in.wav", "charge.wav"):
     assert (root/"mobile"/"mp40_source"/audio).is_file(), "MP40_PIXEL_RED missing source "+audio
 player=root/"player"/"player.tscn"
