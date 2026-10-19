@@ -17,12 +17,19 @@ const RELOAD_01 := 5
 const ADS_TIME := 0.20
 ## Measured directly from the original transparent 400x200 ADS frame.
 ## Sight center is at x ~= 250 / 400; centering sprite bounds is WRONG.
-const ADS_SIGHT_X := 0.625
-const ADS_SIGHT_Y := 0.090
-## The supplied FIRE PNG is reframed: its front post is x~=220/472,
-## y~=110/301, NOT the idle post at x~=255/400, y~=18/200.
-const ADS_FIRE_SIGHT_X := 0.466
-const ADS_FIRE_SIGHT_Y := 0.365
+const ADS_IDLE_SIGHT_PX := Vector2(255.0, 18.0)
+const ADS_FIRE_SIGHT_PX := Vector2(220.0, 110.0)
+## Original full-res 3x3 atlas used a 512x326 cell. Its 400x200 ADS
+## drawing is bottom-aligned at (0,126), unlike an individual 400x200 PNG.
+const ATLAS_CELL := Vector2(512.0, 326.0)
+const ATLAS_OFFSETS: Array[Vector2] = [
+ Vector2(8, 36), Vector2(0, 126), Vector2(3, 24),
+ Vector2(40, 21), Vector2(0, 82), Vector2(0, 18),
+ Vector2(4, 4), Vector2(0, 3), Vector2(0, 3)
+]
+const SOURCE_WIDTHS: Array[float] = [
+ 504.0, 400.0, 497.0, 472.0, 512.0, 503.0, 508.0, 512.0, 509.0
+]
 
 var textures: Array[Texture2D] = []
 var sprite_canvas: CanvasLayer
@@ -184,7 +191,8 @@ func _render() -> void:
  var view := get_viewport().get_visible_rect().size
  var unit := minf(view.x / 1280.0, view.y / 720.0)
  var h_frame := textures[frame]
- var a_frame := textures[ADS_FIRE if shot_remaining > 0.0 else ADS]
+ var ads_frame := ADS_FIRE if shot_remaining > 0.0 else ADS
+ var a_frame := textures[ads_frame]
  var hip_width := 1280.0 * unit * 0.43
  var hip_left := view.x * 0.31
  var hip_bottom := view.y * 0.955
@@ -196,39 +204,38 @@ func _render() -> void:
   hip_width = 1280.0 * unit * 0.49
   hip_left = view.x * 0.275
   hip_bottom = view.y * 0.97
- hip_sprite.scale = Vector2(hip_width / float(h_frame.get_width()),
-  hip_width * _hip_aspect(frame) / float(h_frame.get_height()))
- var hip_height := hip_width * _hip_aspect(frame)
+ var hip_is_atlas := h_frame is AtlasTexture
+ var h_factor_x := float(h_frame.get_width()) / ATLAS_CELL.x if hip_is_atlas else 1.0
+ var h_factor_y := float(h_frame.get_height()) / ATLAS_CELL.y if hip_is_atlas else 1.0
+ var h_scale := hip_width / (SOURCE_WIDTHS[frame] * h_factor_x)
+ hip_sprite.scale = Vector2.ONE * h_scale
+ var h_inset := Vector2(ATLAS_OFFSETS[frame].x * h_factor_x,
+  ATLAS_OFFSETS[frame].y * h_factor_y) if hip_is_atlas else Vector2.ZERO
  var moving := not is_reloading and not is_aimed and shot_remaining <= 0.0
  var bob := sin(motion_time) * 2.0 * unit if moving else 0.0
  var sway := cos(motion_time * 0.52) * 1.5 * unit if moving else 0.0
- hip_sprite.position = Vector2(hip_left + sway, hip_bottom - hip_height + bob)
+ hip_sprite.position = Vector2(hip_left - h_inset.x * h_scale + sway,
+  hip_bottom - h_frame.get_height() * h_scale + bob)
 
- var ads_width := 1280.0 * unit * 0.36
- var ads_height := ads_width * _ads_aspect(shot_remaining > 0.0)
- ads_sprite.scale = Vector2(ads_width / float(a_frame.get_width()),
-  ads_height / float(a_frame.get_height()))
- var sight_x := ADS_FIRE_SIGHT_X if shot_remaining > 0.0 else ADS_SIGHT_X
- var sight_y := ADS_FIRE_SIGHT_Y if shot_remaining > 0.0 else ADS_SIGHT_Y
- ads_sprite.position = Vector2(view.x * 0.50 - ads_width * sight_x,
-  view.y * 0.50 - ads_height * sight_y)
+ # A REAL 2D iron sight: aim ray = ORIGINAL sight post pixel coordinates,
+ # including transparent atlas packing offsets. No heuristic centering.
+ # Native individual PNGs and full-resolution atlas yield IDENTICAL view.
+ var ad_width := 1280.0 * unit * 0.39
+ var a_is_atlas := a_frame is AtlasTexture
+ var a_fx := float(a_frame.get_width()) / ATLAS_CELL.x if a_is_atlas else 1.0
+ var a_fy := float(a_frame.get_height()) / ATLAS_CELL.y if a_is_atlas else 1.0
+ var ads_scale := ad_width / (SOURCE_WIDTHS[ADS] * a_fx)
+ ads_sprite.scale = Vector2.ONE * ads_scale
+ var sight := ADS_FIRE_SIGHT_PX if ads_frame == ADS_FIRE else ADS_IDLE_SIGHT_PX
+ if a_is_atlas:
+  var inset: Vector2 = ATLAS_OFFSETS[ads_frame]
+  sight = Vector2((sight.x + inset.x) * a_fx, (sight.y + inset.y) * a_fy)
+ ads_sprite.position = view * 0.5 - sight * ads_scale
  var w := ads_weight if can_ads else 0.0
  hip_sprite.modulate.a = clampf(1.0 - w, 0.0, 1.0)
  ads_sprite.modulate.a = clampf(w, 0.0, 1.0)
  ads_sprite.visible = w > 0.001
  hip_sprite.visible = w < 0.999
-
-func _hip_aspect(frame: int) -> float:
- if frame == HIP_FIRE: return 302.0 / 497.0
- if frame == SPRINT: return 244.0 / 512.0
- if frame == RELOAD_01: return 308.0 / 503.0
- if frame == RELOAD_01 + 1: return 322.0 / 508.0
- if frame == RELOAD_01 + 2: return 323.0 / 512.0
- if frame == RELOAD_01 + 3: return 323.0 / 509.0
- return 290.0 / 504.0
-
-func _ads_aspect(firing: bool) -> float:
- return 301.0 / 472.0 if firing else 200.0 / 400.0
 
 func _set_hip(frame: int) -> void:
  if frame != _current_hip_frame:
