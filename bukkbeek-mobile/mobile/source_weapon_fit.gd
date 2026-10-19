@@ -132,7 +132,9 @@ static func calibrate(w: Node3D, profile: Dictionary) -> bool:
  var hip_basis:Basis=(hip_delta*upright_basis).orthonormalized()
  var body_length:=float(sight.get("source_body_length_m",0.0))
  if body_length<0.2 or body_length>1.2:push_error("XZIEL_FIT_RED body source extents "+id);return false
- var hip_front:=Vector3(0.13,-0.15,-(body_length+0.44))
+ var clearance:float=float(sight.get("hip_camera_clearance_m",0.44))
+ if clearance<0.35 or clearance>0.95:return false
+ var hip_front:=Vector3(0.13,-0.15,-(body_length+clearance))
  var framed:=Transform3D(hip_basis,hip_front-hip_basis*front)
  # Actual source gun front must be within the visible instrumented 75° FOV.
  var sample_fr:=framed*front
