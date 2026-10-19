@@ -119,6 +119,14 @@ static func calibrate(w: Node3D, profile: Dictionary) -> bool:
  if eye_relief<0.11 or eye_relief>0.37:
   push_error("XZIEL_FIT_RED eye relief outside mobile FPS guard "+id);return false
  var target_ads:=Transform3D(upright_basis,Vector3(-aligned_rear.x,-aligned_rear.y,-eye_relief-aligned_rear.z))
+ # Independent, source-image-verified rendering correction. Camera-ray
+ # X/Y sight alignment remains authoritative. NEVER assign MP40 numbers to
+ # a pistol: real per-gun sweeps measured skin + receiver visibility.
+ var ads_screen_shift_z:float=float(sight.get("ads_render_offset_z_m",0.0))
+ if absf(ads_screen_shift_z)>0.30:return false
+ target_ads.origin.z+=ads_screen_shift_z
+ var effective_eye_relief:float=eye_relief-ads_screen_shift_z
+ if effective_eye_relief<0.11 or effective_eye_relief>0.75:return false
  var test_rear:=target_ads*rear
  var test_front:=target_ads*front
  if Vector2(test_rear.x,test_rear.y).length()>0.00006 or Vector2(test_front.x,test_front.y).length()>0.00006:
@@ -135,6 +143,11 @@ static func calibrate(w: Node3D, profile: Dictionary) -> bool:
  var clearance:float=float(sight.get("hip_camera_clearance_m",0.44))
  if clearance<0.35 or clearance>0.95:return false
  var hip_front:=Vector3(0.13,-0.15,-(body_length+clearance))
+ var hip_shift_y:float=float(sight.get("hip_render_offset_y_m",0.0))
+ var hip_shift_z:float=float(sight.get("hip_render_offset_z_m",0.0))
+ if absf(hip_shift_y)>0.15 or absf(hip_shift_z)>0.30:return false
+ hip_front.y+=hip_shift_y
+ hip_front.z+=hip_shift_z
  var framed:=Transform3D(hip_basis,hip_front-hip_basis*front)
  # Actual source gun front must be within the visible instrumented 75° FOV.
  var sample_fr:=framed*front
@@ -152,6 +165,10 @@ static func calibrate(w: Node3D, profile: Dictionary) -> bool:
  w.set_meta("source_sight_front_rig",front)
  w.set_meta("source_hip_front_eye",sample_fr)
  w.set_meta("source_ads_rear_eye",test_rear)
+ w.set_meta("source_ads_actual_eye_relief_m",effective_eye_relief)
+ w.set_meta("source_ads_cinematic_render_offset_z_m",ads_screen_shift_z)
+ w.set_meta("source_hip_cinematic_render_offset_y_m",hip_shift_y)
+ w.set_meta("source_hip_cinematic_render_offset_z_m",hip_shift_z)
  w.set_meta("source_ads_front_eye",test_front)
  w.set_meta("source_optical_upright_roll_deg",rad_to_deg(roll))
  w.set_meta("source_hip_source_body_length_m",body_length)
