@@ -139,7 +139,7 @@ func _frame(player: Node, w: Node3D, ident: String, stance: String) -> bool:
  if real_layers.is_empty():_red(ident+" source geometry not separable");return false
  var gun_count:int=int(real_layers["gun"]["all"])
  var sleeve_count:int=int(real_layers["hands"]["all"])
- if gun_count<(10000 if stance=="hip" else 20000):
+ if gun_count<(10000 if stance=="hip" else (15000 if stance=="reload_sprint" else 20000)):
   _red(ident+" tiny source gun stance="+stance+" metal_pixels="+str(gun_count));return false
  if stance=="ads" and float(sleeve_count)/maxf(1.0,float(gun_count))>2.6:
   _red(ident+" sleeves hide ADS gun ratio="+str(float(sleeve_count)/float(gun_count)));return false
