@@ -19,6 +19,7 @@ on:
       - feature/mp40-universal-motion-v6-20261015
       - feature/bukkbeek-mobile-controls-v7-20261016
       - feature/xziel-multiweapon-aether-v8-20261018
+      - fix/xziel-source-weapon-optical-fit-v9-20261018
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -96,7 +97,10 @@ jobs:
           cp bukkbeek-mobile/mobile/virtual_joystick.gd _build/bukkbeek/mobile/virtual_joystick.gd
           cp bukkbeek-mobile/mobile/mp40_weapon.gd _build/bukkbeek/mobile/mp40_weapon.gd
           cp bukkbeek-mobile/mobile/source_weapon.gd _build/bukkbeek/mobile/source_weapon.gd
+          cp bukkbeek-mobile/mobile/source_weapon_fit.gd _build/bukkbeek/mobile/source_weapon_fit.gd
+          cp bukkbeek-mobile/mobile/weapon_pack_visual_probe.gd _build/bukkbeek/mobile/weapon_pack_visual_probe.gd
           cp bukkbeek-mobile/mobile/weapon_pack_runtime_probe.gd _build/bukkbeek/mobile/weapon_pack_runtime_probe.gd
+          cp bukkbeek-mobile/mobile/weapon_source_geometry_probe.gd _build/bukkbeek/mobile/weapon_source_geometry_probe.gd
           cp bukkbeek-mobile/mobile/universal_weapon_motion.gd _build/bukkbeek/mobile/universal_weapon_motion.gd
           cp bukkbeek-mobile/mobile/mp40_ads_arm_modifier.gd _build/bukkbeek/mobile/mp40_ads_arm_modifier.gd
           cp bukkbeek-mobile/mobile/mp40_runtime_probe.gd _build/bukkbeek/mobile/mp40_runtime_probe.gd
@@ -114,6 +118,7 @@ jobs:
           python3 bukkbeek-mobile/verify_mobile_v7.py _build/bukkbeek
           python3 bukkbeek-mobile/stage_aether_weapon_pack.py _build/bukkbeek
           python3 bukkbeek-mobile/verify_multiweapon_v8.py _build/bukkbeek
+          python3 bukkbeek-mobile/audit_source_glb.py _build/bukkbeek/mobile/weapon_sources
           test -s _build/bukkbeek/resources/player/fps_demo_arms.glb
           test -s _build/bukkbeek/resources/undead/fps_demo_undead.glb
           grep -q 'NodePath("MP40Source")' _build/bukkbeek/player/player.tscn
@@ -175,6 +180,19 @@ jobs:
             exit 7
           fi
 
+      - name: Read original weapon geometry, rigs, hip ADS camera and PSA rotations
+        run: |
+          set -o pipefail
+          timeout 100s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/weapon_source_geometry_probe.gd 2>&1 | tee /tmp/bukkbeek-geometry.log
+          for gun in colt thompson kar98k; do
+            grep -q "XZIEL_V9_GEOM id=$gun" /tmp/bukkbeek-geometry.log
+            grep -q "XZIEL_V9_ROOTS id=$gun role=reload" /tmp/bukkbeek-geometry.log
+          done
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/bukkbeek-geometry.log; then
+            exit 8
+          fi
+
       - name: Render real 2D pixel captures of MP40 in ADS and empty-reload frames
         run: |
           sudo apt-get update -qq
@@ -202,6 +220,27 @@ jobs:
           path: _build/bukkbeek/visual_probes/
           retention-days: 14
 
+      - name: Render HIP and ADS real pixels for Colt Thompson and Kar98k
+        run: |
+          set -o pipefail
+          timeout 150s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/weapon_pack_visual_probe.gd \
+            2>&1 | tee /tmp/xziel-3guns-visual.log
+          grep -q "XZIEL_MULTI_GUN_VISUAL_GREEN" /tmp/xziel-3guns-visual.log
+          if grep -E "XZIEL_MULTI_GUN_VISUAL_RED|SCRIPT ERROR:|Parse Error:|Compile Error:" /tmp/xziel-3guns-visual.log; then
+            exit 10
+          fi
+
+      - name: Upload new gun HIP ADS physical viewmodel frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-V9-Three-Guns-HIP-ADS-Real-Frames
+          path: _build/bukkbeek/visual_probes/v9_*.png
+          retention-days: 14
+
       - name: Export debug Android arm64 APK
         env:
           GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ github.workspace }}/_tools/android-debug.keystore
@@ -223,7 +262,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Bukkbeek-XZIEL-MultiWeapon-V8-Android-ARM64
+          name: Bukkbeek-XZIEL-OpticalFit-V9-Android-ARM64
           path: _build/bukkbeek/build/bukkbeek_xziel_touch_arm64.apk
           retention-days: 14
 
@@ -231,7 +270,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Bukkbeek-XZIEL-MultiWeapon-V8-Godot-Source
+          name: Bukkbeek-XZIEL-OpticalFit-V9-Godot-Source
           path: |
             _build/bukkbeek/
             !_build/bukkbeek/.godot/

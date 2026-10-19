@@ -17,6 +17,9 @@ var _hands_clips: Dictionary = {}
 var _gun_clips: Dictionary = {}
 var _current_reload_gun: String = ""
 var _rechamber_pending: bool = false
+var _source_calibration_done: bool = false
+var _offstage_reload_materials: Array[StandardMaterial3D] = []
+var _saved_viewmodel_near: float = -1.0
 
 func _ready() -> void:
  super._ready()
@@ -64,6 +67,9 @@ func _ready() -> void:
  for role in ["reload_empty", "rechamber", "equip", "fire_ads"]:
   _hands_clips[role] = _resolve_clip(_hand_anim, str(hands_roles.get(role, "")))
   _gun_clips[role] = _resolve_clip(_gun_anim, str(gun_roles.get(role, "")))
+ if not _normalize_static_source_gun_root():
+  push_error("XZIEL_WEAPON_RED unable to repair source PSA -90 deg import mismatch " + source_weapon_id)
+  return
 
  # Preserve the user's approved model's entire source code and its exact hand
  # pose as a separate sixth original weapon; use the universal locomotion pivot.
@@ -112,8 +118,79 @@ func _ready() -> void:
   _source_ready = false
   return
  _play_source_idle()
+ call_deferred("_calibrate_original_source_geometry")
  print("XZIEL_SOURCE_WEAPON_BOUND id=", source_weapon_id, " pairedPSA=true real_audio=true")
  
+func _normalize_static_source_gun_root() -> bool:
+ # MP40 reverse-engineering rule: source gun static root is IDENTITY relative
+ # to tag_weapon. These Aether GLBs have duplicated PSA .001 roots identity,
+ # but baseline idle/fire/reload PSAs contain -90 degree converter artifacts.
+ # Original gun+magazine+bolt animation tracks remain unchanged. Normalize only
+ # identical one-key static root path of actual gun skeleton, per weapon.
+ var idle_name:=str(_gun_clips.get("idle",""))
+ if idle_name.is_empty():return false
+ var idle_anim:Animation=_gun_anim.get_animation(idle_name)
+ var root_path:NodePath
+ var idle_q:=Quaternion.IDENTITY
+ var root_found:=false
+ for t in range(idle_anim.get_track_count()):
+  var path:=str(idle_anim.track_get_path(t))
+  if ("_skel" in path and idle_anim.track_get_type(t)==Animation.TYPE_ROTATION_3D
+   and idle_anim.track_get_key_count(t)==1):
+   root_path=idle_anim.track_get_path(t)
+   var imported:Quaternion=idle_anim.track_get_key_value(t,0) as Quaternion
+   var source_angle:=rad_to_deg(Quaternion.IDENTITY.angle_to(imported))
+   if source_angle>2.0 and absf(source_angle-90.0)>4.0:return false
+   idle_q=Quaternion.IDENTITY # Same true root as approved MP40, not defective -90 idle.
+   root_found=true
+   break
+ if not root_found:return false
+ var fixes:=0
+ for role in _gun_clips:
+  var clip:=str(_gun_clips[role])
+  if clip.is_empty():continue
+  var anim:Animation=_gun_anim.get_animation(clip)
+  var seen:=false
+  for t in range(anim.get_track_count()):
+   if anim.track_get_path(t)!=root_path:continue
+   if anim.track_get_type(t)!=Animation.TYPE_ROTATION_3D: return false
+   if anim.track_get_key_count(t)!=1: return false
+   seen=true
+   var current:=anim.track_get_key_value(t,0) as Quaternion
+   var mismatch:=rad_to_deg(idle_q.angle_to(current))
+   if mismatch>2.0:
+    if mismatch < 86.0 or mismatch > 94.0: return false
+    anim.track_set_key_value(t,0,idle_q)
+    fixes+=1
+    print("XZIEL_SOURCE_ROOT_IMPORT_FIXED id=",source_weapon_id,
+     " role=",role," source_mismatch_deg=",mismatch,
+     " untouched_real_bolt_mag_tracks=",anim.get_track_count()-1)
+  if not seen:return false
+ set_meta("source_root_import_repaired",true)
+ set_meta("source_root_import_rotation_fixes",fixes)
+ return true
+
+func _calibrate_original_source_geometry() -> void:
+ # Wait out the authentic hand idle blend; early calibration uses the bind
+ # pose and puts pistols inside the near plane. Same MP40 0.28s gate.
+ await get_tree().create_timer(0.31).timeout
+ if not _source_ready or not is_inside_tree():return
+ _sync_weapon_socket()
+ await get_tree().process_frame
+ if not _source_ready or not is_inside_tree():return
+ var fit=preload("res://mobile/source_weapon_fit.gd")
+ if not bool(fit.calibrate(self,_profile)):
+  _source_ready=false
+  set_meta("source_weapon_bound",false)
+  set_meta("source_weapon_status","RED_ORIGINAL_SIGHT_CALIBRATION")
+  return
+ _source_calibration_done=true
+ set_meta("source_weapon_status","SOURCE_OPTICS_SOLVED_NEEDS_VISUAL_APPROVAL")
+ # If weapon is already equipped, place existing Bukkbeek pivot in the
+ # calibrated pose, NOT the stale camera-near original default ADS marker.
+ if visible and fps_arms_root!=null:
+  fps_arms_root.transform=focused_aim_position.transform if is_aimed else standard_aim_position.transform
+
 func _find_animation_player(root: Node) -> AnimationPlayer:
  for n: Node in root.find_children("*", "AnimationPlayer", true, false):
   return n as AnimationPlayer
@@ -181,10 +258,25 @@ func _apply_source_materials(root: Node3D, gun_mesh: bool) -> bool:
    m.normal_texture = normals
    m.metallic = float(spec.get("metallic", 0.0))
    m.roughness = float(spec.get("roughness", 0.7))
+   m.normal_scale = float(spec.get("normal_scale", 1.0))
    m.cull_mode = BaseMaterial3D.CULL_DISABLED if bool(spec.get("two_sided", false)) else BaseMaterial3D.CULL_BACK
+   if source_weapon_id == "kar98k" and gun_mesh:
+    var mat_id:=str(spec.get("source_material","")).to_lower()
+    if "k98round" in mat_id or "stripper_clip" in mat_id:
+     # Authentic round/clip are imported 0.94m offstage. They should show
+     # only during ORIGINAL reload, not float beside the rifle in HIP/ADS.
+     # Preserve 3D geometry/texture/PSA, never substitute a fake prop.
+     m.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+     m.albedo_color=Color(1.0,1.0,1.0,0.0)
+     _offstage_reload_materials.append(m)
    mesh.set_surface_override_material(surface, m)
    colored += 1
  return colored > 0
+
+func _set_original_reload_props_visible(enabled: bool) -> void:
+ for material in _offstage_reload_materials:
+  if is_instance_valid(material):
+   material.albedo_color=Color(1.0,1.0,1.0,1.0 if enabled else 0.0)
 
 func _reload_length(hand: String, gun: String) -> float:
  if hand.is_empty() or gun.is_empty(): return 0.0
@@ -212,7 +304,23 @@ func _on_gun_clip_finished(name: StringName) -> void:
 
 func activate(current_aim_mode: bool = false) -> void:
  super.activate(current_aim_mode)
+ if source_weapon_id == "kar98k":
+  var camera := get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
+  if camera != null:
+   _saved_viewmodel_near=camera.near
+   # Original weapon mesh is safe at 170mm sight eye relief. The source
+   # 113-bone Marine arm shoulder may pass within 80mm of the camera in ADS.
+   # Clip ONLY forearm geometry crossing the near lens, not the weapon or
+   # real glTF animations. Restore camera immediately when swapping guns.
+   camera.near=0.13
  if _source_ready: _play_source_idle()
+
+func deactivate() -> void:
+ super.deactivate()
+ if source_weapon_id == "kar98k" and _saved_viewmodel_near>0.0:
+  var camera := get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
+  if camera != null:camera.near=_saved_viewmodel_near
+  _saved_viewmodel_near=-1.0
 
 func fire_weapon() -> void:
  if not _source_ready: return
@@ -234,6 +342,7 @@ func start_reload() -> void:
  if is_reloading and not previous:
   _rechamber_pending = false
   _current_reload_gun = gun
+  _set_original_reload_props_visible(true)
   _gun_anim.play(gun, 0.03)
   _gun_anim.seek(0.0, true)
   _hand_anim.seek(0.0, true)
@@ -241,6 +350,7 @@ func start_reload() -> void:
 func _on_reload_timer_timeout() -> void:
  super._on_reload_timer_timeout()
  _current_reload_gun = ""
+ _set_original_reload_props_visible(false)
  _play_source_idle()
 
 func cancel_tactical_reload() -> bool:
@@ -249,5 +359,6 @@ func cancel_tactical_reload() -> bool:
  is_reloading = false
  _current_reload_gun = ""
  _rechamber_pending = false
+ _set_original_reload_props_visible(false)
  _play_source_idle()
  return true

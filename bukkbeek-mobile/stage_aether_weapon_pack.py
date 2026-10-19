@@ -57,6 +57,28 @@ ROLES = {
               reload="PSA_viewmodel_mg42_reload",equip="PSA_MG42Equip")
  }
 }
+SIGHT_GEOMETRY = {
+ "colt": dict(
+  rear_witness_vertices=[[-0.04643886908888817,0.03888877108693123,0.00041520746890455484]],
+  front_witness_vertices=[[0.13583306968212128,0.04270694777369499,-0.00048253076965920627],
+                          [0.13583306968212128,0.04270694777369499,0.001457851380109787]],
+  source_witness_sep_m=0.18231193978,source_body_length_m=0.229335,
+  eye_relief_m=0.26),
+ "thompson": dict(
+  rear_witness_vertices=[[-0.14949001371860504,0.0877033993601799,-0.0033794688060879707]],
+  front_witness_vertices=[[0.4278489649295807,0.059105366468429565,-0.003418490756303072]],
+  source_witness_sep_m=0.57804683658,source_body_length_m=0.683264,
+  eye_relief_m=0.15),
+ "kar98k": dict(
+  rear_witness_vertices=[[0.13057999312877655,0.04840338975191116,-0.007856935262680054],
+                         [0.13057999312877655,0.04840338975191116,0.007856978103518486]],
+  front_witness_vertices=[[0.7090680003166199,0.07084739208221436,1.1552184275842592e-07]],
+  source_witness_sep_m=0.57892323127,source_body_length_m=0.955707,
+  eye_relief_m=0.17)
+}
+# These are TRUE original GLB metal vertices verified by hashed mesh source.
+# Eye relief is per-weapon FPS composition (candidate for mobile visual gate),
+# NOT misrepresented as a decompiled original Call of Duty camera setting.
 AMMO_KIND = {"pistol": 1, "smg": 2, "sniper": 6, "lmg": 5}
 
 def download_pinned(record: dict, directory: Path) -> None:
@@ -162,7 +184,8 @@ for w in spec["weapons"]:
         "source":"Aether WaW (not BO3)",
         "has_original_fire_audio":has_audio,
         "roles":roles,
-        "materials":runtime_materials(w)
+        "materials":runtime_materials(w),
+        "source_sights":SIGHT_GEOMETRY.get(ident, {})
     }
     (target / "profile.json").write_text(json.dumps(profile, indent=2) + "\n")
     if has_audio:
