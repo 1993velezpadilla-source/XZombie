@@ -41,6 +41,25 @@ func _run() -> void:
    _red("source weapon scene order changed "+expected[i]); return
   if not bool(gun.get_meta("source_original_gun_materials_verified", false)):
    _red("gun surface original material overlaid by Marine HANDS tex "+source_ids[i]);return
+  if not bool(gun.get_meta("source_hands_respect_glb_double_sided", false)):
+   _red("source Marine GLB original DOUBLE SIDED sleeve material not preserved "+source_ids[i]);return
+  var real_hand_surfaces:int=0
+  var original_hands:Node3D=gun.get("_hands") as Node3D
+  var gun_root:Node3D=gun.get("_gun") as Node3D
+  for node:Node in original_hands.find_children("*","MeshInstance3D",true,false):
+   var original_mesh:=node as MeshInstance3D
+   if gun_root.is_ancestor_of(node) or original_mesh.mesh==null:continue
+   for surf in range(original_mesh.mesh.get_surface_count()):
+    var original_mat:Material=original_mesh.mesh.surface_get_material(surf)
+    var original_name:=str(original_mat.resource_name) if original_mat!=null else ""
+    var imported:StandardMaterial3D=original_mesh.get_surface_override_material(surf) as StandardMaterial3D
+    if not (original_name.contains("cloth") or original_name.contains("skin") or original_name.contains("button")):
+     _red("source Marine GLB material not mapped "+source_ids[i]+":"+original_name);return
+    if imported==null or imported.cull_mode!=BaseMaterial3D.CULL_DISABLED:
+     _red("unintended one-sided original Marine arm mesh culling "+source_ids[i]+":"+original_name);return
+    real_hand_surfaces+=1
+  if real_hand_surfaces != 3:
+   _red("original 3 Marine cloth skin button surfaces missing "+source_ids[i]+" actual="+str(real_hand_surfaces));return
   if not bool(gun.get_meta("source_optics_calibrated", false)):
    _red("source vertex-to-GPU-skinned optical ADS and hip solver RED "+source_ids[i]); return
   if not bool(gun.get_meta("source_root_import_repaired", false)):
