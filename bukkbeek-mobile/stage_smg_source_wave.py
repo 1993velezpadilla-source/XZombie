@@ -217,7 +217,7 @@ def main(root:Path)->None:
       # viewport sweep #39294035195. ADS metal stays physically aligned.
       "hip_render_offset_x_m": .16 if ident=="ppsh" else .16,
       "hip_render_offset_y_m": -.18,
-      "hip_render_offset_z_m": .10 if ident=="ppsh" else 0.0,
+      "hip_render_offset_z_m": .10,
       "hip_camera_near_m":.45,
       "ads_camera_near_m":.10 if ident=="ppsh" else .30,
      },
