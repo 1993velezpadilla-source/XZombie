@@ -268,11 +268,27 @@ func _apply_source_materials(root: Node3D, gun_mesh: bool) -> bool:
      push_warning("XZIEL_WEAPON_UNMATCHED_MATERIAL id=" + source_weapon_id + " surface=" + orig_name)
      continue
    else:
+    var original_hand_material:Material=mesh.mesh.surface_get_material(surface)
+    var source_name:String=str(original_hand_material.resource_name).to_lower() if original_hand_material!=null else ""
+    # GLTF authority: original Aether Marine source has separate submeshes:
+    # cloth, skin and small uniform button. ALL THREE are doubleSided=true.
+    # Previous converter erroneously forced back-face culling on every one.
+    # This tears open the arm/sleeve interior when near the first-person lens.
+    var is_skin:bool="skin" in source_name
+    var is_button:bool="button" in source_name
+    var is_cloth:bool="cloth" in source_name
+    if not (is_skin or is_cloth or is_button):
+     push_error("XZIEL_HAND_SURFACE_RED unknown authentic Marine source material "+source_name)
+     return false
     spec = {
      "albedo": basename + "viewmodel_usa_marine_c.png",
      "normal": basename + "viewmodel_usa_marine_n.png",
-     "metallic": 0.0,
-     "roughness": 0.86
+     "metallic": 0.15 if is_button else 0.0,
+     "roughness": 0.63 if is_skin else (0.44 if is_button else 0.86),
+     # Originals are doubleSided=true even if the Blender->glTF importer
+     # dropped this flag on the new Godot StandardMaterial3D override.
+     "two_sided": true,
+     "source_hand_submaterial": source_name
     }
    var albedo_path := str(spec.get("albedo", ""))
    var normal_path := str(spec.get("normal", ""))
@@ -299,6 +315,8 @@ func _apply_source_materials(root: Node3D, gun_mesh: bool) -> bool:
      m.albedo_color=Color(1.0,1.0,1.0,0.0)
      _offstage_reload_materials.append(m)
    mesh.set_surface_override_material(surface, m)
+   if not gun_mesh:
+    set_meta("source_hands_respect_glb_double_sided",true)
    colored += 1
  return colored > 0
 

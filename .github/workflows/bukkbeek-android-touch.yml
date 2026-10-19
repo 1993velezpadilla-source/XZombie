@@ -22,6 +22,7 @@ on:
       - fix/xziel-source-weapon-optical-fit-v9-20261018
       - fix/v10-source-weapon-visual-fidelity-audit-20261018
       - fix/v11-cod-fps-visual-weapon-calibration-20261018
+      - fix/v12-aether-mesh-skin-frustum-forensics-20261019
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -105,6 +106,7 @@ jobs:
           cp bukkbeek-mobile/mobile/weapon_fidelity_probe.gd _build/bukkbeek/mobile/weapon_fidelity_probe.gd
           cp bukkbeek-mobile/mobile/weapon_depth_sweep_probe.gd _build/bukkbeek/mobile/weapon_depth_sweep_probe.gd
           cp bukkbeek-mobile/mobile/weapon_kar98_ads_pose_probe.gd _build/bukkbeek/mobile/weapon_kar98_ads_pose_probe.gd
+          cp bukkbeek-mobile/mobile/weapon_mesh_frustum_probe.gd _build/bukkbeek/mobile/weapon_mesh_frustum_probe.gd
           cp bukkbeek-mobile/mobile/source_camera_authority_probe.gd _build/bukkbeek/mobile/source_camera_authority_probe.gd
           cp bukkbeek-mobile/mobile/weapon_pack_runtime_probe.gd _build/bukkbeek/mobile/weapon_pack_runtime_probe.gd
           cp bukkbeek-mobile/mobile/weapon_source_geometry_probe.gd _build/bukkbeek/mobile/weapon_source_geometry_probe.gd
@@ -297,6 +299,15 @@ jobs:
           name: XZIEL-V11-Kar98k-Original-ADS-PSA-Pose-Frames
           path: _build/bukkbeek/visual_probes/kar98k_source_*.png
           retention-days: 14
+
+      - name: Reverse-engineer original weapon GPU skin per-surface camera projection
+        run: |
+          set -o pipefail
+          timeout 120s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/weapon_mesh_frustum_probe.gd \
+            2>&1 | tee /tmp/xziel-v12-mesh-frustum.log
+          grep -q 'XZIEL_SOURCE_FRUSTUM_COMPLETE' /tmp/xziel-v12-mesh-frustum.log
+          if grep -E 'XZIEL_SOURCE_FRUSTUM_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-v12-mesh-frustum.log; then exit 15; fi
 
       - name: Audit each original weapon versus original arms for visibility
         run: |
