@@ -1,0 +1,47 @@
+name: WaW Four-SMG Source Class Gauntlet
+
+on:
+  push:
+    branches:
+      - feature/smg-aether-class-gauntlet-v1-20261019
+    paths:
+      - 'bukkbeek-mobile/audit_smg_source_class.py'
+      - '.github/workflows/smg-aether-source-class.yml'
+  workflow_dispatch:
+
+# Independent of the V14 Kar98k ADS gate. Source check must not
+# trigger a 45-minute Android APK export for each audit-only edit.
+permissions:
+  contents: read
+concurrency:
+  group: xziel-waw-smg-source-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-class:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout existing XZombie project
+        uses: actions/checkout@v4
+
+      - name: Parse and compile the strict four-SMG original source auditor
+        run: |
+          python3 -m py_compile bukkbeek-mobile/audit_smg_source_class.py
+
+      - name: Download hash-locked genuine Project Aether WaW source GLBs and WAVs
+        run: |
+          mkdir -p _build/smg_source
+          python3 -u bukkbeek-mobile/audit_smg_source_class.py _build/smg_source | tee /tmp/smg-source.log
+          grep -q 'XZIEL_SMG_CLASS_SOURCE_AUDIT_GREEN count=4' /tmp/smg-source.log
+          grep -q 'XZIEL_SMG_SOURCE_ORIENTATION_CLASS_GREEN count=4' /tmp/smg-source.log
+          grep -q 'XZIEL_SMG_GAMEPLAY_STATUS RED_UNTIL_VISUAL_GAUNTLET' /tmp/smg-source.log
+
+      - name: Publish original SMG comparison, socket rotations and metadata
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-WaW-4SMG-Class-Verified-Source-Metadata
+          path: _build/smg_source/smg_gauntlet/
+          retention-days: 14
+          if-no-files-found: warn
