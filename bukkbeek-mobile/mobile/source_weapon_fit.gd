@@ -70,17 +70,50 @@ static func calibrate(w: Node3D, profile: Dictionary) -> bool:
  var authored_ads:Transform3D=w.get("focused_aim_position").transform
  var delta:=Quaternion((authored_ads.basis*sightline).normalized(),Vector3.FORWARD)
  var aligned_basis:Basis=(Basis(delta)*authored_ads.basis).orthonormalized()
- # Source model local +Y defines original top of receiver/sight.
- # Preserve upright firearm, rather than letting the gun lie 90 degrees
- # sideways while barrel points at the reticle.
- var world_up:=_posed_vertex(m,gun_sk,bone,_point(rears[0])+Vector3.UP*0.05)
- var source_up:=rig.to_local(world_up)-rig.to_local(_posed_vertex(m,gun_sk,bone,_point(rears[0])))
- var posed_up:=aligned_basis*source_up
- var up2:=Vector2(posed_up.x,posed_up.y)
- if up2.length()<0.0001:
-  push_error("XZIEL_FIT_RED source up vector degenerate "+id);return false
- var roll:= -up2.angle_to(Vector2.UP)
+ # DO NOT force imported GLB +Y onto the screen's up axis: in the
+ # Aether/ActorX skeleton, source mesh Y is not an authored COD camera roll.
+ # That previous -90° correction rotated real shoulders THROUGH the screen.
+ # Like our working MP40, solve the remaining roll from genuine wrist/elbow
+ # locations, while preserving source-authored HIP arm screen projections.
+ var original_arm: Skeleton3D=w.get("_hand_skeleton") as Skeleton3D
+ if original_arm==null:push_error("XZIEL_FIT_RED original hand skeleton missing "+id);return false
+ var reference_pose:Transform3D=authored_hip
+ var joint_rig: Array[Vector3]=[]
+ var joint_screen: Array[Vector2]=[]
+ var joint_weights: Array[float]=[]
+ for label in ["j_wrist_le","j_wrist_ri","j_elbow_le","j_elbow_ri","j_shoulder_le","j_shoulder_ri"]:
+  var j:=original_arm.find_bone(label)
+  if j<0:continue
+  var pose_world:Vector3=original_arm.to_global(original_arm.get_bone_global_pose(j).origin)
+  var bone_rig:Vector3=rig.to_local(pose_world)
+  var view_ref:Vector3=reference_pose*bone_rig
+  if view_ref.z >= -0.06:continue
+  joint_rig.append(bone_rig)
+  joint_screen.append(Vector2(view_ref.x,view_ref.y)/(-view_ref.z))
+  joint_weights.append(3.0 if "wrist" in label else (1.0 if "elbow" in label else 0.25))
+ var roll:=0.0
+ var best_score:=INF
+ # Preserve the user's source authoring instead of letting a 90-degree
+ # screenshot-only model-up guess flip arms into the camera.
+ for i in range(41):
+  var angle_deg:float=(float(i)-20.0)*0.5 # ±10° physical camera-axis roll
+  var candidate:Basis=(Basis(Quaternion(Vector3.FORWARD,deg_to_rad(angle_deg)))*aligned_basis).orthonormalized()
+  var r:Vector3=candidate*rear
+  var origin:=Vector3(-r.x,-r.y,-float(sight.get("eye_relief_m",0.2))-r.z)
+  var score:float=angle_deg*angle_deg*0.003
+  for index in range(joint_rig.size()):
+   var frame:Vector3=candidate*joint_rig[index]+origin
+   if frame.z>=-0.04:
+    score+=joint_weights[index]*(60.0+absf(frame.z)*20.0)
+   else:
+    var point:=Vector2(frame.x,frame.y)/-frame.z
+    score+=joint_weights[index]*point.distance_squared_to(joint_screen[index])
+  if score<best_score:
+   best_score=score
+   roll=deg_to_rad(angle_deg)
  var upright_basis:Basis=(Basis(Quaternion(Vector3.FORWARD,roll))*aligned_basis).orthonormalized()
+ w.set_meta("source_original_hand_joint_count",joint_rig.size())
+ w.set_meta("source_original_arms_fit_error",best_score)
  var aligned_rear:=upright_basis*rear
  var eye_relief:=float(sight.get("eye_relief_m",0.0))
  if eye_relief<0.11 or eye_relief>0.37:
@@ -121,6 +154,6 @@ static func calibrate(w: Node3D, profile: Dictionary) -> bool:
  w.set_meta("source_optical_upright_roll_deg",rad_to_deg(roll))
  w.set_meta("source_hip_source_body_length_m",body_length)
  print("XZIEL_SOURCE_OPTICS_GREEN id=",id," sight_sep_m=",sightline.length(),
-  " eye_relief_m=",eye_relief," roll_deg=",rad_to_deg(roll),
+  " eye_relief_m=",eye_relief," arm_preserving_roll_deg=",rad_to_deg(roll),
   " hip_front_eye=",sample_fr," ADS_rear_eye=",test_rear," ADS_front_eye=",test_front)
  return true
