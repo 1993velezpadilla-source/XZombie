@@ -25,6 +25,7 @@ on:
       - fix/v12-aether-mesh-skin-frustum-forensics-20261019
       - experiment/v13-kar98k-original-viewport-optimization-20261019
       - fix/v14-restore-mp40-authoritative-hip-ads-20261019
+      - feature/smg-aether-class-gauntlet-v1-20261019
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -115,6 +116,7 @@ jobs:
           cp bukkbeek-mobile/mobile/weapon_source_geometry_probe.gd _build/bukkbeek/mobile/weapon_source_geometry_probe.gd
           cp bukkbeek-mobile/mobile/universal_weapon_motion.gd _build/bukkbeek/mobile/universal_weapon_motion.gd
           cp bukkbeek-mobile/mobile/mp40_ads_arm_modifier.gd _build/bukkbeek/mobile/mp40_ads_arm_modifier.gd
+          cp bukkbeek-mobile/mobile/smg_wave_visual_probe.gd _build/bukkbeek/mobile/smg_wave_visual_probe.gd
           cp bukkbeek-mobile/mobile/mp40_runtime_probe.gd _build/bukkbeek/mobile/mp40_runtime_probe.gd
           cp bukkbeek-mobile/mobile/mp40_visual_probe.gd _build/bukkbeek/mobile/mp40_visual_probe.gd
           cp bukkbeek-mobile/mobile/mp40.tscn _build/bukkbeek/mobile/mp40.tscn
@@ -131,6 +133,10 @@ jobs:
           python3 bukkbeek-mobile/stage_aether_weapon_pack.py _build/bukkbeek
           python3 bukkbeek-mobile/verify_multiweapon_v8.py _build/bukkbeek
           python3 bukkbeek-mobile/audit_smg_source_class.py _build/bukkbeek
+          python3 -m py_compile bukkbeek-mobile/stage_smg_source_wave.py
+          python3 bukkbeek-mobile/stage_smg_source_wave.py _build/bukkbeek
+          test -s _build/bukkbeek/mobile/weapon_sources/ppsh/viewmodel.glb
+          test -s _build/bukkbeek/mobile/weapon_sources/type100/viewhands.glb
           python3 bukkbeek-mobile/audit_source_glb.py _build/bukkbeek/mobile/weapon_sources
           test -s _build/bukkbeek/resources/player/fps_demo_arms.glb
           test -s _build/bukkbeek/resources/undead/fps_demo_undead.glb
@@ -254,6 +260,26 @@ jobs:
           if grep -E "XZIEL_MULTI_GUN_VISUAL_RED|SCRIPT ERROR:|Parse Error:|Compile Error:" /tmp/xziel-3guns-visual.log; then
             exit 10
           fi
+
+      - name: Source-original PPSh and Type100 HIP ADS iron sights hands and sprint-reload
+        run: |
+          set -o pipefail
+          timeout 150s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/smg_wave_visual_probe.gd \
+            2>&1 | tee /tmp/xziel-smg-wave-visual.log
+          grep -q 'XZIEL_SMG_WAVE_VISUAL_GREEN' /tmp/xziel-smg-wave-visual.log
+          if grep -E 'XZIEL_SMG_WAVE_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/xziel-smg-wave-visual.log; then exit 29; fi
+
+      - name: Publish real new SMG HIP ADS and sprint reload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-WaW-PPSh-Type100-HIP-ADS-Reload-Visual-Proofs
+          path: _build/bukkbeek/visual_probes/smg_wave_*.png
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Upload new gun HIP ADS physical viewmodel frames
         if: always()
