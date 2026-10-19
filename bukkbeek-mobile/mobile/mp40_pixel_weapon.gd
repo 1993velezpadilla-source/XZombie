@@ -47,6 +47,7 @@ var played_bolt := false
 var mag_out: AudioStreamPlayer3D
 var mag_in: AudioStreamPlayer3D
 var charge: AudioStreamPlayer3D
+var has_true_highres_sheet := false
 var _current_hip_frame := -1
 var _current_ads_frame := -1
 
@@ -63,6 +64,9 @@ func _ready() -> void:
  if not _load_art():
   push_error("MP40_PIXEL_RED missing weapon sprite art")
   return
+ has_true_highres_sheet = loaded_original_pngs == 9 and FileAccess.file_exists(SOURCE_ROOT + "hires_manifest.json")
+ if loaded_original_pngs == 9 and not has_true_highres_sheet:
+  push_warning("MP40_PIXEL_UNVERIFIED_FRAMES: 9 PNGs found but no original-source manifest")
 
  sprite_canvas = CanvasLayer.new()
  sprite_canvas.name = "MP40PixelV2"
@@ -84,6 +88,7 @@ func _ready() -> void:
  set_meta("mp40_pixel", true)
  set_meta("mp40_pixel_v2_layout", true)
  set_meta("mp40_pixel_highres_frame_count", loaded_original_pngs)
+ set_meta("mp40_pixel_source_highres", has_true_highres_sheet)
  print("MP40_PIXEL_V2_READY original_png=", loaded_original_pngs, " total_frames=9 same_mp40_audio=true")
 
 func _load_art() -> bool:
@@ -226,7 +231,11 @@ func _render() -> void:
  var a_fy := float(a_frame.get_height()) / ATLAS_CELL.y if a_is_atlas else 1.0
  var ads_scale := ad_width / (SOURCE_WIDTHS[ADS] * a_fx)
  ads_sprite.scale = Vector2.ONE * ads_scale
- var sight := ADS_FIRE_SIGHT_PX if ads_frame == ADS_FIRE else ADS_IDLE_SIGHT_PX
+ var sight: Vector2 = ADS_FIRE_SIGHT_PX if ads_frame == ADS_FIRE else ADS_IDLE_SIGHT_PX
+ # The original 1448x1086 3x3 sheet has a DIFFERENT ADS optical anchor
+ # than the legacy cropped 400x200 frame. Do not reuse the latter coordinate.
+ if has_true_highres_sheet and not a_is_atlas:
+  sight = Vector2(245.0, 114.0) if ads_frame == ADS_FIRE else Vector2(242.0, 126.0)
  if a_is_atlas:
   var inset: Vector2 = ATLAS_OFFSETS[ads_frame]
   sight = Vector2((sight.x + inset.x) * a_fx, (sight.y + inset.y) * a_fy)
