@@ -60,6 +60,13 @@ func _run() -> void:
  sprite.set("ads_weight", 0.0)
  sprite.call("_render")
  var view: Vector2 = root.get_viewport().get_visible_rect().size
+ if not bool(sprite.get_meta("mp40_pixel_forward_hip_v6", false)):
+  _fail("forward hip official screenshot not active"); return
+ if hip.texture.get_width() != 482 or sprite_textures[2].get_width() != 482:
+  _fail("forward hip IDLE/FIRE screenshots were not staged"); return
+ var muzzle_x: float = hip.position.x + 221.5 * hip.scale.x
+ if absf(muzzle_x - view.x * 0.5) > 3.0:
+  _fail("forward HIP muzzle not aligned with reticle x: "+str(muzzle_x)); return
  var max_x: float = hip.position.x + hip.texture.get_width() * hip.scale.x
  var max_y: float = hip.position.y + hip.texture.get_height() * hip.scale.y
  # The alpha silhouette (NOT the PNG rectangle) must extend beyond the
@@ -83,6 +90,7 @@ func _run() -> void:
   _fail("ADS sprite still floats above screen bottom: "+str(ads_visible_bottom)+" vs "+str(view.y));return
  if not bool(sprite.get_meta("mp40_pixel_grounded_viewmodel", false)):
   _fail("grounded source-alpha layout not enabled");return
+ print("MP40_PIXEL_V6_FORWARD_HIP_GREEN approved_png=true idle_and_fire=true muzzle_x_centered=true original_mp40_preserved=true")
  print("MP40_PIXEL_V2_LAYOUT_GREEN hip_inside_safe_zone=true ads_iron_sight_centered=true original_png_count=",original_art_count)
  print("MP40_PIXEL_TEST_GREEN map=original weapons=10 approved_mp40_unchanged=true sprites=9 mp40_source_sfx=true hit_and_reload_calls=true")
  quit(0)

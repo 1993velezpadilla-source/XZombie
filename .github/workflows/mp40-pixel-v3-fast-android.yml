@@ -1,4 +1,4 @@
-name: MP40 Pixel V3 focused Android render certification
+name: MP40 Pixel V6 forward HIP Android acceptance
 on:
   push:
     branches:
@@ -386,6 +386,8 @@ jobs:
           python3 bukkbeek-mobile/repair_mp40_pixel_matte.py _build/bukkbeek
           # V5.2 user phone review: no reload ghosts or opaque ADS sight plug.
           python3 bukkbeek-mobile/guard_mp40_pixel_frames.py _build/bukkbeek
+          # V6: approved new forward-looking HIP PNG, applied AFTER matte guard.
+          python3 bukkbeek-mobile/apply_mp40_forward_hip.py _build/bukkbeek
           cp bukkbeek-mobile/mobile/mp40_pixel_runtime_probe.gd _build/bukkbeek/mobile/
           cp bukkbeek-mobile/mobile/mp40_pixel_visual_probe.gd _build/bukkbeek/mobile/
           timeout 180s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --import 2>&1 | tee /tmp/mp40-pixel-import.log
@@ -409,7 +411,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: XZIEL-MP40Pixel-V3-Actual-HIP-ADS-Captures
+          name: XZIEL-MP40Pixel-V6-Actual-HIP-ADS-Captures
           path: _build/bukkbeek/pixel_visual_probes/*.png
           retention-days: 14
 
@@ -434,7 +436,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Bukkbeek-XZIEL-MP40Pixel-V3-Visible-ARM64
+          name: Bukkbeek-XZIEL-MP40Pixel-V6-Forward-HIP-ARM64
           path: _build/bukkbeek/build/bukkbeek_xziel_touch_arm64.apk
           retention-days: 14
 
@@ -442,7 +444,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Bukkbeek-XZIEL-MP40Pixel-V3-Visible-Source
+          name: Bukkbeek-XZIEL-MP40Pixel-V6-Forward-HIP-Source
           path: |
             _build/bukkbeek/
             !_build/bukkbeek/.godot/

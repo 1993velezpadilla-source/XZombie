@@ -15,6 +15,11 @@ const ADS_FIRE := 3
 const SPRINT := 4
 const RELOAD_01 := 5
 const ADS_TIME := 0.20
+## User-approved forward-facing HIP screenshot, alpha-cleaned and packed as
+## separate 482x326 native PNG. Neither ADS nor reload uses these frames.
+const FORWARD_HIP_FRAME_WIDTH := 482.0
+const FORWARD_HIP_MUZZLE_X := 221.5
+const FORWARD_HIP_ENABLED := true
 ## Measured directly from the original transparent 400x200 ADS frame.
 ## Sight center is at x ~= 250 / 400; centering sprite bounds is WRONG.
 const ADS_IDLE_SIGHT_PX := Vector2(255.0, 18.0)
@@ -67,6 +72,10 @@ func _ready() -> void:
  if not _load_art():
   push_error("MP40_PIXEL_RED missing weapon sprite art")
   return
+ if FORWARD_HIP_ENABLED:
+  if textures[HIP].get_width() != int(FORWARD_HIP_FRAME_WIDTH) or textures[HIP_FIRE].get_width() != int(FORWARD_HIP_FRAME_WIDTH):
+   push_error("MP40_PIXEL_FORWARD_HIP_RED: original approved 482px sprite was not installed")
+   return
  opaque_bottom.resize(FRAME_NAMES.size())
  for i in range(FRAME_NAMES.size()):
   opaque_bottom[i] = _last_visible_center_row(textures[i])
@@ -94,6 +103,7 @@ func _ready() -> void:
  set_meta("mp40_pixel", true)
  set_meta("mp40_pixel_v2_layout", true)
  set_meta("mp40_pixel_grounded_viewmodel", true)
+ set_meta("mp40_pixel_forward_hip_v6", FORWARD_HIP_ENABLED)
  set_meta("mp40_pixel_highres_frame_count", loaded_original_pngs)
  set_meta("mp40_pixel_source_highres", has_true_highres_sheet)
  print("MP40_PIXEL_V2_READY original_png=", loaded_original_pngs, " total_frames=9 same_mp40_audio=true")
@@ -234,7 +244,13 @@ func _render() -> void:
  var hip_is_atlas := h_frame is AtlasTexture
  var h_factor_x := float(h_frame.get_width()) / ATLAS_CELL.x if hip_is_atlas else 1.0
  var h_factor_y := float(h_frame.get_height()) / ATLAS_CELL.y if hip_is_atlas else 1.0
- var h_scale := hip_width / (SOURCE_WIDTHS[frame] * h_factor_x)
+ var forward_frame: bool = FORWARD_HIP_ENABLED and not hip_is_atlas and (frame == HIP or frame == HIP_FIRE)
+ var sprite_width: float = FORWARD_HIP_FRAME_WIDTH if forward_frame else SOURCE_WIDTHS[frame] * h_factor_x
+ var h_scale := hip_width / sprite_width
+ if forward_frame:
+  # Anchor the ACTUAL front sight x coordinate to center-screen.
+  # This is a screen-space appearance correction; ballistic ray is unchanged.
+  hip_left = view.x * 0.5 - FORWARD_HIP_MUZZLE_X * h_scale
  hip_sprite.scale = Vector2.ONE * h_scale
  var h_inset := Vector2(ATLAS_OFFSETS[frame].x * h_factor_x,
   ATLAS_OFFSETS[frame].y * h_factor_y) if hip_is_atlas else Vector2.ZERO
