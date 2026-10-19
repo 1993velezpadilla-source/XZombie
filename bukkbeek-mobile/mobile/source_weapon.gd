@@ -19,6 +19,7 @@ var _current_reload_gun: String = ""
 var _rechamber_pending: bool = false
 var _source_calibration_done: bool = false
 var _offstage_reload_materials: Array[StandardMaterial3D] = []
+var _saved_viewmodel_near: float = -1.0
 
 func _ready() -> void:
  super._ready()
@@ -303,7 +304,23 @@ func _on_gun_clip_finished(name: StringName) -> void:
 
 func activate(current_aim_mode: bool = false) -> void:
  super.activate(current_aim_mode)
+ if source_weapon_id == "kar98k":
+  var camera := get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
+  if camera != null:
+   _saved_viewmodel_near=camera.near
+   # Original weapon mesh is safe at 170mm sight eye relief. The source
+   # 113-bone Marine arm shoulder may pass within 80mm of the camera in ADS.
+   # Clip ONLY forearm geometry crossing the near lens, not the weapon or
+   # real glTF animations. Restore camera immediately when swapping guns.
+   camera.near=0.13
  if _source_ready: _play_source_idle()
+
+func deactivate() -> void:
+ super.deactivate()
+ if source_weapon_id == "kar98k" and _saved_viewmodel_near>0.0:
+  var camera := get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
+  if camera != null:camera.near=_saved_viewmodel_near
+  _saved_viewmodel_near=-1.0
 
 func fire_weapon() -> void:
  if not _source_ready: return
