@@ -273,7 +273,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: XZIEL-V11-PerWeapon-ADS-Depth-Calibrations
-          path: _build/bukkbeek/visual_probes/*_shift*.png
+          path: |
+            _build/bukkbeek/visual_probes/*_shift*.png
+            _build/bukkbeek/visual_probes/kar98k_deep*.png
           retention-days: 14
 
       - name: Audit each original weapon versus original arms for visibility
