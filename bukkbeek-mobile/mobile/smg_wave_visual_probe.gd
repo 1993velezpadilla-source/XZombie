@@ -44,6 +44,32 @@ func _sweep_hip(w: Node3D, ident: String) -> void:
   var used:=_pixels(image)
   var path:=out+"smg_wave_"+ident+"_hip_sweep_"+str(index)+".png"
   image.save_png(path)
+  if index==2:
+   # Render source metal and Marine cloth separately. A good center-marker
+   # does not imply physically visible gun; this detects hidden 3D metal.
+   var gun_root:Node3D=w.get("_gun") as Node3D
+   var hands_root:Node3D=w.get("_hands") as Node3D
+   var gun_meshes: Array[MeshInstance3D]=[]
+   var hand_meshes: Array[MeshInstance3D]=[]
+   for node:Node in gun_root.find_children("*","MeshInstance3D",true,false):
+    gun_meshes.append(node as MeshInstance3D)
+   for node:Node in hands_root.find_children("*","MeshInstance3D",true,false):
+    if not gun_root.is_ancestor_of(node):
+     hand_meshes.append(node as MeshInstance3D)
+   for item in hand_meshes:item.visible=false
+   await process_frame
+   await RenderingServer.frame_post_draw
+   var only_gun:=view.get_texture().get_image()
+   print("XZIEL_SMG_ISOLATED_GUN id=",ident," pixels=", _pixels(only_gun))
+   only_gun.save_png(out+"smg_wave_"+ident+"_hip_gun_only.png")
+   for item in hand_meshes:item.visible=true
+   for item in gun_meshes:item.visible=false
+   await process_frame
+   await RenderingServer.frame_post_draw
+   var only_hands:=view.get_texture().get_image()
+   print("XZIEL_SMG_ISOLATED_HANDS id=",ident," pixels=", _pixels(only_hands))
+   only_hands.save_png(out+"smg_wave_"+ident+"_hip_hands_only.png")
+   for item in gun_meshes:item.visible=true
   print("XZIEL_SMG_HIP_SWEEP id=",ident,
    " index=",index," offset=",m," occupied=",used)
  rig.transform=base
