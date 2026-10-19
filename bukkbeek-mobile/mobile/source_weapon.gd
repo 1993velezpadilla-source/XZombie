@@ -17,6 +17,7 @@ var _hands_clips: Dictionary = {}
 var _gun_clips: Dictionary = {}
 var _current_reload_gun: String = ""
 var _rechamber_pending: bool = false
+var _source_calibration_done: bool = false
 
 func _ready() -> void:
  super._ready()
@@ -64,6 +65,9 @@ func _ready() -> void:
  for role in ["reload_empty", "rechamber", "equip", "fire_ads"]:
   _hands_clips[role] = _resolve_clip(_hand_anim, str(hands_roles.get(role, "")))
   _gun_clips[role] = _resolve_clip(_gun_anim, str(gun_roles.get(role, "")))
+ if not _normalize_static_source_gun_root():
+  push_error("XZIEL_WEAPON_RED unable to repair source PSA -90 deg import mismatch " + source_weapon_id)
+  return
 
  # Preserve the user's approved model's entire source code and its exact hand
  # pose as a separate sixth original weapon; use the universal locomotion pivot.
@@ -112,8 +116,75 @@ func _ready() -> void:
   _source_ready = false
   return
  _play_source_idle()
+ call_deferred("_calibrate_original_source_geometry")
  print("XZIEL_SOURCE_WEAPON_BOUND id=", source_weapon_id, " pairedPSA=true real_audio=true")
  
+func _normalize_static_source_gun_root() -> bool:
+ # MP40 reverse-engineering rule: a single static import-root rotation can
+ # differ by 90deg between two source PSAs, flipping a real gun on FIRE.
+ # Original gun+magazine+bolt animation tracks remain unchanged. Normalize only
+ # identical one-key static root path of actual gun skeleton, per weapon.
+ var idle_name:=str(_gun_clips.get("idle",""))
+ if idle_name.is_empty():return false
+ var idle_anim:Animation=_gun_anim.get_animation(idle_name)
+ var root_path:NodePath
+ var idle_q:=Quaternion.IDENTITY
+ var root_found:=false
+ for t in range(idle_anim.get_track_count()):
+  var path:=str(idle_anim.track_get_path(t))
+  if ("_skel" in path and idle_anim.track_get_type(t)==Animation.TYPE_ROTATION_3D
+   and idle_anim.track_get_key_count(t)==1):
+   root_path=idle_anim.track_get_path(t)
+   idle_q=idle_anim.track_get_key_value(t,0) as Quaternion
+   root_found=true
+   break
+ if not root_found:return false
+ var fixes:=0
+ for role in _gun_clips:
+  var clip:=str(_gun_clips[role])
+  if clip.is_empty():continue
+  var anim:Animation=_gun_anim.get_animation(clip)
+  var seen:=false
+  for t in range(anim.get_track_count()):
+   if anim.track_get_path(t)!=root_path:continue
+   if anim.track_get_type(t)!=Animation.TYPE_ROTATION_3D: return false
+   if anim.track_get_key_count(t)!=1: return false
+   seen=true
+   var current:=anim.track_get_key_value(t,0) as Quaternion
+   var mismatch:=rad_to_deg(idle_q.angle_to(current))
+   if mismatch>2.0:
+    if mismatch < 86.0 or mismatch > 94.0: return false
+    anim.track_set_key_value(t,0,idle_q)
+    fixes+=1
+    print("XZIEL_SOURCE_ROOT_IMPORT_FIXED id=",source_weapon_id,
+     " role=",role," source_mismatch_deg=",mismatch,
+     " untouched_real_bolt_mag_tracks=",anim.get_track_count()-1)
+  if not seen:return false
+ set_meta("source_root_import_repaired",true)
+ set_meta("source_root_import_rotation_fixes",fixes)
+ return true
+
+func _calibrate_original_source_geometry() -> void:
+ # Wait out the authentic hand idle blend; early calibration uses the bind
+ # pose and puts pistols inside the near plane. Same MP40 0.28s gate.
+ await get_tree().create_timer(0.31).timeout
+ if not _source_ready or not is_inside_tree():return
+ _sync_weapon_socket()
+ await get_tree().process_frame
+ if not _source_ready or not is_inside_tree():return
+ var fit=preload("res://mobile/source_weapon_fit.gd")
+ if not bool(fit.calibrate(self,_profile)):
+  _source_ready=false
+  set_meta("source_weapon_bound",false)
+  set_meta("source_weapon_status","RED_ORIGINAL_SIGHT_CALIBRATION")
+  return
+ _source_calibration_done=true
+ set_meta("source_weapon_status","SOURCE_OPTICS_SOLVED_NEEDS_VISUAL_APPROVAL")
+ # If weapon is already equipped, place existing Bukkbeek pivot in the
+ # calibrated pose, NOT the stale camera-near original default ADS marker.
+ if visible and fps_arms_root!=null:
+  fps_arms_root.transform=focused_aim_position.transform if is_aimed else standard_aim_position.transform
+
 func _find_animation_player(root: Node) -> AnimationPlayer:
  for n: Node in root.find_children("*", "AnimationPlayer", true, false):
   return n as AnimationPlayer
@@ -181,6 +252,7 @@ func _apply_source_materials(root: Node3D, gun_mesh: bool) -> bool:
    m.normal_texture = normals
    m.metallic = float(spec.get("metallic", 0.0))
    m.roughness = float(spec.get("roughness", 0.7))
+   m.normal_scale = float(spec.get("normal_scale", 1.0))
    m.cull_mode = BaseMaterial3D.CULL_DISABLED if bool(spec.get("two_sided", false)) else BaseMaterial3D.CULL_BACK
    mesh.set_surface_override_material(surface, m)
    colored += 1
