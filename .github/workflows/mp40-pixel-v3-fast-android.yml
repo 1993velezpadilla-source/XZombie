@@ -5,7 +5,7 @@ on:
       - fix/mp40-pixel-visible-android-v3-20261019
     paths:
       - 'bukkbeek-mobile/**'
-      - '.github/workflows/bukkbeek-android-touch.yml'
+      - '.github/workflows/mp40-pixel-v3-fast-android.yml'
   workflow_dispatch:
 
 # Don't spend the user's free GitHub minutes on stale intermediary MP40 builds.
