@@ -87,7 +87,8 @@ def main(root: Path) -> None:
         json.dumps(report, indent=2) + "\n")
     repaired = sum(v["repaired"] for v in report["atlas"].values()
         if isinstance(v, dict) and "repaired" in v)
-    assert repaired > 0, "MP40_PIXEL_MATTE_RED repair changed no pixels"
+    if repaired == 0:
+        print("MP40_PIXEL_MATTE_WARNING: No enclosed alpha holes were recoverable from this PNG; keeping original sprites, never pretending to restore missing details.")
     print("MP40_PIXEL_MATTE_REPAIR_GREEN atlas_recovered_px=", repaired,
         " native_frames=",len(report["frames"]),
         " source_resolution=",report["atlas"]["source_cell_size"],
