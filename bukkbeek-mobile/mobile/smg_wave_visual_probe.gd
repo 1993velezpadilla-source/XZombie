@@ -70,6 +70,20 @@ func _sweep_hip(w: Node3D, ident: String) -> void:
    print("XZIEL_SMG_ISOLATED_HANDS id=",ident," pixels=", _pixels(only_hands))
    only_hands.save_png(out+"smg_wave_"+ident+"_hip_hands_only.png")
    for item in gun_meshes:item.visible=true
+   # Kar98k already proved why a source first-person receiver needs a
+   # weapon-camera near clip distinct from gameplay camera near. Probe the
+   # clipped sleeve shape without modifying the user's original source.
+   var camera:Camera3D=w.get_node("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
+   var original_near:=camera.near
+   for near_value in [0.09,0.18,0.25,0.33,0.45]:
+    camera.near=near_value
+    await process_frame
+    await RenderingServer.frame_post_draw
+    var lens_frame:=view.get_texture().get_image()
+    lens_frame.save_png(out+"smg_wave_"+ident+"_lens_"+str(near_value).replace(".","p")+".png")
+    print("XZIEL_SMG_HIP_NEAR id=",ident," near=",near_value,
+     " pixels=", _pixels(lens_frame))
+   camera.near=original_near
   print("XZIEL_SMG_HIP_SWEEP id=",ident,
    " index=",index," offset=",m," occupied=",used)
  rig.transform=base
