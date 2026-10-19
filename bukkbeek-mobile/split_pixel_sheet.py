@@ -17,8 +17,13 @@ def split(sheet_path, project_root):
         x0 = round(col * 1448 / 3)
         x1 = round((col + 1) * 1448 / 3)
         tile = sheet.crop((x0, row * 362, x1, row * 362 + 326))
-        if tile.getchannel("A").getbbox() is None:
+        alpha = tile.getchannel("A")
+        if alpha.getbbox() is None:
             raise ValueError("Empty sprite: " + label)
+        if alpha.getextrema()[0] >= 250:
+            raise ValueError("Opaque full-sheet backdrop: true transparent PNG required, source=" + label)
+        if sum(p > 40 for p in alpha.getdata()) < 3500:
+            raise ValueError("Source silhouette has too few visible pixels: " + label)
         tile.save(out / (label + ".png"))
     (out.parent / "hires_manifest.json").write_text(
         json.dumps({"real_highres": True, "source": Path(sheet_path).name,
