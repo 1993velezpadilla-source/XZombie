@@ -40,5 +40,34 @@ func _run() -> void:
  sprite.start_reload()
  if not bool(sprite.get("is_reloading")):
   _fail("stock reload clock did not start");return
+ # V2 composition contract: user-reported gun clipping is RED even if
+ # hit detection and ammo still work. Probe actual drawn Sprite2D transforms.
+ var hip: Sprite2D = sprite.get("hip_sprite") as Sprite2D
+ var ads: Sprite2D = sprite.get("ads_sprite") as Sprite2D
+ if hip == null or ads == null:
+  _fail("V2 viewmodel sprites were not constructed");return
+ if not bool(sprite.get_meta("mp40_pixel_v2_layout", false)):
+  _fail("old atlas-only positioning is still active");return
+ var original_art_count: int = int(sprite.get_meta("mp40_pixel_highres_frame_count", -1))
+ if original_art_count != 0 and original_art_count != 9:
+  _fail("partial native PNG asset pack: "+str(original_art_count));return
+ # Re-enter HIP for safe-zone test; ADS sight test after that.
+ sprite.cancel_tactical_reload()
+ sprite.is_aimed = false
+ sprite.set("ads_weight", 0.0)
+ sprite.call("_render")
+ var view: Vector2 = root.get_viewport().get_visible_rect().size
+ var max_x: float = hip.position.x + hip.texture.get_width() * hip.scale.x
+ var max_y: float = hip.position.y + hip.texture.get_height() * hip.scale.y
+ if max_x > view.x * 0.80 or max_y > view.y * 1.01:
+  _fail("HIP sprite extends beyond HUD safe-zone: "+str(Vector2(max_x,max_y)));return
+ sprite.is_aimed = true
+ sprite.set("ads_weight", 1.0)
+ sprite.call("_render")
+ var aim_x: float = ads.position.x + ads.texture.get_width() * ads.scale.x * 0.625
+ var aim_y: float = ads.position.y + ads.texture.get_height() * ads.scale.y * 0.090
+ if Vector2(aim_x,aim_y).distance_to(view*0.5) > 1.5:
+  _fail("ADS true front sight does not coincide with screen-center ray");return
+ print("MP40_PIXEL_V2_LAYOUT_GREEN hip_inside_safe_zone=true ads_iron_sight_centered=true original_png_count=",original_art_count)
  print("MP40_PIXEL_TEST_GREEN map=original weapons=10 approved_mp40_unchanged=true sprites=9 mp40_source_sfx=true hit_and_reload_calls=true")
  quit(0)
