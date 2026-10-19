@@ -98,6 +98,7 @@ jobs:
           cp bukkbeek-mobile/mobile/mp40_weapon.gd _build/bukkbeek/mobile/mp40_weapon.gd
           cp bukkbeek-mobile/mobile/source_weapon.gd _build/bukkbeek/mobile/source_weapon.gd
           cp bukkbeek-mobile/mobile/weapon_pack_runtime_probe.gd _build/bukkbeek/mobile/weapon_pack_runtime_probe.gd
+          cp bukkbeek-mobile/mobile/weapon_source_geometry_probe.gd _build/bukkbeek/mobile/weapon_source_geometry_probe.gd
           cp bukkbeek-mobile/mobile/universal_weapon_motion.gd _build/bukkbeek/mobile/universal_weapon_motion.gd
           cp bukkbeek-mobile/mobile/mp40_ads_arm_modifier.gd _build/bukkbeek/mobile/mp40_ads_arm_modifier.gd
           cp bukkbeek-mobile/mobile/mp40_runtime_probe.gd _build/bukkbeek/mobile/mp40_runtime_probe.gd
@@ -175,6 +176,19 @@ jobs:
           grep -q 'XZIEL_MULTIWEAPON_RUNTIME_GREEN' /tmp/bukkbeek-multiweapon-runtime.log
           if grep -E 'XZIEL_MULTIWEAPON_RUNTIME_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/bukkbeek-multiweapon-runtime.log; then
             exit 7
+          fi
+
+      - name: Read original weapon geometry, rigs, hip ADS camera and PSA rotations
+        run: |
+          set -o pipefail
+          timeout 100s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/weapon_source_geometry_probe.gd 2>&1 | tee /tmp/bukkbeek-geometry.log
+          for gun in colt thompson kar98k; do
+            grep -q "XZIEL_V9_GEOM id=$gun" /tmp/bukkbeek-geometry.log
+            grep -q "XZIEL_V9_ROOTS id=$gun role=reload" /tmp/bukkbeek-geometry.log
+          done
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/bukkbeek-geometry.log; then
+            exit 8
           fi
 
       - name: Render real 2D pixel captures of MP40 in ADS and empty-reload frames
