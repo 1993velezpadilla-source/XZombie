@@ -8,8 +8,10 @@ asset in the project Library: **WWII MP40 Pixel Art Sprite Sheet.png**
 Upload that source image to GitHub on branch:
 `fix/mp40-pixel-alpha-matte-v4-20261019`
 
-Repository path:
-`bukkbeek-mobile/pixel_assets/MP40_Pixel_Source_1448x1086.png`
+Repository path (no renaming necessary):
+`bukkbeek-mobile/pixel_assets/WWII MP40 Pixel Art Sprite Sheet.png`
+
+The alternative name `MP40_Pixel_Source_1448x1086.png` also works.
 
 The focused Android workflow automatically:
 1. Starts with the existing game, 9 original weapons and all original controls.
