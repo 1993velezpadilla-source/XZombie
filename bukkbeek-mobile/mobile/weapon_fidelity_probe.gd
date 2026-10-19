@@ -76,17 +76,17 @@ func _run() -> void:
   for state in ["hip","ads"]:
    root.get_node("Global").emit_signal("aim_mode_changed",state=="ads")
    await create_timer(0.46).timeout
-   var name:=id+"_"+state
-   var full:Dictionary=await _capture(view,name,"full",gun_meshes,hand_meshes)
-   var weapon:Dictionary=await _capture(view,name,"gun",gun_meshes,hand_meshes)
-   var arm:Dictionary=await _capture(view,name,"hands",gun_meshes,hand_meshes)
+   var capture_id: String=id+"_"+str(state)
+   var full:Dictionary=await _capture(view,capture_id,"full",gun_meshes,hand_meshes)
+   var weapon:Dictionary=await _capture(view,capture_id,"gun",gun_meshes,hand_meshes)
+   var arm:Dictionary=await _capture(view,capture_id,"hands",gun_meshes,hand_meshes)
    for mesh in gun_meshes:mesh.visible=true
    for mesh in hand_meshes:mesh.visible=true
    if full.is_empty() or weapon.is_empty() or arm.is_empty():return
    var center_g:=float(weapon["center"])
    var center_h:=float(arm["center"])
    var ratio:=center_h/maxf(1.0,center_g)
-   print("XZIEL_REAL_FIDELITY_REPORT id=",id," stance=",state,
+   print("XZIEL_REAL_FIDELITY_REPORT id=",id," stance=",str(state),
     " center_hands_over_gun_ratio=",ratio,
     " total_gun_px=",weapon["all"]," total_hands_px=",arm["all"],
     " screen_center_hand_px=",center_h," screen_center_gun_px=",center_g,
