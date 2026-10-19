@@ -63,7 +63,13 @@ SIGHT_GEOMETRY = {
   front_witness_vertices=[[0.13583306968212128,0.04270694777369499,-0.00048253076965920627],
                           [0.13583306968212128,0.04270694777369499,0.001457851380109787]],
   source_witness_sep_m=0.18231193978,source_body_length_m=0.229335,
-  eye_relief_m=0.26),
+  eye_relief_m=0.26,
+  # V11 actual renderer sweep 39197211555: moving the ORIGINAL source rig
+  # 0.12m closer increases ADS gun 12367 -> 30510 px and cuts the hideous
+  # 9.88x sleeve/gun ratio to 2.67x. Original PSA/skeleton/socket untouched.
+  ads_render_offset_z_m=0.12,
+  # HIP 39197564349: original gun 6343px -> 10634px; arms 33537->17340.
+  hip_render_offset_z_m=0.12,hip_render_offset_y_m=0.07),
  "thompson": dict(
   rear_witness_vertices=[[-0.14949001371860504,0.0877033993601799,-0.0033794688060879707]],
   front_witness_vertices=[[0.4278489649295807,0.059105366468429565,-0.003418490756303072]],
