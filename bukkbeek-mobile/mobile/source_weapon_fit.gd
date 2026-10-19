@@ -106,10 +106,15 @@ static func calibrate(w: Node3D, profile: Dictionary) -> bool:
  var fov_tan:=tan(deg_to_rad(75.0)*0.5)
  if (sample_fr.z>=-0.2 or absf(sample_fr.x/sample_fr.z)>=fov_tan or absf(sample_fr.y/sample_fr.z)>=fov_tan):
   push_error("XZIEL_FIT_RED source front projected outside 75deg lens "+id);return false
- w.get("standard_aim_position").transform=framed
- w.get("focused_aim_position").transform=target_ads
+ var hip_marker: Marker3D=w.get("standard_aim_position") as Marker3D
+ var ads_marker: Marker3D=w.get("focused_aim_position") as Marker3D
+ if hip_marker==null or ads_marker==null:return false
+ hip_marker.transform=framed
+ ads_marker.transform=target_ads
  w.set_meta("source_optics_calibrated",true)
  w.set_meta("source_measured_sight_separation_m",sightline.length())
+ w.set_meta("source_sight_rear_rig",rear)
+ w.set_meta("source_sight_front_rig",front)
  w.set_meta("source_hip_front_eye",sample_fr)
  w.set_meta("source_ads_rear_eye",test_rear)
  w.set_meta("source_ads_front_eye",test_front)
