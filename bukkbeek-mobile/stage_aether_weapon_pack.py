@@ -74,7 +74,7 @@ SIGHT_GEOMETRY = {
                          [0.13057999312877655,0.04840338975191116,0.007856978103518486]],
   front_witness_vertices=[[0.7090680003166199,0.07084739208221436,1.1552184275842592e-07]],
   source_witness_sep_m=0.57892323127,source_body_length_m=0.955707,
-  eye_relief_m=0.17)
+  hip_camera_clearance_m=0.74,eye_relief_m=0.30)
 }
 # These are TRUE original GLB metal vertices verified by hashed mesh source.
 # Eye relief is per-weapon FPS composition (candidate for mobile visual gate),
