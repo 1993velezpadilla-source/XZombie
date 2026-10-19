@@ -143,9 +143,18 @@ static func calibrate(w: Node3D, profile: Dictionary) -> bool:
  var clearance:float=float(sight.get("hip_camera_clearance_m",0.44))
  if clearance<0.35 or clearance>0.95:return false
  var hip_front:=Vector3(0.13,-0.15,-(body_length+clearance))
+ # Additional WaW SMGs may need a screen-space HIP translation. It is
+ # independent from physical ADS iron sights and NEVER changes source PSAs.
+ # Existing Colt/Thompson/Kar98k use precisely their prior clamps and values.
+ var hip_shift_x:float=float(sight.get("hip_render_offset_x_m",0.0))
  var hip_shift_y:float=float(sight.get("hip_render_offset_y_m",0.0))
  var hip_shift_z:float=float(sight.get("hip_render_offset_z_m",0.0))
- if absf(hip_shift_y)>0.15 or absf(hip_shift_z)>0.30:return false
+ var newer_smg:bool=id=="ppsh" or id=="type100"
+ var x_limit:float=0.35 if newer_smg else 0.0
+ var y_limit:float=0.50 if newer_smg else 0.15
+ var z_limit:float=0.60 if newer_smg else 0.30
+ if absf(hip_shift_x)>x_limit or absf(hip_shift_y)>y_limit or absf(hip_shift_z)>z_limit:return false
+ hip_front.x+=hip_shift_x
  hip_front.y+=hip_shift_y
  hip_front.z+=hip_shift_z
  var framed:=Transform3D(hip_basis,hip_front-hip_basis*front)
@@ -167,6 +176,7 @@ static func calibrate(w: Node3D, profile: Dictionary) -> bool:
  w.set_meta("source_ads_rear_eye",test_rear)
  w.set_meta("source_ads_actual_eye_relief_m",effective_eye_relief)
  w.set_meta("source_ads_cinematic_render_offset_z_m",ads_screen_shift_z)
+ w.set_meta("source_hip_cinematic_render_offset_x_m",hip_shift_x)
  w.set_meta("source_hip_cinematic_render_offset_y_m",hip_shift_y)
  w.set_meta("source_hip_cinematic_render_offset_z_m",hip_shift_z)
  w.set_meta("source_ads_front_eye",test_front)
