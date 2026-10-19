@@ -70,6 +70,10 @@ func _run() -> void:
   var gun:Node3D=w.get("_gun") as Node3D
   var hand_meshes:=_mesh_list(hands)
   var gun_meshes:=_mesh_list(gun)
+  # The authentic gun is parented under the HANDS skeleton at tag_weapon.
+  # Exclude it from hands inventory, or switching 'hands' off also hides gun.
+  for original_gun_mesh in gun_meshes:
+   hand_meshes.erase(original_gun_mesh)
   if hand_meshes.is_empty() or gun_meshes.is_empty():
    push_error("XZIEL_REAL_FIDELITY_RED real hand/gun surfaces absent "+id)
    quit(5);return
@@ -83,6 +87,9 @@ func _run() -> void:
    for mesh in gun_meshes:mesh.visible=true
    for mesh in hand_meshes:mesh.visible=true
    if full.is_empty() or weapon.is_empty() or arm.is_empty():return
+   if int(weapon.get("all",0))<500 or int(arm.get("all",0))<500:
+    push_error("XZIEL_REAL_FIDELITY_RED original gun or hands not actually rendered "+capture_id)
+    quit(5);return
    var center_g:=float(weapon["center"])
    var center_h:=float(arm["center"])
    var ratio:=center_h/maxf(1.0,center_g)
