@@ -25,6 +25,7 @@ on:
       - fix/v12-aether-mesh-skin-frustum-forensics-20261019
       - experiment/v13-kar98k-original-viewport-optimization-20261019
       - fix/v14-restore-mp40-authoritative-hip-ads-20261019
+      - feature/smg-aether-class-gauntlet-v1-20261019
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -130,10 +131,20 @@ jobs:
           python3 bukkbeek-mobile/verify_mobile_v7.py _build/bukkbeek
           python3 bukkbeek-mobile/stage_aether_weapon_pack.py _build/bukkbeek
           python3 bukkbeek-mobile/verify_multiweapon_v8.py _build/bukkbeek
+          python3 bukkbeek-mobile/audit_smg_source_class.py _build/bukkbeek
           python3 bukkbeek-mobile/audit_source_glb.py _build/bukkbeek/mobile/weapon_sources
           test -s _build/bukkbeek/resources/player/fps_demo_arms.glb
           test -s _build/bukkbeek/resources/undead/fps_demo_undead.glb
           grep -q 'NodePath("MP40Source")' _build/bukkbeek/player/player.tscn
+
+      - name: Upload four-SMG original-source audit (NOT gameplay approval)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-WaW-Four-SMG-Source-Comparison
+          path: _build/bukkbeek/smg_gauntlet/
+          if-no-files-found: warn
+          retention-days: 14
 
       - name: Install Godot 4.6 editor and Android templates
         run: |
