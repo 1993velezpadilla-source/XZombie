@@ -67,8 +67,12 @@ func _run() -> void:
  sprite.is_aimed = true
  sprite.set("ads_weight", 1.0)
  sprite.call("_render")
- var aim_x: float = ads.position.x + ads.texture.get_width() * ads.scale.x * 0.625
- var aim_y: float = ads.position.y + ads.texture.get_height() * ads.scale.y * 0.090
+ var sight: Vector2 = Vector2(255.0, 18.0)
+ if ads.texture is AtlasTexture:
+  sight = Vector2((255.0 + 0.0) * float(ads.texture.get_width()) / 512.0,
+   (18.0 + 126.0) * float(ads.texture.get_height()) / 326.0)
+ var aim_x: float = ads.position.x + sight.x * ads.scale.x
+ var aim_y: float = ads.position.y + sight.y * ads.scale.y
  if Vector2(aim_x,aim_y).distance_to(view*0.5) > 1.5:
   _fail("ADS true front sight does not coincide with screen-center ray");return
  print("MP40_PIXEL_V2_LAYOUT_GREEN hip_inside_safe_zone=true ads_iron_sight_centered=true original_png_count=",original_art_count)
