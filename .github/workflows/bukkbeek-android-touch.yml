@@ -31,6 +31,7 @@ on:
       - '.github/workflows/bukkbeek-android-touch.yml'
   workflow_dispatch:
 
+# Type100 HIP source-depth correction b41368f: request fresh visual+Android gauntlet.
 # Don't spend the user's free GitHub minutes on stale intermediary MP40 builds.
 concurrency:
   group: bukkbeek-xziel-${{ github.ref }}
