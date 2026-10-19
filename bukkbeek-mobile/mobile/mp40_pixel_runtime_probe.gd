@@ -55,6 +55,7 @@ func _run() -> void:
   _fail("partial native PNG asset pack: "+str(original_art_count));return
  # Re-enter HIP for safe-zone test; ADS sight test after that.
  sprite.cancel_tactical_reload()
+ sprite.set("shot_remaining", 0.0) # Measure ADS idle, not transient ADS fire
  sprite.is_aimed = false
  sprite.set("ads_weight", 0.0)
  sprite.call("_render")
