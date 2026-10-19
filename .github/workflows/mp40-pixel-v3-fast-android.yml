@@ -348,10 +348,12 @@ jobs:
           # Optional, strictly-original HIGH RES sheet (1448x1086), saved by
           # project owner under the following committed filename. The tiny
           # fallback is never described as the final version.
-          if test -s bukkbeek-mobile/pixel_assets/MP40_Pixel_Source_1448x1086.png; then
-            python3 bukkbeek-mobile/split_pixel_sheet.py \
-              bukkbeek-mobile/pixel_assets/MP40_Pixel_Source_1448x1086.png \
-              _build/bukkbeek
+          sheet='bukkbeek-mobile/pixel_assets/WWII MP40 Pixel Art Sprite Sheet.png'
+          if ! test -s "$sheet"; then
+            sheet='bukkbeek-mobile/pixel_assets/MP40_Pixel_Source_1448x1086.png'
+          fi
+          if test -s "$sheet"; then
+            python3 bukkbeek-mobile/split_pixel_sheet.py "$sheet" _build/bukkbeek
             test "$(find _build/bukkbeek/mobile/mp40_pixel/frames -maxdepth 1 -name '*.png' | wc -l)" -eq 9
           else
             echo 'MP40_PIXEL_SOURCE_LOWRES_WARNING: original 1448x1086 image not yet in GitHub'
