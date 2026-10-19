@@ -23,6 +23,12 @@ SOURCE_REPO = "1993velezpadilla-source/config-old-3"
 WAW_COMMIT = "5c8093db6c5eab64d653f715813f1d70915d393f"
 MP40_COMMIT = "498891d9226ed00357fb0d6bc5758a5d68d8fedb"
 ASSET_ROOT = "xogot/assets/weapons"
+SOURCE_FIRE_SHA = {
+    "mp40": "7ad21d2ac3281372f9e91ecae8e424f27dea308f",
+    "thompson": "93d6a2d346830cc17693125eb00ff788d83a1410",
+    "ppsh": "9cfd7554f1fd2c4dfbf00a4e9bdcfaf672efb0e5",
+    "type100": "f49bee315b6ddb14d6fb812134904132f1f53081",
+}
 # SHA-1 values are Git blob object IDs obtained for the ORIGINAL pinned files.
 # No guessed V5/V6 transforms appear here.
 PINNED = {
@@ -100,6 +106,40 @@ def original_glb(workspace: Path, weapon: str, part: str) -> tuple[bytes, str]:
     raise AssertionError("Unexpected asset-fetch path")
 
 
+def original_fire_audio(workspace: Path, weapon: str) -> dict:
+    """Require the actual WaW fire sample before even marking source ready."""
+    expected = SOURCE_FIRE_SHA[weapon]
+    place = (workspace / "mobile" /
+             ("mp40_source" if weapon == "mp40" else
+              "weapon_sources/" + weapon) / "fire.wav")
+    if place.is_file():
+        audio = place.read_bytes()
+        if blob_sha(audio) == expected:
+            return {"git_blob_sha": expected, "bytes": len(audio)}
+    url = (
+        "https://raw.githubusercontent.com/" + SOURCE_REPO + "/" +
+        PINNED[weapon]["commit"] +
+        "/xogot/assets/audio/weapons/mapmod/" + weapon + "/fire.wav"
+    )
+    for attempt in range(3):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "XZIEL-SMG-Class-Gate/1"})
+            with urllib.request.urlopen(req, timeout=45) as response:
+                audio = response.read()
+            if blob_sha(audio) != expected:
+                raise ValueError("Original firing sound hash mismatch for " + weapon)
+            if not audio.startswith(b"RIFF") or audio[8:12] != b"WAVE":
+                raise ValueError("Invalid original firing WAV " + weapon)
+            place.parent.mkdir(parents=True, exist_ok=True)
+            place.write_bytes(audio)
+            return {"git_blob_sha": expected, "bytes": len(audio)}
+        except (OSError, TimeoutError):
+            if attempt == 2:
+                raise
+            time.sleep(1 + attempt)
+    raise AssertionError("Unexpected original-audio fetch path")
+
+
 def unpack_glb(data: bytes) -> dict:
     if len(data) < 20:
         raise ValueError("GLB too small")
@@ -174,6 +214,7 @@ def run(workspace: Path) -> None:
                 "staged_path": place,
                 **meta,
             }
+        row["source_fire_audio"] = original_fire_audio(workspace, weapon)
         report["weapons"][weapon] = row
         print("XZIEL_SMG_SOURCE_GREEN id=" + weapon +
               " gunPSA=" + str(row["gun"]["animation_count"]) +
@@ -189,13 +230,13 @@ def run(workspace: Path) -> None:
     lines = [
         "# World at War SMG — original-source comparison",
         "",
-        "| SMG | Original gun PSA | Original hands PSA | Gun materials | Status |",
-        "| --- | ---: | ---: | --- | --- |",
+        "| SMG | Original gun PSA | Original hands PSA | Original fire WAV | Gun materials | Status |",
+        "| --- | ---: | ---: | --- | --- | --- |",
     ]
     for name, parts in report["weapons"].items():
         lines.append("| " + name + " | " + str(parts["gun"]["animation_count"]) +
                      " | " + str(parts["hands"]["animation_count"]) +
-                     " | " + ", ".join(parts["gun"]["materials"]) +
+                     " | source SHA verified | " + ", ".join(parts["gun"]["materials"]) +
                      " | GLB + animations verified |")
     lines += [
         "",
