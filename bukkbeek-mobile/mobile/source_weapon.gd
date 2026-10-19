@@ -100,6 +100,9 @@ func _ready() -> void:
  if not _apply_source_materials(_hands, false):
   push_error("XZIEL_WEAPON_RED hands missing original material/texture " + source_weapon_id)
   return
+ if not _check_real_gun_texture_identity():
+  push_error("XZIEL_WEAPON_RED original gun got overwritten with Marine HAND albedo "+source_weapon_id)
+  return
  reload_sfx = null # Upstream stock reload != real source; never substitute it.
  animation_player = _hand_anim
  animation_fire = str(_hands_clips["fire"])
@@ -241,6 +244,12 @@ func _apply_source_materials(root: Node3D, gun_mesh: bool) -> bool:
  var colored := 0
  for n: Node in root.find_children("*", "MeshInstance3D", true, false):
   var mesh := n as MeshInstance3D
+  # MP40 colors the hand rig BEFORE attaching its gun. Our generic adapter
+  # attached the gun first; source gun becomes a descendant of hand skeleton.
+  # Without this guard, HAND_MATERIAL overwrites genuine gun albedo and
+  # makes metal/wood look like a Marine uniform. Exact V8/V9 screenshot bug.
+  if not gun_mesh and _gun != null and _gun.is_ancestor_of(mesh):
+   continue
   mesh.layers = 2
   if mesh.mesh == null: continue
   for surface in range(mesh.mesh.get_surface_count()):
@@ -295,6 +304,26 @@ func _set_original_reload_props_visible(enabled: bool) -> void:
  for material in _offstage_reload_materials:
   if is_instance_valid(material):
    material.albedo_color=Color(1.0,1.0,1.0,1.0 if enabled else 0.0)
+
+func _check_real_gun_texture_identity() -> bool:
+ var valid:Array[String]=[]
+ for spec in _profile.get("materials",[]):
+  valid.append(str(spec.get("albedo","")))
+ var count:=0
+ for n:Node in _gun.find_children("*","MeshInstance3D",true,false):
+  var mesh:=n as MeshInstance3D
+  if mesh.mesh==null:continue
+  for surface in range(mesh.mesh.get_surface_count()):
+   var material:=mesh.get_surface_override_material(surface) as StandardMaterial3D
+   if material==null or material.albedo_texture==null:return false
+   var uri:=str(material.albedo_texture.resource_path)
+   if not valid.has(uri):
+    push_error("XZIEL_GUN_TEXTURE_RED id="+source_weapon_id+" shader="+uri+" expected="+str(valid))
+    return false
+   count+=1
+ set_meta("source_original_gun_materials_verified",count>0)
+ print("XZIEL_SOURCE_GUN_TEXTURE_GREEN id=",source_weapon_id," actual_original_surfaces=",count)
+ return count>0
 
 func _reload_length(hand: String, gun: String) -> float:
  if hand.is_empty() or gun.is_empty(): return 0.0
