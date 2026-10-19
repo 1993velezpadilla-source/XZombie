@@ -65,7 +65,7 @@ SMG = {
           "reload":"PSA_viewmodel_type100_smg_reload",
           "reload_empty":"PSA_viewmodel_type100_smg_reload_empty", "equip":"PSA_Type100Equip"},
   "rear": (-.1599, .0661, .0012), "front": (.3206, .0661, .005),
-  "eye_relief": .18,
+  "eye_relief": .35,
  },
 }
 
@@ -217,9 +217,9 @@ def main(root:Path)->None:
       # viewport sweep #39294035195. ADS metal stays physically aligned.
       "hip_render_offset_x_m": .16 if ident=="ppsh" else .16,
       "hip_render_offset_y_m": -.18,
-      "hip_render_offset_z_m": -.24 if ident=="ppsh" else 0.0,
+      "hip_render_offset_z_m": .10 if ident=="ppsh" else 0.0,
       "hip_camera_near_m":.45,
-      "ads_camera_near_m":.10,
+      "ads_camera_near_m":.10 if ident=="ppsh" else .30,
      },
     "source_sight_status":"ORIGINAL_MESH_VERTEX_CANDIDATE_UNTIL_CAMERA_VISUAL_GATE",
   }
