@@ -120,8 +120,9 @@ func _ready() -> void:
  print("XZIEL_SOURCE_WEAPON_BOUND id=", source_weapon_id, " pairedPSA=true real_audio=true")
  
 func _normalize_static_source_gun_root() -> bool:
- # MP40 reverse-engineering rule: a single static import-root rotation can
- # differ by 90deg between two source PSAs, flipping a real gun on FIRE.
+ # MP40 reverse-engineering rule: source gun static root is IDENTITY relative
+ # to tag_weapon. These Aether GLBs have duplicated PSA .001 roots identity,
+ # but baseline idle/fire/reload PSAs contain -90 degree converter artifacts.
  # Original gun+magazine+bolt animation tracks remain unchanged. Normalize only
  # identical one-key static root path of actual gun skeleton, per weapon.
  var idle_name:=str(_gun_clips.get("idle",""))
@@ -135,7 +136,10 @@ func _normalize_static_source_gun_root() -> bool:
   if ("_skel" in path and idle_anim.track_get_type(t)==Animation.TYPE_ROTATION_3D
    and idle_anim.track_get_key_count(t)==1):
    root_path=idle_anim.track_get_path(t)
-   idle_q=idle_anim.track_get_key_value(t,0) as Quaternion
+   var imported:Quaternion=idle_anim.track_get_key_value(t,0) as Quaternion
+   var source_angle:=rad_to_deg(Quaternion.IDENTITY.angle_to(imported))
+   if source_angle>2.0 and absf(source_angle-90.0)>4.0:return false
+   idle_q=Quaternion.IDENTITY # Same true root as approved MP40, not defective -90 idle.
    root_found=true
    break
  if not root_found:return false
