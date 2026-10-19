@@ -57,7 +57,8 @@ func _run()->void:
  var mgr:Node=p.get_node("WeaponsManager")
  var view:SubViewport=p.get_node("WeaponSubViewport/SubViewport") as SubViewport
  view.render_target_update_mode=SubViewport.UPDATE_ALWAYS
- (p.get_node("WeaponSubViewport/SubViewport/Camera3D") as Camera3D).make_current()
+ var view_cam:Camera3D=p.get_node("WeaponSubViewport/SubViewport/Camera3D") as Camera3D
+ view_cam.make_current()
  var path:="res://visual_probes/"
  DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(path))
  for idx in [6,7,8]:
@@ -94,6 +95,26 @@ func _run()->void:
    (g["image"] as Image).save_png(path+id+"_shift"+str(i)+"_gun.png")
    (h["image"] as Image).save_png(path+id+"_shift"+str(i)+"_arms.png")
    (all_m["image"] as Image).save_png(path+id+"_shift"+str(i)+"_full.png")
+  if id=="kar98k":
+   var old_fov:float=view_cam.fov
+   for relief_shift in [-0.45,-0.65,-0.80]:
+    for fov_candidate in [48.0,60.0]:
+     var test_rifle:=original
+     test_rifle.origin.z+=float(relief_shift)
+     rig.transform=test_rifle
+     view_cam.fov=float(fov_candidate)
+     var kar_g:Dictionary=await _render_layer(view,gun_meshes,hand_meshes,"gun")
+     var kar_h:Dictionary=await _render_layer(view,gun_meshes,hand_meshes,"arms")
+     var kar_all:Dictionary=await _render_layer(view,gun_meshes,hand_meshes,"all")
+     var px:Dictionary=kar_g["metric"]
+     print("XZIEL_V11_RIFLE_BODY id=",id," shift_z=",relief_shift,
+      " viewmodel_fov=",fov_candidate," gun_pixels=",px,
+      " arm_pixels=",kar_h["metric"],
+      " bottom_body_fraction=",float(px["lower"])/maxf(1.0,float(px["all"])))
+     var label:="kar98k_deep"+str(int(-relief_shift*100))+"_fov"+str(int(fov_candidate))
+     (kar_g["image"] as Image).save_png(path+label+"_gun.png")
+     (kar_all["image"] as Image).save_png(path+label+"_full.png")
+   view_cam.fov=old_fov
   rig.transform=original
   root.get_node("Global").emit_signal("aim_mode_changed",false)
   if id=="colt":
