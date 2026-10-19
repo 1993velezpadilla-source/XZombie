@@ -20,7 +20,7 @@ func _initialize() -> void:
    var state: Dictionary = timeline.sample()
    if state.is_empty() or not str(state["path"]).ends_with(".png"):
     _fail("invalid sampled frame " + clip); return
-  var expected: Array[String] = ["mag_out", "bolt_pull", "mag_in", "bolt_release"] if clip == "reload_empty" else ["mag_out", "mag_in"]
+  var expected: Array = ["mag_out", "bolt_pull", "mag_in", "bolt_release"] if clip == "reload_empty" else ["mag_out", "mag_in"]
   if events != expected:
    _fail(clip + " got=" + str(events) + " expected=" + str(expected)); return
  print("MP40_25D_REFERENCE_TIMELINE_GREEN source_order=bolt_before_fresh_mag tactical_no_bolt=true actual_25d_art_ready=false")
