@@ -23,6 +23,7 @@ on:
       - fix/v10-source-weapon-visual-fidelity-audit-20261018
       - fix/v11-cod-fps-visual-weapon-calibration-20261018
       - fix/v12-aether-mesh-skin-frustum-forensics-20261019
+      - experiment/v13-kar98k-original-viewport-optimization-20261019
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -107,6 +108,7 @@ jobs:
           cp bukkbeek-mobile/mobile/weapon_depth_sweep_probe.gd _build/bukkbeek/mobile/weapon_depth_sweep_probe.gd
           cp bukkbeek-mobile/mobile/weapon_kar98_ads_pose_probe.gd _build/bukkbeek/mobile/weapon_kar98_ads_pose_probe.gd
           cp bukkbeek-mobile/mobile/weapon_mesh_frustum_probe.gd _build/bukkbeek/mobile/weapon_mesh_frustum_probe.gd
+          cp bukkbeek-mobile/mobile/kar98k_camera_grid_probe.gd _build/bukkbeek/mobile/kar98k_camera_grid_probe.gd
           cp bukkbeek-mobile/mobile/source_camera_authority_probe.gd _build/bukkbeek/mobile/source_camera_authority_probe.gd
           cp bukkbeek-mobile/mobile/weapon_pack_runtime_probe.gd _build/bukkbeek/mobile/weapon_pack_runtime_probe.gd
           cp bukkbeek-mobile/mobile/weapon_source_geometry_probe.gd _build/bukkbeek/mobile/weapon_source_geometry_probe.gd
@@ -308,6 +310,25 @@ jobs:
             2>&1 | tee /tmp/xziel-v12-mesh-frustum.log
           grep -q 'XZIEL_SOURCE_FRUSTUM_COMPLETE' /tmp/xziel-v12-mesh-frustum.log
           if grep -E 'XZIEL_SOURCE_FRUSTUM_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-v12-mesh-frustum.log; then exit 15; fi
+
+      - name: Exhaustively search real source Kar98k rifle receiver/arm depth, FOV, near-plane 
+        run: |
+          set -o pipefail
+          timeout 210s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/kar98k_camera_grid_probe.gd \
+            2>&1 | tee /tmp/xziel-v13-kar-camera-grid.log
+          grep -q 'XZIEL_KAR_GRID_COMPLETE samples=50' /tmp/xziel-v13-kar-camera-grid.log
+          if grep -E 'XZIEL_KAR_GRID_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-v13-kar-camera-grid.log; then exit 16; fi
+
+      - name: Upload original GLB Kar98k best camera and sensitivity frames
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-V13-Kar98k-Optical-HIP-Original-Rig-Camera-Grid
+          path: _build/bukkbeek/visual_probes/v13_*.png
+          retention-days: 14
 
       - name: Audit each original weapon versus original arms for visibility
         run: |
