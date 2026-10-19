@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import struct
 import sys
 import time
@@ -161,7 +162,6 @@ def unpack_glb(data: bytes) -> dict:
 
 def inspect_gltf(document: dict) -> dict:
     nodes = document.get("nodes", [])
-    node_names = {n.get("name", "") for n in nodes}
     animations = [a.get("name", "") for a in document.get("animations", [])]
     roles = {
         role: [s for s in animations if role in s.lower()]
@@ -174,7 +174,7 @@ def inspect_gltf(document: dict) -> dict:
     for n in nodes:
         name = n.get("name", "")
         if name in {"j_gun", "tag_weapon", "tag_iron_sights", "tag_flash",
-                    "j_clip", "j_bolt"}:
+                    "j_clip", "j_bolt"} or name.endswith("_skel"):
             # LOCAL GLB node pose, NOT a Call of Duty ADS camera transform.
             anchors[name] = {
                 "translation": n.get("translation", [0, 0, 0]),
@@ -188,8 +188,81 @@ def inspect_gltf(document: dict) -> dict:
         "materials": [m.get("name", "") for m in document.get("materials", [])],
         "anchors_local_glb_only": anchors,
         "all_animations": animations,
+        "root_skeleton_node": next((n.get("name") for n in nodes
+                                    if n.get("name", "").endswith("_skel")), None),
         "meshes": len(document.get("meshes", [])),
     }
+
+
+def quaternion_angle_degrees(a: list, b: list) -> float:
+    """Shortest 3D angular difference; handles quaternion +q / -q equivalence."""
+    if len(a) != 4 or len(b) != 4:
+        raise ValueError("Original source quaternion must have 4 components")
+    length_a = math.sqrt(sum(float(x) * float(x) for x in a))
+    length_b = math.sqrt(sum(float(x) * float(x) for x in b))
+    if length_a < 1e-8 or length_b < 1e-8:
+        raise ValueError("Degenerate source quaternion")
+    dot = abs(sum(float(x) * float(y) for x, y in zip(a, b))
+              / (length_a * length_b))
+    return math.degrees(2.0 * math.acos(min(1.0, dot)))
+
+
+def assert_universal_smg_source_axes(report: dict) -> None:
+    """Prove shared source rigs, NOT a universal ADS pose or identical geometry."""
+    weapons = report["weapons"]
+    reference = weapons["mp40"]["gun"]["anchors_local_glb_only"]
+    classes = ("j_gun", "j_bolt")
+    for anchor in classes:
+        if anchor not in reference:
+            raise ValueError("MP40 reference missing original " + anchor)
+    baseline_root = weapons["mp40"]["gun"]["root_skeleton_node"]
+    if not baseline_root or not baseline_root.endswith("_skel"):
+        raise ValueError("MP40 source root missing")
+    baseline_rot = reference[baseline_root]["rotation_xyzw"]
+    report["universal_smg_source_axes"] = {
+        "authority": "ORIGINAL_GLTF_LOCAL_REST_POSE_ONLY",
+        "gun_root_rotation_tolerance_degrees": 0.01,
+        "shared_bone_rotation_tolerance_degrees": 0.01,
+        "camera_ads": "NOT_INFERRED_FROM_LOCAL_BONE_COORDINATES",
+        "per_weapon": {},
+    }
+    for gun_id, parts in weapons.items():
+        item = parts["gun"]
+        anchors = item["anchors_local_glb_only"]
+        root_name = item["root_skeleton_node"]
+        if not root_name or root_name not in anchors:
+            raise ValueError(gun_id + ": no original _skel root node")
+        root_err = quaternion_angle_degrees(
+            anchors[root_name]["rotation_xyzw"], baseline_rot)
+        bone_errs = {}
+        for label in classes:
+            if label not in anchors:
+                raise ValueError(gun_id + ": missing " + label)
+            bone_errs[label] = quaternion_angle_degrees(
+                anchors[label]["rotation_xyzw"],
+                reference[label]["rotation_xyzw"])
+        # This detects the same +X source forward orientation in all four
+        # gun GLBs. Not a claim that original Aether ADS camera X/Y/Z equal.
+        flash = anchors.get("tag_flash")
+        if flash is None:
+            raise ValueError(gun_id + ": no tag_flash original muzzle")
+        x = float(flash["translation"][0])
+        if not (0.2 < x < 0.8):
+            raise ValueError(gun_id + ": source model muzzle is not +X")
+        if root_err > 0.01 or any(v > 0.01 for v in bone_errs.values()):
+            raise ValueError(gun_id + ": MP40 SMG root orientation mismatch")
+        report["universal_smg_source_axes"]["per_weapon"][gun_id] = {
+            "gun_root_name": root_name,
+            "root_rotation_error_degrees": root_err,
+            "bone_rotation_errors_degrees": bone_errs,
+            "muzzle_positive_x_m": x,
+            "has_source_tag_iron_sights": "tag_iron_sights" in anchors,
+        }
+        print("XZIEL_SMG_SHARED_RIG_GREEN id=" + gun_id +
+              " root_error_deg=" + format(root_err, ".7f") +
+              " gun_error_deg=" + format(bone_errs["j_gun"], ".7f") +
+              " muzzle_x=" + format(x, ".6f"))
+    print("XZIEL_SMG_SOURCE_ORIENTATION_CLASS_GREEN count=4")
 
 
 def run(workspace: Path) -> None:
@@ -222,6 +295,7 @@ def run(workspace: Path) -> None:
               " originalGunMaterial=" + ",".join(row["gun"]["materials"]))
     if len(report["weapons"]) != 4:
         raise AssertionError("All four WaW SMGs required")
+    assert_universal_smg_source_axes(report)
     out_dir = workspace / "smg_gauntlet"
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "source_audit.json").write_text(
@@ -239,6 +313,11 @@ def run(workspace: Path) -> None:
                      " | source SHA verified | " + ", ".join(parts["gun"]["materials"]) +
                      " | GLB + animations verified |")
     lines += [
+        "",
+        "**VERIFIED BY SOURCE:** all four WaW SMGs use the same near-identity",
+        "gun skeleton root/j_gun/j_bolt orientations and positive-X muzzle axis.",
+        "This supports one shared GLB axis/socket importer.",
+        "It DOES NOT prove shared ADS positions, hand IK, textures or frustum.",
         "",
         "**NOT VERIFIED:** The numerical Aether ADS camera X/Y/Z values from the",
         "previous chart are not proven original source camera metadata.",
