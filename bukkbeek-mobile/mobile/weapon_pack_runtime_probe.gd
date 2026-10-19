@@ -23,8 +23,8 @@ func _run() -> void:
  var manager = player.get_node_or_null("WeaponsManager")
  if manager == null: _red("manager missing"); return
  var arr: Array = manager.get("weapons_array")
- if arr.size() != 9:
-  _red("expected 5 Bukkbeek + MP40 + Colt, Thompson, Kar98k: "+str(arr.size()))
+ if arr.size() != 11:
+  _red("expected 5 Bukkbeek + MP40 + Colt, Thompson, Kar98k, PPSh, Type100: "+str(arr.size()))
   return
  if str(arr[5].name) != "MP40Source":
   _red("approved source MP40 index/weapon replaced")
@@ -99,6 +99,9 @@ func _run() -> void:
    " handsPSA=", hand_anim.get_animation_list().size(),
    " gunPSA=", gun_anim.get_animation_list().size(),
    " fireAudio=true tag_weapon=true")
+ # PPSh and Type100 must be added WITHOUT replacing old source nodes.
+ if str(arr[9].name) != "PPShSource" or str(arr[10].name) != "Type100Source":
+  _red("new SMGs displaced original weapon slots");return
  # No mixing V7 touch state, and the player's original real hand/weapon
  # object lifetime must survive all weapon selection changes.
  for ix in [6,7,8,5]:
