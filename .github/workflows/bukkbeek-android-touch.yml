@@ -365,11 +365,31 @@ jobs:
         run: |
           python3 bukkbeek-mobile/patch_mp40_pixel.py _build/bukkbeek
           cp bukkbeek-mobile/mobile/mp40_pixel_runtime_probe.gd _build/bukkbeek/mobile/
+          cp bukkbeek-mobile/mobile/mp40_pixel_visual_probe.gd _build/bukkbeek/mobile/
           timeout 180s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --import 2>&1 | tee /tmp/mp40-pixel-import.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script' /tmp/mp40-pixel-import.log; then exit 40; fi
           timeout 60s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --script res://mobile/mp40_pixel_runtime_probe.gd 2>&1 | tee /tmp/mp40-pixel-runtime.log
           grep -q 'MP40_PIXEL_TEST_GREEN' /tmp/mp40-pixel-runtime.log
           if grep -E 'MP40_PIXEL_TEST_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/mp40-pixel-runtime.log; then exit 41; fi
+
+      - name: Render original-map MP40 Pixel HIP and ADS and reject invisible weapons
+        run: |
+          set -o pipefail
+          timeout 150s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/mp40_pixel_visual_probe.gd \
+            2>&1 | tee /tmp/mp40-pixel-v3-visual.log
+          grep -q 'MP40_PIXEL_ACTUAL_FRAMEBUFFER_GREEN' /tmp/mp40-pixel-v3-visual.log
+          if grep -E 'MP40_PIXEL_VISIBLE_RED|SCRIPT ERROR:|Parse Error:' /tmp/mp40-pixel-v3-visual.log; then exit 42; fi
+
+      - name: Upload actual MP40Pixel HIP ADS screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-MP40Pixel-V3-Actual-HIP-ADS-Captures
+          path: _build/bukkbeek/pixel_visual_probes/*.png
+          retention-days: 14
 
       - name: Export debug Android arm64 APK
         env:
