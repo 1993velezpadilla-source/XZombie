@@ -17,6 +17,9 @@ func _run() -> void:
  root.add_child(player)
  await process_frame
  await process_frame
+ # Like the original MP40, source sight calibration MUST wait for
+ # authentic idle hand skeleton blending, never accept transient bind pose.
+ await create_timer(0.55).timeout
  var manager = player.get_node_or_null("WeaponsManager")
  if manager == null: _red("manager missing"); return
  var arr: Array = manager.get("weapons_array")
@@ -36,6 +39,14 @@ func _run() -> void:
   var gun: Node3D = arr[6 + i] as Node3D
   if gun == null or str(gun.name) != expected[i]:
    _red("source weapon scene order changed "+expected[i]); return
+  if not bool(gun.get_meta("source_optics_calibrated", false)):
+   _red("source vertex-to-GPU-skinned optical ADS and hip solver RED "+source_ids[i]); return
+  if not bool(gun.get_meta("source_root_import_repaired", false)):
+   _red("original source weapon static root normalization RED "+source_ids[i]); return
+  var rear_eye: Vector3=gun.get_meta("source_ads_rear_eye",Vector3(100,100,100)) as Vector3
+  var front_eye: Vector3=gun.get_meta("source_ads_front_eye",Vector3(100,100,100)) as Vector3
+  if Vector2(rear_eye.x,rear_eye.y).length()>0.0002 or Vector2(front_eye.x,front_eye.y).length()>0.0002:
+   _red("real front/rear physical iron sights not on same source ray "+source_ids[i]);return
   if not bool(gun.get_meta("source_weapon_bound", false)):
    _red("original GLBs, compatible hands or authored PSAs did not bind for "+source_ids[i])
    return
