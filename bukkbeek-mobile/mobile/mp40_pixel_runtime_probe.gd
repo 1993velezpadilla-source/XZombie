@@ -67,7 +67,7 @@ func _run() -> void:
  sprite.is_aimed = true
  sprite.set("ads_weight", 1.0)
  sprite.call("_render")
- var sight: Vector2 = Vector2(255.0, 18.0)
+ var sight: Vector2 = Vector2(242.0, 126.0) if bool(sprite.get_meta("mp40_pixel_source_highres", false)) else Vector2(255.0, 18.0)
  if ads.texture is AtlasTexture:
   sight = Vector2((255.0 + 0.0) * float(ads.texture.get_width()) / 512.0,
    (18.0 + 126.0) * float(ads.texture.get_height()) / 326.0)
