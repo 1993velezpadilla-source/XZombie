@@ -1,5 +1,6 @@
 extends SkeletonModifier3D
-## Reusable two-arm IK for the Aether Colt / Thompson / Kar98k, derived from\n## the tested MP40 IK. Preserve authentic wrist, finger and tag_weapon grips.
+## Reusable two-arm IK for the Aether Colt / Thompson / Kar98k, derived from
+## the tested MP40 IK. Preserve authentic wrist, finger and tag_weapon grips.
 ## Godot 4.6 guarantees this modifier runs AFTER original source PSAs.
 ## Never edits GLBs/animations, and never modifies tag_weapon, hand fingers,
 ## wrists or magazine/bolt. Two-bone arm IK is constrained by the original
@@ -14,7 +15,8 @@ var _solved_focus: Transform3D
 var _shoulder: Array[int] = []
 var _elbow: Array[int] = []
 var _wrist: Array[int] = []
-var _enabled: bool = false\nvar _source_idle_clip: String = ""
+var _enabled: bool = false
+var _source_idle_clip: String = ""
 var _max_modified_elbow_m: float = 0.0
 var _worst_wrist_anchor_m: float = 0.0
 var _frames: int = 0
