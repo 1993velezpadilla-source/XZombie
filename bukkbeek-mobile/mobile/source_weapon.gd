@@ -277,11 +277,13 @@ func _apply_source_materials(root: Node3D, gun_mesh: bool) -> bool:
    var albedo_path := str(spec.get("albedo", ""))
    var normal_path := str(spec.get("normal", ""))
    var diffuse: Texture2D = load(albedo_path) as Texture2D
-   var normals: Texture2D = load(normal_path) as Texture2D
-   if diffuse == null or normals == null: continue
+   # Some real source submaterials (Kar98k stripper clip) have NO normal map;
+   # retaining their albedo is mandatory, never invent replacement normals.
+   var normals: Texture2D = load(normal_path) as Texture2D if not normal_path.is_empty() else null
+   if diffuse == null or (not normal_path.is_empty() and normals == null): continue
    var m := StandardMaterial3D.new()
    m.albedo_texture = diffuse
-   m.normal_enabled = true
+   m.normal_enabled = normals != null
    m.normal_texture = normals
    m.metallic = float(spec.get("metallic", 0.0))
    m.roughness = float(spec.get("roughness", 0.7))
