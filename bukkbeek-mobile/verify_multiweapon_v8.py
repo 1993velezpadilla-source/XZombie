@@ -5,7 +5,6 @@ Real animation binding and MP40 regression run in Godot separately.
 from pathlib import Path
 import json
 import sys
-import re
 
 root = Path(sys.argv[1])
 manifest = json.loads((Path(__file__).parent / "weapon_library/source_library_manifest.json").read_text())
@@ -21,10 +20,13 @@ assert (root / "mobile/mp40_weapon.gd").is_file()
 # Fail immediately when a newly generated source gun inherits its generic
 # base StandardAimPosition/FocusedAimPosition instead of true MP40 poses.
 def inherited_marker(scene: str, name: str) -> str:
-    hit = re.search(r'\\[node name="' + re.escape(name)
-      + r'"[^\\n]*\\]\\ntransform = (Transform3D\\([^\\n]*\\))', scene)
-    assert hit is not None, f"Source scene missing authoritative {name}"
-    return hit.group(1)
+    lines = scene.splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith('[node name="' + name + '"'):
+            for entry in lines[i+1:i+6]:
+                if entry.startswith("transform = Transform3D("):
+                    return entry.split(" = ", 1)[1]
+    raise AssertionError("Source scene missing authoritative " + name)
 
 mp40_scn = (root / "mobile/mp40.tscn").read_text()
 for weapon_id in ["colt", "thompson", "kar98k"]:
