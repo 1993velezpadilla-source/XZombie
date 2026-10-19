@@ -212,7 +212,15 @@ def main(root:Path)->None:
     "source_sights":{
       "rear_witness_vertices":[rear],"front_witness_vertices":[front],
       "source_witness_sep_m":separation,
-      "source_body_length_m":xmax-xmin,"eye_relief_m":item["eye_relief"]},
+      "source_body_length_m":xmax-xmin,"eye_relief_m":item["eye_relief"],
+      # Independent HIP view framing measured from real original-GLB
+      # viewport sweep #39294035195. ADS metal stays physically aligned.
+      "hip_render_offset_x_m": .16 if ident=="ppsh" else .16,
+      "hip_render_offset_y_m": -.18,
+      "hip_render_offset_z_m": -.24 if ident=="ppsh" else 0.0,
+      "hip_camera_near_m":.45,
+      "ads_camera_near_m":.10,
+     },
     "source_sight_status":"ORIGINAL_MESH_VERTEX_CANDIDATE_UNTIL_CAMERA_VISUAL_GATE",
   }
   (folder/"profile.json").write_text(json.dumps(profile,indent=2)+"\n")
