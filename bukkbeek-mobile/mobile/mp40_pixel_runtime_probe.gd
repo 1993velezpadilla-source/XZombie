@@ -24,7 +24,9 @@ func _run() -> void:
    _fail("slot " + str(i) + " unexpectedly replaced: " + str(weapons[i].name));return
  var sprite: Node = weapons[9]
  if not bool(sprite.get_meta("mp40_pixel", false)): _fail("sprite weapon script not running");return
- if sprite.get("atlas") == null: _fail("pixel sprite atlas missing");return
+ var sprite_textures: Array = sprite.get("textures")
+ if sprite_textures.size() != 9 or sprite_textures[0] == null:
+  _fail("V2 sprite frame texture cache missing");return
  if not bool(weapons[5].get_meta("source_mp40_ready", false)): _fail("original fully working MP40 disturbed");return
  for sound in ["FiringSFX", "MagazineRemoveCue", "MagazineInsertCue", "BoltChargeCue"]:
   var a: AudioStreamPlayer3D = sprite.get_node_or_null("SFX/" + sound) as AudioStreamPlayer3D
