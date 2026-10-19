@@ -99,6 +99,7 @@ jobs:
           cp bukkbeek-mobile/mobile/mp40_weapon.gd _build/bukkbeek/mobile/mp40_weapon.gd
           cp bukkbeek-mobile/mobile/source_weapon.gd _build/bukkbeek/mobile/source_weapon.gd
           cp bukkbeek-mobile/mobile/source_weapon_fit.gd _build/bukkbeek/mobile/source_weapon_fit.gd
+          cp bukkbeek-mobile/mobile/source_weapon_ads_ik.gd _build/bukkbeek/mobile/source_weapon_ads_ik.gd
           cp bukkbeek-mobile/mobile/weapon_pack_visual_probe.gd _build/bukkbeek/mobile/weapon_pack_visual_probe.gd
           cp bukkbeek-mobile/mobile/weapon_fidelity_probe.gd _build/bukkbeek/mobile/weapon_fidelity_probe.gd
           cp bukkbeek-mobile/mobile/weapon_pack_runtime_probe.gd _build/bukkbeek/mobile/weapon_pack_runtime_probe.gd
