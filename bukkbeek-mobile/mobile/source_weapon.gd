@@ -371,6 +371,14 @@ func _on_gun_clip_finished(name: StringName) -> void:
 
 func _on_aim_mode_changed(aim_mode: bool) -> void:
  super._on_aim_mode_changed(aim_mode)
+ if visible and (source_weapon_id=="ppsh" or source_weapon_id=="type100"):
+  var weapon_camera:=get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
+  var specific_sights:Dictionary=_profile.get("source_sights",{})
+  if weapon_camera!=null:
+   # The near plane clips ORIGINAL sleeves coming inside the mobile lens.
+   # This does not modify mesh/PSA; it must still pass independent render.
+   weapon_camera.near=float(specific_sights.get("ads_camera_near_m",0.10) if aim_mode
+    else specific_sights.get("hip_camera_near_m",0.45))
  if not visible or _source_ads_ik==null:return
  if _source_ik_tween!=null and _source_ik_tween.is_running():
   _source_ik_tween.kill()
@@ -382,6 +390,13 @@ func _on_aim_mode_changed(aim_mode: bool) -> void:
 func activate(current_aim_mode: bool = false) -> void:
  super.activate(current_aim_mode)
  if _source_ads_ik!=null:_source_ads_ik.influence=1.0 if current_aim_mode else 0.0
+ if source_weapon_id=="ppsh" or source_weapon_id=="type100":
+  var camera:=get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
+  if camera!=null:
+   _saved_viewmodel_near=camera.near
+   var weapon_sights:Dictionary=_profile.get("source_sights",{})
+   camera.near=float(weapon_sights.get("ads_camera_near_m",0.10) if current_aim_mode
+    else weapon_sights.get("hip_camera_near_m",0.45))
  if source_weapon_id == "kar98k":
   var camera := get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
   if camera != null:
@@ -397,7 +412,7 @@ func deactivate() -> void:
  if _source_ik_tween!=null and _source_ik_tween.is_running():_source_ik_tween.kill()
  if _source_ads_ik!=null:_source_ads_ik.influence=0.0
  super.deactivate()
- if source_weapon_id == "kar98k" and _saved_viewmodel_near>0.0:
+ if (source_weapon_id=="kar98k" or source_weapon_id=="ppsh" or source_weapon_id=="type100") and _saved_viewmodel_near>0.0:
   var camera := get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
   if camera != null:camera.near=_saved_viewmodel_near
   _saved_viewmodel_near=-1.0
