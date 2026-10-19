@@ -18,6 +18,7 @@ var _gun_clips: Dictionary = {}
 var _current_reload_gun: String = ""
 var _rechamber_pending: bool = false
 var _source_calibration_done: bool = false
+var _offstage_reload_materials: Array[StandardMaterial3D] = []
 
 func _ready() -> void:
  super._ready()
@@ -258,9 +259,23 @@ func _apply_source_materials(root: Node3D, gun_mesh: bool) -> bool:
    m.roughness = float(spec.get("roughness", 0.7))
    m.normal_scale = float(spec.get("normal_scale", 1.0))
    m.cull_mode = BaseMaterial3D.CULL_DISABLED if bool(spec.get("two_sided", false)) else BaseMaterial3D.CULL_BACK
+   if source_weapon_id == "kar98k" and gun_mesh:
+    var mat_id:=str(spec.get("source_material","")).to_lower()
+    if "k98round" in mat_id or "stripper_clip" in mat_id:
+     # Authentic round/clip are imported 0.94m offstage. They should show
+     # only during ORIGINAL reload, not float beside the rifle in HIP/ADS.
+     # Preserve 3D geometry/texture/PSA, never substitute a fake prop.
+     m.transparency=BaseMaterial3D.TRANSPARENCY_ALPHA
+     m.albedo_color=Color(1.0,1.0,1.0,0.0)
+     _offstage_reload_materials.append(m)
    mesh.set_surface_override_material(surface, m)
    colored += 1
  return colored > 0
+
+func _set_original_reload_props_visible(enabled: bool) -> void:
+ for material in _offstage_reload_materials:
+  if is_instance_valid(material):
+   material.albedo_color=Color(1.0,1.0,1.0,1.0 if enabled else 0.0)
 
 func _reload_length(hand: String, gun: String) -> float:
  if hand.is_empty() or gun.is_empty(): return 0.0
@@ -310,6 +325,7 @@ func start_reload() -> void:
  if is_reloading and not previous:
   _rechamber_pending = false
   _current_reload_gun = gun
+  _set_original_reload_props_visible(true)
   _gun_anim.play(gun, 0.03)
   _gun_anim.seek(0.0, true)
   _hand_anim.seek(0.0, true)
@@ -317,6 +333,7 @@ func start_reload() -> void:
 func _on_reload_timer_timeout() -> void:
  super._on_reload_timer_timeout()
  _current_reload_gun = ""
+ _set_original_reload_props_visible(false)
  _play_source_idle()
 
 func cancel_tactical_reload() -> bool:
@@ -325,5 +342,6 @@ func cancel_tactical_reload() -> bool:
  is_reloading = false
  _current_reload_gun = ""
  _rechamber_pending = false
+ _set_original_reload_props_visible(false)
  _play_source_idle()
  return true
