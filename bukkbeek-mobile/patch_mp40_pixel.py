@@ -48,6 +48,20 @@ anchor='[ext_resource type="PackedScene" path="res://mobile/kar98k.tscn"'
 assert text.count(anchor)==1
 text=text.replace(anchor,'[ext_resource type="PackedScene" path="res://mobile/mp40_pixel.tscn" id="90_mp40pixel"]\n'+anchor,1)
 player.write_text(text)
+
+# CRITICAL V3: staged multiweapon manager starts at MP40Source index 5,
+# NOT at MP40Pixel index 9. Prior builds shipped with another gun selected
+# and the owner saw an empty screen (ammo 24/150 instead of pixel MP40 32).
+# This is a PIXEL TEST APK only: launch with the pixel gun immediately.
+# Keep all 9 original weapons and their switch order unchanged.
+manager_file = root/"common/managers/weapons_manager.gd"
+manager_script = manager_file.read_text()
+previous_start = 'current_weapon_index = 5 if OS.get_name() == "Android" and weapons_array.size() >= 6 and weapons_array[5].name == "MP40Source" else 0'
+new_start = 'current_weapon_index = 9 if OS.get_name() == "Android" and weapons_array.size() == 10 and weapons_array[9].name == "MP40Pixel" else (5 if OS.get_name() == "Android" and weapons_array.size() >= 6 and weapons_array[5].name == "MP40Source" else 0)'
+assert manager_script.count(previous_start)==1, "MP40_PIXEL_RED authoritative startup manager changed"
+manager_file.write_text(manager_script.replace(previous_start,new_start,1))
+print("MP40_PIXEL_STARTING_WEAPON_GREEN index=9 name=MP40Pixel, other_weapons_preserved=true")
+
 print("MP40_PIXEL_STAGE_GREEN original 5 + Aether MP40 Colt Thompson Kar98k + sprite MP40Pixel")
 
 # Keep this APK installed NEXT TO the established 3D MP40 test build.
