@@ -87,6 +87,18 @@ func _run() -> void:
    for mesh in gun_meshes:mesh.visible=true
    for mesh in hand_meshes:mesh.visible=true
    if full.is_empty() or weapon.is_empty() or arm.is_empty():return
+   if id=="colt":
+    var expected_min:int=25000 if state=="ads" else 9500
+    var painted:int=int(weapon.get("all",0))
+    if painted<expected_min:
+     push_error("XZIEL_REAL_FIDELITY_RED source Colt lost physically measured mobile framing stance="+state+
+      " gun_pixels="+str(painted)+" required="+str(expected_min))
+     quit(5);return
+   if id=="thompson":
+    var measured_min:int=44000 if state=="ads" else 11000
+    if int(weapon.get("all",0))<measured_min:
+     push_error("XZIEL_REAL_FIDELITY_RED source Thompson iron sight/body clipped "+state)
+     quit(5);return
    if int(weapon.get("all",0))<500 or int(arm.get("all",0))<500:
     push_error("XZIEL_REAL_FIDELITY_RED original gun or hands not actually rendered "+capture_id)
     quit(5);return
