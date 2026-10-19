@@ -21,6 +21,7 @@ on:
       - feature/xziel-multiweapon-aether-v8-20261018
       - fix/xziel-source-weapon-optical-fit-v9-20261018
       - fix/v10-source-weapon-visual-fidelity-audit-20261018
+      - fix/v11-cod-fps-visual-weapon-calibration-20261018
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -102,6 +103,7 @@ jobs:
           cp bukkbeek-mobile/mobile/source_weapon_ads_ik.gd _build/bukkbeek/mobile/source_weapon_ads_ik.gd
           cp bukkbeek-mobile/mobile/weapon_pack_visual_probe.gd _build/bukkbeek/mobile/weapon_pack_visual_probe.gd
           cp bukkbeek-mobile/mobile/weapon_fidelity_probe.gd _build/bukkbeek/mobile/weapon_fidelity_probe.gd
+          cp bukkbeek-mobile/mobile/weapon_depth_sweep_probe.gd _build/bukkbeek/mobile/weapon_depth_sweep_probe.gd
           cp bukkbeek-mobile/mobile/source_camera_authority_probe.gd _build/bukkbeek/mobile/source_camera_authority_probe.gd
           cp bukkbeek-mobile/mobile/weapon_pack_runtime_probe.gd _build/bukkbeek/mobile/weapon_pack_runtime_probe.gd
           cp bukkbeek-mobile/mobile/weapon_source_geometry_probe.gd _build/bukkbeek/mobile/weapon_source_geometry_probe.gd
@@ -255,6 +257,24 @@ jobs:
           if grep -E 'XZIEL_SOURCE_CAMERA_AUDIT_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-source-camera-bones.log; then
             exit 12
           fi
+
+      - name: Sweep authentic 3D source weapon screen visibility by exact ADS camera depth
+        run: |
+          set -o pipefail
+          timeout 185s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/weapon_depth_sweep_probe.gd 2>&1 | tee /tmp/xziel-v11-depth-sweep.log
+          grep -q 'XZIEL_V11_DEPTH_SWEEP_COMPLETE' /tmp/xziel-v11-depth-sweep.log
+          if grep -E 'XZIEL_SWEEP_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-v11-depth-sweep.log; then exit 13; fi
+
+      - name: Upload original gun, original hand and full screenshots per depth
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-V11-PerWeapon-ADS-Depth-Calibrations
+          path: _build/bukkbeek/visual_probes/*_shift*.png
+          retention-days: 14
 
       - name: Audit each original weapon versus original arms for visibility
         run: |
