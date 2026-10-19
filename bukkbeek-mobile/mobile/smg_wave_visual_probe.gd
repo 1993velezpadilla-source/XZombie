@@ -20,6 +20,35 @@ func _pixels(img: Image) -> Dictionary:
    if y>h*3/4:bottom+=1
  return {"all":px,"bottom":bottom,"coverage":float(px)/float(w*h)}
 
+func _isolated_layers(view: SubViewport,w: Node3D,ident: String,stance: String) -> Dictionary:
+ var gun:Node3D=w.get("_gun") as Node3D
+ var hands:Node3D=w.get("_hands") as Node3D
+ var gun_meshes: Array[MeshInstance3D]=[]
+ var hand_meshes: Array[MeshInstance3D]=[]
+ for node:Node in gun.find_children("*","MeshInstance3D",true,false):
+  gun_meshes.append(node as MeshInstance3D)
+ for node:Node in hands.find_children("*","MeshInstance3D",true,false):
+  if not gun.is_ancestor_of(node):
+   hand_meshes.append(node as MeshInstance3D)
+ if gun_meshes.is_empty() or hand_meshes.is_empty():return {}
+ for item in hand_meshes:item.visible=false
+ await process_frame
+ await RenderingServer.frame_post_draw
+ var metal:=view.get_texture().get_image()
+ var metal_count:=_pixels(metal)
+ metal.save_png("res://visual_probes/smg_wave_"+ident+"_"+stance+"_gun.png")
+ for item in hand_meshes:item.visible=true
+ for item in gun_meshes:item.visible=false
+ await process_frame
+ await RenderingServer.frame_post_draw
+ var cloth:=view.get_texture().get_image()
+ var cloth_count:=_pixels(cloth)
+ cloth.save_png("res://visual_probes/smg_wave_"+ident+"_"+stance+"_hands.png")
+ for item in gun_meshes:item.visible=true
+ print("XZIEL_SMG_REAL_ISOLATED id=",ident," stance=",stance,
+  " gun_pixels=",metal_count["all"]," hands_pixels=",cloth_count["all"])
+ return {"gun":metal_count,"hands":cloth_count}
+
 func _sweep_hip(w: Node3D, ident: String) -> void:
  # Original left/right gun+arm PSA stay intact. Vary camera-space HIP rig
  # placement only, inspect FIRST-PERSON REAL pixels before changing production.
@@ -106,6 +135,14 @@ func _frame(player: Node, w: Node3D, ident: String, stance: String) -> bool:
   " hip_marker=",w.get("standard_aim_position").transform,
   " ads_marker=",w.get("focused_aim_position").transform)
  var cov:=_pixels(img)
+ var real_layers:Dictionary=await _isolated_layers(view,w,ident,stance)
+ if real_layers.is_empty():_red(ident+" source geometry not separable");return false
+ var gun_count:int=int(real_layers["gun"]["all"])
+ var sleeve_count:int=int(real_layers["hands"]["all"])
+ if gun_count<(10000 if stance=="hip" else 20000):
+  _red(ident+" tiny source gun stance="+stance+" metal_pixels="+str(gun_count));return false
+ if stance=="ads" and float(sleeve_count)/maxf(1.0,float(gun_count))>2.6:
+  _red(ident+" sleeves hide ADS gun ratio="+str(float(sleeve_count)/float(gun_count)));return false
  print("XZIEL_SMG_WAVE_PIXEL id=",ident," state=",stance," data=",cov)
  if stance=="hip" and cov["coverage"]>0.45:
   await _sweep_hip(w,ident)
