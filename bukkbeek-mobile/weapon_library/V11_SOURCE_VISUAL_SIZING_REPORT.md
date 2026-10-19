@@ -44,3 +44,12 @@ Need novel real-source rig fix for Kar: preserve its HIP posture, derive camera-
 ## Regression policy
 
 Godot run must fail if Colt HIP gun <9,500 visible pixels; Colt ADS <25,000; Thompson HIP <11,000; Thompson ADS <44,000; any weapon with non-original weapon material; any source GLB gun without true hands/PSA; any ADS missing visible original receiver; any source handgun with arms >5.5× gun pixels. Real Android screenshot still wins over headless desktop evidence.
+
+
+## Kar98k real source ADS PSA: independently tested and REJECTED
+
+Original hands GLB has 15 clips; real Kar98k hands + gun both contain PSA_viewmodel_kar98_fire_ads. Comparing original glTF first-key poses confirms Kar right shoulder transform changes markedly from idle (translation x -12.51) to ADS-fire (x -56.61 in original armature units); this is NOT a missing fake animation.
+
+Visual Gauntlet CI 39199190893 explicitly applied ORIGINAL HAND + GUN fire_ads at 0, 60, 120, 200ms, with and without optic recalibration, and disabled generic MP40-style IK. Actual 1280x720 frames stored in artifact XZIEL-V11-Kar98k-Original-ADS-PSA-Pose-Frames. Source-authored alternate clip **does not restore the full rifle receiver** and still produces open wrist/sleeve triangles. Do not claim this is solved by "use ADS PSA". Its material, skeleton clip, and hand mesh are genuinely imported; the defective rendered view requires a separate rig/camera clipping fidelity pass and potentially original mesh near-frustum correction.
+
+**Verdict:** Colt improvements verified; Thompson stable material/upright pose; Kar98k **REJECTED**. No multiweapon release APK.
