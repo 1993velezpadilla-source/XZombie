@@ -1,4 +1,4 @@
-name: MP40 Pixel V6 forward HIP Android acceptance
+name: MP40 Pixel V6 Android + MP40 2.5D source-motion certification
 on:
   push:
     branches:
@@ -388,12 +388,22 @@ jobs:
           python3 bukkbeek-mobile/guard_mp40_pixel_frames.py _build/bukkbeek
           # V6: approved new forward-looking HIP PNG, applied AFTER matte guard.
           python3 bukkbeek-mobile/apply_mp40_forward_hip.py _build/bukkbeek
+          # V7: Motion strictly cross-checked with DICE's original MP40 animator.
+          # Reference-only: do not mislabel the incomplete sprite art as finished.
+          python3 bukkbeek-mobile/verify_mp40_25d_reference.py bukkbeek-mobile/mobile/mp40_25d/motion_manifest.json
+          mkdir -p _build/bukkbeek/mobile/mp40_25d
+          cp bukkbeek-mobile/mobile/mp40_25d/motion_manifest.json _build/bukkbeek/mobile/mp40_25d/
+          cp bukkbeek-mobile/mobile/mp40_25d/timeline.gd _build/bukkbeek/mobile/mp40_25d/
+          cp bukkbeek-mobile/mobile/mp40_25d/motion_probe.gd _build/bukkbeek/mobile/mp40_25d/
           cp bukkbeek-mobile/mobile/mp40_pixel_runtime_probe.gd _build/bukkbeek/mobile/
           cp bukkbeek-mobile/mobile/mp40_pixel_visual_probe.gd _build/bukkbeek/mobile/
           timeout 180s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --import 2>&1 | tee /tmp/mp40-pixel-import.log
           if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script' /tmp/mp40-pixel-import.log; then exit 40; fi
           timeout 60s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --script res://mobile/mp40_pixel_runtime_probe.gd 2>&1 | tee /tmp/mp40-pixel-runtime.log
           grep -q 'MP40_PIXEL_TEST_GREEN' /tmp/mp40-pixel-runtime.log
+          timeout 45s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --script res://mobile/mp40_25d/motion_probe.gd > /tmp/mp40-25d-motion.log 2>&1 || { cat /tmp/mp40-25d-motion.log; exit 57; }
+          grep -q 'MP40_25D_REFERENCE_TIMELINE_GREEN' /tmp/mp40-25d-motion.log
+          cat /tmp/mp40-25d-motion.log
           if grep -E 'MP40_PIXEL_TEST_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/mp40-pixel-runtime.log; then exit 41; fi
 
       - name: Render original-map MP40 Pixel HIP and ADS and reject invisible weapons

@@ -1,0 +1,388 @@
+{
+  "schema_version": 1,
+  "weapon_id": "mp40_25d",
+  "stage": "REFERENCE_AND_TIMELINE_ONLY_NO_25D_FRAME_ART_SHIPPED",
+  "notes": "Own 2.5D original artwork only; never extract or redistribute EA/Fab game pixels. This timeline is a production contract, not a completed animated weapon or certified APK.",
+  "references": [
+    {
+      "id": "DICE_MP40_ANIMATOR",
+      "url": "https://ea_dice.artstation.com/blog/jMao/animating-weapons-for-battlefield-v",
+      "confidence": "primary_animator_technical_explanation",
+      "facts": [
+        "Three base poses: IdlePose, ZoomPose, SprintPose",
+        "Empty reload uses a distinct bolt manipulation",
+        "Empty reload: remove magazine then pull bolt while old mag still in other hand; after that bring fresh magazine",
+        "Return rapidly to aiming, avoid floating camera"
+      ]
+    },
+    {
+      "id": "DICE_MP40_OFFICIAL_GALLERY",
+      "url": "https://ea_dice.artstation.com/projects/Vd9JYb",
+      "confidence": "original_studio_media",
+      "facts": [
+        "MP40 first person screenshots and linked reload video"
+      ]
+    },
+    {
+      "id": "AB3DX_MP40_FPS_PREVIEW",
+      "url": "https://youtu.be/xO8qgleJToc",
+      "confidence": "third_party_preview_no_bfv_authorship",
+      "facts": [
+        "Independent FPS clip reference for hip, ADS, fire, partial, empty, chamber"
+      ]
+    },
+    {
+      "id": "VENTURIO_MP40_PREVIEW",
+      "url": "https://youtu.be/5kO4sDdbj9w",
+      "confidence": "third_party_preview",
+      "facts": [
+        "Independent first person animation set visual benchmark"
+      ]
+    },
+    {
+      "id": "BFV_COMMUNITY_TIMING",
+      "url": "https://battlefield.fandom.com/wiki/MP40/Battlefield_V",
+      "confidence": "community_wiki_not_primary",
+      "facts": [
+        "Reports partial reload 1.96s",
+        "Reports empty reload 3.33s"
+      ],
+      "limits": "Reference timings only; DO NOT auto-overwrite the original game's weapon timings."
+    }
+  ],
+  "source_observation_vs_design": "Sequence ORDER is source-supported; fine phase percent and counts are PRODUCTION ESTIMATES not measured from video. Hand pose art must be reviewed frame-by-frame against primary footage.",
+  "critical_rules": [
+    "empty: magazine out -> bolt lock/pull while discarded magazine is held -> fresh magazine from pouch -> magazine in -> bolt release -> return",
+    "tactical: magazine out -> new magazine in -> return; NO bolt cycling",
+    "No ADS ring black-fill, no crosshair obstruction at final idle",
+    "Do not rename original MP40Pixel or existing nine weapons",
+    "Never merge empty reload art unless the charging/bolt manipulation is visually present, not merely an audio cue"
+  ],
+  "clips": {
+    "hip_idle": {
+      "duration_sec": 1,
+      "timing_provenance": "design_loop_not_measured",
+      "loop": true,
+      "phases": [
+        {
+          "id": "hold_a",
+          "end": 0.5,
+          "frames": 3
+        },
+        {
+          "id": "hold_b",
+          "end": 1,
+          "frames": 3
+        }
+      ],
+      "events": []
+    },
+    "hip_fire": {
+      "duration_sec": 0.18,
+      "timing_provenance": "design_placeholder_not_measured",
+      "loop": false,
+      "phases": [
+        {
+          "id": "kick",
+          "end": 0.33,
+          "frames": 2
+        },
+        {
+          "id": "return",
+          "end": 1,
+          "frames": 3
+        }
+      ],
+      "events": [
+        {
+          "id": "shot",
+          "at": 0
+        }
+      ]
+    },
+    "ads_in": {
+      "duration_sec": 0.2,
+      "timing_provenance": "existing_project_weapon_ads_time_not_BFV",
+      "loop": false,
+      "phases": [
+        {
+          "id": "raise",
+          "end": 0.55,
+          "frames": 3
+        },
+        {
+          "id": "sight_settle",
+          "end": 1,
+          "frames": 3
+        }
+      ],
+      "events": []
+    },
+    "ads_idle": {
+      "duration_sec": 1,
+      "timing_provenance": "design_loop_not_measured",
+      "loop": true,
+      "phases": [
+        {
+          "id": "ads_breathe_a",
+          "end": 0.5,
+          "frames": 2
+        },
+        {
+          "id": "ads_breathe_b",
+          "end": 1,
+          "frames": 2
+        }
+      ],
+      "events": []
+    },
+    "ads_fire": {
+      "duration_sec": 0.18,
+      "timing_provenance": "design_placeholder_not_measured",
+      "loop": false,
+      "phases": [
+        {
+          "id": "ads_kick",
+          "end": 0.4,
+          "frames": 2
+        },
+        {
+          "id": "ads_return",
+          "end": 1,
+          "frames": 3
+        }
+      ],
+      "events": [
+        {
+          "id": "shot",
+          "at": 0
+        }
+      ]
+    },
+    "ads_out": {
+      "duration_sec": 0.2,
+      "timing_provenance": "existing_project_weapon_ads_time_not_BFV",
+      "loop": false,
+      "phases": [
+        {
+          "id": "lower",
+          "end": 0.55,
+          "frames": 3
+        },
+        {
+          "id": "hip_settle",
+          "end": 1,
+          "frames": 3
+        }
+      ],
+      "events": []
+    },
+    "sprint": {
+      "duration_sec": 0.65,
+      "timing_provenance": "design_loop_not_measured",
+      "loop": true,
+      "phases": [
+        {
+          "id": "sprint_left",
+          "end": 0.5,
+          "frames": 3
+        },
+        {
+          "id": "sprint_right",
+          "end": 1,
+          "frames": 3
+        }
+      ],
+      "events": []
+    },
+    "equip": {
+      "duration_sec": 0.6,
+      "timing_provenance": "design_placeholder_not_measured",
+      "loop": false,
+      "phases": [
+        {
+          "id": "draw",
+          "end": 0.55,
+          "frames": 4
+        },
+        {
+          "id": "ready",
+          "end": 1,
+          "frames": 4
+        }
+      ],
+      "events": []
+    },
+    "reload_tactical": {
+      "duration_sec": 1.96,
+      "timing_provenance": "BFV_community_reference_only_not_project_stat",
+      "loop": false,
+      "phases": [
+        {
+          "id": "reach_mag",
+          "end": 0.13,
+          "frames": 3
+        },
+        {
+          "id": "mag_out",
+          "end": 0.34,
+          "frames": 4
+        },
+        {
+          "id": "fresh_mag",
+          "end": 0.65,
+          "frames": 4
+        },
+        {
+          "id": "mag_in",
+          "end": 0.88,
+          "frames": 3
+        },
+        {
+          "id": "return",
+          "end": 1,
+          "frames": 3
+        }
+      ],
+      "events": [
+        {
+          "id": "mag_out",
+          "at": 0.26
+        },
+        {
+          "id": "mag_in",
+          "at": 0.83
+        }
+      ]
+    },
+    "reload_empty": {
+      "duration_sec": 3.33,
+      "timing_provenance": "BFV_community_reference_only_not_project_stat",
+      "loop": false,
+      "phases": [
+        {
+          "id": "reach_mag",
+          "end": 0.11,
+          "frames": 3
+        },
+        {
+          "id": "mag_out",
+          "end": 0.27,
+          "frames": 4
+        },
+        {
+          "id": "bolt_lock_with_old_mag_held",
+          "end": 0.44,
+          "frames": 5
+        },
+        {
+          "id": "fresh_mag_upside_down_from_pouch",
+          "end": 0.6,
+          "frames": 4
+        },
+        {
+          "id": "mag_in",
+          "end": 0.79,
+          "frames": 4
+        },
+        {
+          "id": "bolt_release",
+          "end": 0.91,
+          "frames": 3
+        },
+        {
+          "id": "return",
+          "end": 1,
+          "frames": 3
+        }
+      ],
+      "events": [
+        {
+          "id": "mag_out",
+          "at": 0.25
+        },
+        {
+          "id": "bolt_pull",
+          "at": 0.4
+        },
+        {
+          "id": "mag_in",
+          "at": 0.76
+        },
+        {
+          "id": "bolt_release",
+          "at": 0.88
+        }
+      ]
+    },
+    "dry_fire": {
+      "duration_sec": 0.24,
+      "timing_provenance": "design_placeholder_not_measured",
+      "loop": false,
+      "phases": [
+        {
+          "id": "dry_click",
+          "end": 0.35,
+          "frames": 2
+        },
+        {
+          "id": "dry_settle",
+          "end": 1,
+          "frames": 2
+        }
+      ],
+      "events": [
+        {
+          "id": "dry_click",
+          "at": 0
+        }
+      ]
+    },
+    "inspect": {
+      "duration_sec": 1.2,
+      "timing_provenance": "design_placeholder_not_measured",
+      "loop": false,
+      "phases": [
+        {
+          "id": "inspect_side",
+          "end": 0.5,
+          "frames": 4
+        },
+        {
+          "id": "inspect_return",
+          "end": 1,
+          "frames": 4
+        }
+      ],
+      "events": []
+    },
+    "melee": {
+      "duration_sec": 0.45,
+      "timing_provenance": "design_placeholder_not_measured",
+      "loop": false,
+      "phases": [
+        {
+          "id": "melee_windup",
+          "end": 0.35,
+          "frames": 2
+        },
+        {
+          "id": "melee_impact",
+          "end": 0.7,
+          "frames": 2
+        },
+        {
+          "id": "melee_recover",
+          "end": 1,
+          "frames": 2
+        }
+      ],
+      "events": [
+        {
+          "id": "melee_hit",
+          "at": 0.55
+        }
+      ]
+    }
+  }
+}
