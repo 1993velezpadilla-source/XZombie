@@ -20,6 +20,8 @@ var _rechamber_pending: bool = false
 var _source_calibration_done: bool = false
 var _offstage_reload_materials: Array[StandardMaterial3D] = []
 var _saved_viewmodel_near: float = -1.0
+var _source_ads_ik: SkeletonModifier3D
+var _source_ik_tween: Tween
 
 func _ready() -> void:
  super._ready()
@@ -184,12 +186,28 @@ func _calibrate_original_source_geometry() -> void:
   set_meta("source_weapon_bound",false)
   set_meta("source_weapon_status","RED_ORIGINAL_SIGHT_CALIBRATION")
   return
+ # Full MP40 pipeline: preserve real 113-bone source hand wrists while
+ # keeping source elbows and sleeves in their source-authored HIP framing.
+ # Only safe additive SkeletonModifier3D, never touch original PSA keys.
+ var ik:SkeletonModifier3D=preload("res://mobile/source_weapon_ads_ik.gd").new()
+ ik.name="SourceWeaponADSArmIK_"+source_weapon_id
+ ik.influence=0.0
+ _hand_skeleton.add_child(ik)
+ if not bool(ik.call("configure",self,fps_arms_root,
+  standard_aim_position.transform,focused_aim_position.transform)):
+  push_error("XZIEL_WEAPON_RED original hand arm IK unavailable "+source_weapon_id)
+  ik.queue_free()
+  _source_ready=false
+  set_meta("source_weapon_bound",false)
+  return
+ _source_ads_ik=ik
  _source_calibration_done=true
- set_meta("source_weapon_status","SOURCE_OPTICS_SOLVED_NEEDS_VISUAL_APPROVAL")
+ set_meta("source_weapon_status","SOURCE_OPTICS_IK_SOLVED_NEEDS_VISUAL_APPROVAL")
  # If weapon is already equipped, place existing Bukkbeek pivot in the
  # calibrated pose, NOT the stale camera-near original default ADS marker.
  if visible and fps_arms_root!=null:
   fps_arms_root.transform=focused_aim_position.transform if is_aimed else standard_aim_position.transform
+  _source_ads_ik.influence=1.0 if is_aimed else 0.0
 
 func _find_animation_player(root: Node) -> AnimationPlayer:
  for n: Node in root.find_children("*", "AnimationPlayer", true, false):
@@ -302,8 +320,19 @@ func _on_gun_clip_finished(name: StringName) -> void:
  if str(name) != str(_gun_clips["idle"]):
   _play_source_idle()
 
+func _on_aim_mode_changed(aim_mode: bool) -> void:
+ super._on_aim_mode_changed(aim_mode)
+ if not visible or _source_ads_ik==null:return
+ if _source_ik_tween!=null and _source_ik_tween.is_running():
+  _source_ik_tween.kill()
+ _source_ik_tween=create_tween()
+ _source_ik_tween.set_trans(Tween.TRANS_CUBIC)
+ _source_ik_tween.set_ease(Tween.EASE_IN_OUT)
+ _source_ik_tween.tween_property(_source_ads_ik,"influence",1.0 if aim_mode else 0.0,0.2)
+
 func activate(current_aim_mode: bool = false) -> void:
  super.activate(current_aim_mode)
+ if _source_ads_ik!=null:_source_ads_ik.influence=1.0 if current_aim_mode else 0.0
  if source_weapon_id == "kar98k":
   var camera := get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
   if camera != null:
@@ -316,6 +345,8 @@ func activate(current_aim_mode: bool = false) -> void:
  if _source_ready: _play_source_idle()
 
 func deactivate() -> void:
+ if _source_ik_tween!=null and _source_ik_tween.is_running():_source_ik_tween.kill()
+ if _source_ads_ik!=null:_source_ads_ik.influence=0.0
  super.deactivate()
  if source_weapon_id == "kar98k" and _saved_viewmodel_near>0.0:
   var camera := get_node_or_null("../../WeaponSubViewport/SubViewport/Camera3D") as Camera3D
