@@ -51,6 +51,32 @@ def repair_alpha(source: Image.Image, *, radius: int) -> tuple[Image.Image, dict
         repaired=after - before, hidden_source_rgb_retained=colored,
         hidden_source_rgb_lost=zero_rgb)
 
+def strip_native_ads_sheet_ghosts(image: Image.Image, frame_name: str) -> tuple[Image.Image, int]:
+    """Remove real source-sheet debris confirmed on the V5 RGB/alpha artifact.
+
+    The two ADS source cells retain stray patches at x=0..25 and x=446..
+    after component filtering (many pixels have alpha BELOW its 48 cutoff).
+    Those bands contain *no weapon* in the measured 482/483-pixel frames:
+    receiver + both gloves live inside x=32..405, and fire shell x=350..410.
+    Erase only alpha, never source RGB, iron sights or cartridge.
+    """
+    a = image.getchannel("A")
+    w, h = a.size
+    cut_left, cut_right = 26, 36
+    assert w >= 480 and h == 326, "Unrecognized MP40Pixel ADS source frame geometry"
+    before = sum(1 for value in a.getdata() if value > 5)
+    d = ImageDraw.Draw(a)
+    d.rectangle((0, 0, cut_left - 1, h - 1), fill=0)
+    d.rectangle((w - cut_right, 0, w - 1, h - 1), fill=0)
+    # The original ADS fire cell also contains a detached caption/bar on its
+    # final sprite-sheet rows, BELOW the receiver and in between glove cuffs.
+    if frame_name == "ads_fire_01":
+        d.rectangle((150, 318, 338, h - 1), fill=0)
+    after = sum(1 for value in a.getdata() if value > 5)
+    image.putalpha(a)
+    print(f"MP40_PIXEL_ADS_GHOST_GUARD frame={frame_name} erased_visible_px={before-after}")
+    return image, before - after
+
 def repair_atlas(asset: Path) -> dict:
     atlas = Image.open(asset).convert("RGBA")
     assert atlas.width % 3 == 0 and atlas.height % 3 == 0
@@ -81,6 +107,9 @@ def main(root: Path) -> None:
             file = frame_dir / (name + ".png")
             if file.exists():
                 image, stats = repair_alpha(Image.open(file), radius=5)
+                if name in ("ads_idle", "ads_fire_01"):
+                    image, erased = strip_native_ads_sheet_ghosts(image, name)
+                    stats["source_edge_ghost_pixels_removed"] = erased
                 image.save(file, format="PNG", optimize=True)
                 report["frames"][name] = stats
     (stem / "matte_repair_report.json").write_text(
