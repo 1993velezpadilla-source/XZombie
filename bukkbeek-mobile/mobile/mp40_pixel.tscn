@@ -1,0 +1,45 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="PackedScene" path="res://common/weapon/weapon_base.tscn" id="1_base"]
+[ext_resource type="Script" path="res://mobile/mp40_pixel_weapon.gd" id="2_pixel"]
+[ext_resource type="AudioStream" path="res://mobile/mp40_source/fire.wav" id="3_fire"]
+[ext_resource type="AudioStream" path="res://mobile/mp40_source/mag_out.wav" id="4_out"]
+[ext_resource type="AudioStream" path="res://mobile/mp40_source/mag_in.wav" id="5_in"]
+[ext_resource type="AudioStream" path="res://mobile/mp40_source/charge.wav" id="6_charge"]
+
+[node name="MP40Pixel" node_paths=PackedStringArray("firing_sfx") instance=ExtResource("1_base")]
+script = ExtResource("2_pixel")
+bullet_type = 2
+damage = 165.0
+cooldown = 0.112
+burst_mode = true
+mag_capacity = 32
+reload_time = 2.0
+firing_distance = 100.0
+focused_aim_fov = 60.0
+focused_aim_angle = 0.5
+standard_aim_angle = 2.0
+animation_fire = ""
+animation_reload = ""
+firing_sfx = NodePath("SFX/FiringSFX")
+
+[node name="fps_demo_arms" parent="." index="6"]
+visible = false
+
+[node name="FiringSFX" parent="SFX" index="0"]
+stream = ExtResource("3_fire")
+volume_db = -7.0
+
+[node name="MagazineRemoveCue" type="AudioStreamPlayer3D" parent="SFX"]
+stream = ExtResource("4_out")
+volume_db = -10.0
+
+[node name="MagazineInsertCue" type="AudioStreamPlayer3D" parent="SFX"]
+stream = ExtResource("5_in")
+volume_db = -9.0
+
+[node name="BoltChargeCue" type="AudioStreamPlayer3D" parent="SFX"]
+stream = ExtResource("6_charge")
+volume_db = -8.0
+
+[editable path="fps_demo_arms"]
