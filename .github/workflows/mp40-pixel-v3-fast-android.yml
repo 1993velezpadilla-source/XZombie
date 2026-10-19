@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - fix/mp40-pixel-visible-android-v3-20261019
+      - fix/mp40-pixel-alpha-matte-v4-20261019
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/mp40-pixel-v3-fast-android.yml'
@@ -42,7 +43,7 @@ jobs:
       - name: Prepare build dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends unzip zip libfontconfig1
+          sudo apt-get install -y --no-install-recommends unzip zip libfontconfig1 python3-pil xvfb libgl1-mesa-dri
 
       - name: Fetch pinned pristine Bukkbeek template
         run: |
@@ -184,7 +185,7 @@ jobs:
           fi
 
       - name: Render real 2D pixel captures of MP40 in ADS and empty-reload frames
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri
@@ -204,7 +205,7 @@ jobs:
           test -s _build/bukkbeek/visual_probes/ads.png
 
       - name: Publish MP40 visual proof (do not confuse with on-phone validation)
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         uses: actions/upload-artifact@v4
         with:
           name: Bukkbeek-MP40-ADS-Reload-Visual-Probe
@@ -212,7 +213,7 @@ jobs:
           retention-days: 14
 
       - name: Render HIP and ADS real pixels for Colt Thompson and Kar98k
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         run: |
           set -o pipefail
           timeout 150s xvfb-run -a -s "-screen 0 1280x720x24" \
@@ -226,7 +227,7 @@ jobs:
           fi
 
       - name: Upload new gun HIP ADS physical viewmodel frames
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         uses: actions/upload-artifact@v4
         with:
           name: XZIEL-V9-Three-Guns-HIP-ADS-Real-Frames
@@ -234,7 +235,7 @@ jobs:
           retention-days: 14
 
       - name: Recover original WaW source camera, sight and grip tag transforms
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         run: |
           set -o pipefail
           timeout 80s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
@@ -246,7 +247,7 @@ jobs:
           fi
 
       - name: Sweep authentic 3D source weapon screen visibility by exact ADS camera depth
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         run: |
           set -o pipefail
           timeout 185s xvfb-run -a -s "-screen 0 1280x720x24" \
@@ -257,7 +258,7 @@ jobs:
           if grep -E 'XZIEL_SWEEP_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-v11-depth-sweep.log; then exit 13; fi
 
       - name: Upload original gun, original hand and full screenshots per depth
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         uses: actions/upload-artifact@v4
         with:
           name: XZIEL-V11-PerWeapon-ADS-Depth-Calibrations
@@ -267,7 +268,7 @@ jobs:
           retention-days: 14
 
       - name: Compare original Kar98k ADS-specific hand and gun PSA pose against idle rig
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         run: |
           set -o pipefail
           timeout 100s xvfb-run -a -s "-screen 0 1280x720x24" \
@@ -279,7 +280,7 @@ jobs:
           if grep -E 'XZIEL_KAR_PSA_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-kar-source-ads-psa.log; then exit 14; fi
 
       - name: Upload genuine Kar98k alternate source ADS hand/bolt poses
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         uses: actions/upload-artifact@v4
         with:
           name: XZIEL-V11-Kar98k-Original-ADS-PSA-Pose-Frames
@@ -287,7 +288,7 @@ jobs:
           retention-days: 14
 
       - name: Reverse-engineer original weapon GPU skin per-surface camera projection
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         run: |
           set -o pipefail
           timeout 120s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
@@ -297,7 +298,7 @@ jobs:
           if grep -E 'XZIEL_SOURCE_FRUSTUM_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-v12-mesh-frustum.log; then exit 15; fi
 
       - name: Exhaustively search real source Kar98k rifle receiver/arm depth, FOV, near-plane 
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         run: |
           set -o pipefail
           timeout 210s xvfb-run -a -s "-screen 0 1280x720x24" \
@@ -309,7 +310,7 @@ jobs:
           if grep -E 'XZIEL_KAR_GRID_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-v13-kar-camera-grid.log; then exit 16; fi
 
       - name: Upload original GLB Kar98k best camera and sensitivity frames
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         uses: actions/upload-artifact@v4
         with:
           name: XZIEL-V13-Kar98k-Optical-HIP-Original-Rig-Camera-Grid
@@ -317,7 +318,7 @@ jobs:
           retention-days: 14
 
       - name: Audit each original weapon versus original arms for visibility
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         run: |
           set -o pipefail
           timeout 145s xvfb-run -a -s "-screen 0 1280x720x24" \
@@ -331,7 +332,7 @@ jobs:
           fi
 
       - name: Upload isolated hand versus gun screenshots
-        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019'
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
         uses: actions/upload-artifact@v4
         with:
           name: XZIEL-V10-Diagnostic-Source-Gun-VS-Hands
@@ -341,6 +342,9 @@ jobs:
       - name: Add isolated MP40 Pixel to existing map, keep all 9 other guns
         run: |
           python3 bukkbeek-mobile/patch_mp40_pixel.py _build/bukkbeek
+          # Repair transparent PNG dark pixels IN THE STAGED GAME, not source art.
+          # Never silently pretend the tiny fallback atlas is full-resolution.
+          python3 bukkbeek-mobile/repair_mp40_pixel_matte.py _build/bukkbeek
           cp bukkbeek-mobile/mobile/mp40_pixel_runtime_probe.gd _build/bukkbeek/mobile/
           cp bukkbeek-mobile/mobile/mp40_pixel_visual_probe.gd _build/bukkbeek/mobile/
           timeout 180s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --import 2>&1 | tee /tmp/mp40-pixel-import.log
