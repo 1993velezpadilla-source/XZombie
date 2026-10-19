@@ -20,6 +20,35 @@ func _pixels(img: Image) -> Dictionary:
    if y>h*3/4:bottom+=1
  return {"all":px,"bottom":bottom,"coverage":float(px)/float(w*h)}
 
+func _sweep_hip(w: Node3D, ident: String) -> void:
+ # Original left/right gun+arm PSA stay intact. Vary camera-space HIP rig
+ # placement only, inspect FIRST-PERSON REAL pixels before changing production.
+ var rig:Node3D=w.get("fps_arms_root") as Node3D
+ if rig==null:return
+ var base:Transform3D=rig.transform
+ w.set_process(false)
+ var view:SubViewport=w.get_node("../../WeaponSubViewport/SubViewport") as SubViewport
+ var out:="res://visual_probes/"
+ var moves: Array[Vector3]=[
+  Vector3.ZERO,Vector3(0.0,-0.12,-0.24),
+  Vector3(0.16,-0.18,-0.24),Vector3(0.20,-0.35,-0.35),
+  Vector3(0.12,-0.25,-0.55),Vector3(0.25,-0.42,-0.60),
+  Vector3(0.00,-0.50,-0.80),Vector3(0.35,-0.35,-1.00)]
+ for index in range(moves.size()):
+  var m:Vector3=moves[index]
+  rig.transform=Transform3D(base.basis,base.origin+m)
+  await process_frame
+  await RenderingServer.frame_post_draw
+  var image:=view.get_texture().get_image()
+  if image==null or image.is_empty():continue
+  var used:=_pixels(image)
+  var path:=out+"smg_wave_"+ident+"_hip_sweep_"+str(index)+".png"
+  image.save_png(path)
+  print("XZIEL_SMG_HIP_SWEEP id=",ident,
+   " index=",index," offset=",m," occupied=",used)
+ rig.transform=base
+ w.set_process(true)
+
 func _frame(player: Node, w: Node3D, ident: String, stance: String) -> bool:
  var view:SubViewport=player.get_node("WeaponSubViewport/SubViewport") as SubViewport
  await RenderingServer.frame_post_draw
@@ -38,6 +67,8 @@ func _frame(player: Node, w: Node3D, ident: String, stance: String) -> bool:
   " ads_marker=",w.get("focused_aim_position").transform)
  var cov:=_pixels(img)
  print("XZIEL_SMG_WAVE_PIXEL id=",ident," state=",stance," data=",cov)
+ if stance=="hip" and cov["coverage"]>0.45:
+  await _sweep_hip(w,ident)
  if cov["coverage"]<0.010 or cov["coverage"]>0.45:
   _red(ident+" physical model missing/camera swallowed "+stance);return false
  if stance=="ads":
