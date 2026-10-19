@@ -26,6 +26,16 @@ func _frame(player: Node, w: Node3D, ident: String, stance: String) -> bool:
  var img:=view.get_texture().get_image()
  if img==null or img.is_empty():
   _red(ident+" no physical weapon framebuffer");return false
+ # Persist FAILURE captures too: never tune FPS placement blind.
+ var diagnostic_folder:="res://visual_probes/"
+ DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(diagnostic_folder))
+ if img.save_png(diagnostic_folder+"smg_wave_"+ident+"_"+stance+".png")!=OK:
+  _red(ident+" cannot write frame");return false
+ print("XZIEL_SMG_WAVE_DIAGNOSTIC id=",ident,
+  " stance=",stance," source_hip_eye=",w.get_meta("source_hip_front_eye","missing"),
+  " solved_ads_eye=",w.get_meta("source_ads_rear_eye","missing"),
+  " hip_marker=",w.get("standard_aim_position").transform,
+  " ads_marker=",w.get("focused_aim_position").transform)
  var cov:=_pixels(img)
  print("XZIEL_SMG_WAVE_PIXEL id=",ident," state=",stance," data=",cov)
  if cov["coverage"]<0.010 or cov["coverage"]>0.45:
