@@ -24,6 +24,31 @@ jobs:
       - name: Get XZombie overlay
         uses: actions/checkout@v4
 
+      # Stop immediately when the actual source PNG is missing. In V4,
+      # a low-res placeholder must NOT be published as a finished MP40 Pixel.
+      - name: Require original MP40 Pixel full resolution image (V4)
+        if: github.ref == 'refs/heads/fix/mp40-pixel-alpha-matte-v4-20261019'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sheet='bukkbeek-mobile/pixel_assets/WWII MP40 Pixel Art Sprite Sheet.png'
+          if ! test -s "$sheet"; then sheet='bukkbeek-mobile/pixel_assets/MP40_Pixel_Source_1448x1086.png'; fi
+          if ! test -s "$sheet"; then
+            echo "::error title=MP40 Pixel source missing::Commit the REAL 1448x1086 original PNG to bukkbeek-mobile/pixel_assets/. No Android build will be labeled V4 without it."
+            exit 60
+          fi
+          python3 - "$sheet" <<'PY'
+          from pathlib import Path
+          from struct import unpack
+          import sys
+          p = Path(sys.argv[1])
+          raw = p.read_bytes()
+          assert raw[:8] == bytes((137,80,78,71,13,10,26,10)), "Source is not PNG"
+          wh = unpack('>II', raw[16:24])
+          assert wh == (1448, 1086), f"Wrong source dimensions: {wh}"
+          print(f"MP40_PIXEL_ORIGINAL_ASSET_PRESENT source={p.name} dims={wh}")
+          PY
+
       - name: Recover 12 ORIGINAL approved PNG assets from project GitHub
         run: |
           mkdir -p bukkbeek-mobile/official_png
