@@ -151,6 +151,19 @@ reload_time = {g["reload_time_catalog"]}
 firing_distance = {g["range_m"]}
 focused_aim_fov = {g["ads_fov"]}
 
+# TRUE inherited base-scene provenance regression:
+# original source MP40 V6 overrides BOTH Bukkbeek placeholder HIP and ADS.
+# Generic V8–V13 source guns did NOT override either marker, so its "source"
+# arm-pose baseline was accidentally an unrelated Bukkbeek demo pistol!!
+# Copy the EXACT accepted MP40 marker transforms as IMPORT AUTHORITY only;
+# source_weapon_fit.gd subsequently determines independent sight axis and
+# optical distance for each real Colt, Thompson and Kar98k viewmodel.
+[node name="StandardAimPosition" parent="." index="0"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.05, -0.05, -0.22)
+
+[node name="FocusedAimPosition" parent="." index="1"]
+transform = Transform3D(0.999857, 0.00464, 0.01696, -0.00512, 0.999583, 0.02845, -0.01682, -0.02854, 0.99945, -0.04142, 0.0104, -0.24045)
+
 [node name="fps_demo_arms" parent="." index="6"]
 visible = false
 
