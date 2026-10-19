@@ -67,6 +67,7 @@ func _run()->void:
  var dir:="res://visual_probes/"
  DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(dir))
  var sample_count:=0
+ var accepted:int=0
  for shift in RELIEF_SHIFTS:
   for fov in VIEWMODEL_FOV:
    for clipping in NEAR_CLIPS:
@@ -88,8 +89,19 @@ func _run()->void:
     # Make visible original receiver in lower quarter essential,
     # no reward for mere tiny centered iron sight.
     var score:float=bottom*1.2+gp*0.15-hp*0.15-center_arms*1.5
-    if bottom<1500 or gp<15000 or hand_ratio>5.5:
-     score-=1000000.0
+    # Adversarial critic: pure visible-pixel optimization selected a HUGE
+    # Kar98k BUTTSTOCK pressed into the 3cm near-plane as previous "winner".
+    # It looked like a giant round black block, not iron sights! Reject
+    # total-gun blobs, sight-lane obstruction, lens-inside-stock artifacts,
+    # and a screen full of unrelated Marine sleeves.
+    var physically_plausible:bool=(
+     gp>=12000 and gp<=85000 and bottom>=2500 and bottom<=30000
+     and center_arms<=5000 and float(g["center"])>=2000
+     and float(g["center"])<=15000 and hp<=115000
+     and hand_ratio<=3.5 and float(fov)<=100.0
+    )
+    if not physically_plausible:score-=1000000.0
+    else:accepted+=1
     var tag:="v13_kar_Z"+str(int(-float(shift)*100))+"_fov"+str(int(fov))+"_near"+str(int(float(clipping)*100))
     if score>float(best["score"]):
      best={"score":score,"label":tag,"gun":g,"hands":h,
@@ -108,5 +120,11 @@ func _run()->void:
  root_rig.transform=original
  camera.fov=original_fov
  camera.near=original_near
- print("XZIEL_KAR_GRID_COMPLETE samples=",sample_count," best=",JSON.stringify(best))
+ set_meta("kar98k_source_camera_candidates_accepted",accepted)
+ print("XZIEL_KAR_GRID_COMPLETE samples=",sample_count," visually_plausible=",accepted,
+  " geometry_only_max=",JSON.stringify(best))
+ if accepted == 0:
+  # Keep automation operational to upload all 50 diagnostic frames,
+  # but NEVER mark the actual Kar98k release gauntlet GREEN.
+  print("XZIEL_KAR_GRID_NO_SAFE_CAMERA source_rig_requires_anatomical_retarget=true")
  quit(0)
