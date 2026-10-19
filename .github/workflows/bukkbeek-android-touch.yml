@@ -24,6 +24,7 @@ on:
       - fix/v11-cod-fps-visual-weapon-calibration-20261018
       - fix/v12-aether-mesh-skin-frustum-forensics-20261019
       - experiment/v13-kar98k-original-viewport-optimization-20261019
+      - fix/v14-restore-mp40-authoritative-hip-ads-20261019
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'

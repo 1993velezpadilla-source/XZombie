@@ -15,6 +15,27 @@ manager = (root / "common/managers/weapons_manager.gd").read_text()
 assert 'NodePath("MP40Source"), NodePath("ColtSource"), NodePath("ThompsonSource"), NodePath("Kar98kSource")' in player_scene
 assert 'current_weapon_index = 5' in manager and 'weapons_array[5].name == "MP40Source"' in manager
 assert (root / "mobile/mp40_weapon.gd").is_file()
+
+# MP40 V6 is the real source-viewmodel UX authority, not demo Bukkbeek.
+# Fail immediately when a newly generated source gun inherits its generic
+# base StandardAimPosition/FocusedAimPosition instead of true MP40 poses.
+def inherited_marker(scene: str, name: str) -> str:
+    lines = scene.splitlines()
+    for i, line in enumerate(lines):
+        if line.startswith('[node name="' + name + '"'):
+            for entry in lines[i+1:i+6]:
+                if entry.startswith("transform = Transform3D("):
+                    return entry.split(" = ", 1)[1]
+    raise AssertionError("Source scene missing authoritative " + name)
+
+mp40_scn = (root / "mobile/mp40.tscn").read_text()
+for weapon_id in ["colt", "thompson", "kar98k"]:
+    actual_scn = (root / "mobile" / (weapon_id + ".tscn")).read_text()
+    for marker_name in ["StandardAimPosition", "FocusedAimPosition"]:
+        assert inherited_marker(actual_scn, marker_name) == inherited_marker(mp40_scn, marker_name), (
+          f"{weapon_id} reintroduced generic Bukkbeek {marker_name}: MP40 V6 baseline lost"
+        )
+    print("XZIEL_V14_MP40_POSE_AUTHORITY_GREEN "+weapon_id)
 assert (root / "mobile/source_weapon.gd").is_file()
 for w in manifest["weapons"]:
     ident = w["id"]
