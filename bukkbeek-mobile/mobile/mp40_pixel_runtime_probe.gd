@@ -62,8 +62,11 @@ func _run() -> void:
  var view: Vector2 = root.get_viewport().get_visible_rect().size
  var max_x: float = hip.position.x + hip.texture.get_width() * hip.scale.x
  var max_y: float = hip.position.y + hip.texture.get_height() * hip.scale.y
- if max_x > view.x * 0.80 or max_y > view.y * 1.01:
-  _fail("HIP sprite extends beyond HUD safe-zone: "+str(Vector2(max_x,max_y)));return
+ # The alpha silhouette (NOT the PNG rectangle) must extend beyond the
+ # viewport bottom to avoid an obvious floating straight cutoff on a phone.
+ var hip_visible_bottom: float = hip.position.y + float(sprite.get("opaque_bottom")[0]) * hip.scale.y
+ if max_x > view.x * 0.85 or hip_visible_bottom < view.y * 1.01 or max_y > view.y * 1.10:
+  _fail("HIP physical-bottom/width contract failed: "+str(Vector2(max_x, hip_visible_bottom)));return
  sprite.is_aimed = true
  sprite.set("ads_weight", 1.0)
  sprite.call("_render")
@@ -75,6 +78,11 @@ func _run() -> void:
  var aim_y: float = ads.position.y + sight.y * ads.scale.y
  if Vector2(aim_x,aim_y).distance_to(view*0.5) > 1.5:
   _fail("ADS true front sight does not coincide with screen-center ray");return
+ var ads_visible_bottom: float = ads.position.y + float(sprite.get("opaque_bottom")[1]) * ads.scale.y
+ if ads_visible_bottom < view.y * 1.02:
+  _fail("ADS sprite still floats above screen bottom: "+str(ads_visible_bottom)+" vs "+str(view.y));return
+ if not bool(sprite.get_meta("mp40_pixel_grounded_viewmodel", false)):
+  _fail("grounded source-alpha layout not enabled");return
  print("MP40_PIXEL_V2_LAYOUT_GREEN hip_inside_safe_zone=true ads_iron_sight_centered=true original_png_count=",original_art_count)
  print("MP40_PIXEL_TEST_GREEN map=original weapons=10 approved_mp40_unchanged=true sprites=9 mp40_source_sfx=true hit_and_reload_calls=true")
  quit(0)

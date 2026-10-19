@@ -367,9 +367,9 @@ jobs:
       - name: Add isolated MP40 Pixel to existing map, keep all 9 other guns
         run: |
           python3 bukkbeek-mobile/patch_mp40_pixel.py _build/bukkbeek
-          # Repair transparent PNG dark pixels IN THE STAGED GAME, not source art.
-          # Never silently pretend the tiny fallback atlas is full-resolution.
-          python3 bukkbeek-mobile/repair_mp40_pixel_matte.py _build/bukkbeek
+          # Source art is split first; then repair both the fallback atlas AND
+          # the actually-loaded 9 high-res PNGs. V4 previously repaired ONLY
+          # the fallback and left all nine rendered frames untreated.
           # Optional, strictly-original HIGH RES sheet (1448x1086), saved by
           # project owner under the following committed filename. The tiny
           # fallback is never described as the final version.
@@ -383,6 +383,7 @@ jobs:
           else
             echo 'MP40_PIXEL_SOURCE_LOWRES_WARNING: original 1448x1086 image not yet in GitHub'
           fi
+          python3 bukkbeek-mobile/repair_mp40_pixel_matte.py _build/bukkbeek
           cp bukkbeek-mobile/mobile/mp40_pixel_runtime_probe.gd _build/bukkbeek/mobile/
           cp bukkbeek-mobile/mobile/mp40_pixel_visual_probe.gd _build/bukkbeek/mobile/
           timeout 180s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --import 2>&1 | tee /tmp/mp40-pixel-import.log
