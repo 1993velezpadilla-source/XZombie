@@ -114,10 +114,10 @@ source_weapon_id = "{ident}"
 fps_arms_root = NodePath("FPSHandsRoot")
 animation_player = NodePath("fps_demo_arms/AnimationPlayer")
 muzzle_flash_position = NodePath("FPSHandsRoot/MuzzleFlashPosition")
-bullet_type = {AMMO_KIND[g["family"]]}
+bullet_type = {AMMO_KIND[weapon["family"]]}
 damage = {g["damage"]}
 cooldown = {g["cooldown"]}
-burst_mode = {str(g["automatic"] or g["family"]=="pistol").lower()}
+burst_mode = {str(g["automatic"] or weapon["family"]=="pistol").lower()}
 mag_capacity = {g["magazine"]}
 reload_time = {g["reload_time_catalog"]}
 firing_distance = {g["range_m"]}
