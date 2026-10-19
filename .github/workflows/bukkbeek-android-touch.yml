@@ -19,6 +19,7 @@ on:
       - feature/mp40-universal-motion-v6-20261015
       - feature/bukkbeek-mobile-controls-v7-20261016
       - feature/xziel-multiweapon-aether-v8-20261018
+      - fix/xziel-source-weapon-optical-fit-v9-20261018
     paths:
       - 'bukkbeek-mobile/**'
       - '.github/workflows/bukkbeek-android-touch.yml'
@@ -114,6 +115,7 @@ jobs:
           python3 bukkbeek-mobile/verify_mobile_v7.py _build/bukkbeek
           python3 bukkbeek-mobile/stage_aether_weapon_pack.py _build/bukkbeek
           python3 bukkbeek-mobile/verify_multiweapon_v8.py _build/bukkbeek
+          python3 bukkbeek-mobile/audit_source_glb.py _build/bukkbeek/mobile/weapon_sources
           test -s _build/bukkbeek/resources/player/fps_demo_arms.glb
           test -s _build/bukkbeek/resources/undead/fps_demo_undead.glb
           grep -q 'NodePath("MP40Source")' _build/bukkbeek/player/player.tscn
