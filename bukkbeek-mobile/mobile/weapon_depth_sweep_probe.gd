@@ -96,5 +96,20 @@ func _run()->void:
    (all_m["image"] as Image).save_png(path+id+"_shift"+str(i)+"_full.png")
   rig.transform=original
   root.get_node("Global").emit_signal("aim_mode_changed",false)
+  if id=="colt":
+   await create_timer(0.45).timeout
+   var hip_pose:Transform3D=w.get("standard_aim_position").transform
+   for h in range(DEPTH_STEPS.size()):
+    var offset:float=DEPTH_STEPS[h]
+    var hip_test:=hip_pose
+    hip_test.origin.z+=offset
+    rig.transform=hip_test
+    var hg:Dictionary=await _render_layer(view,gun_meshes,hand_meshes,"gun")
+    var hh:Dictionary=await _render_layer(view,gun_meshes,hand_meshes,"arms")
+    var ha:Dictionary=await _render_layer(view,gun_meshes,hand_meshes,"all")
+    print("XZIEL_V11_COLT_HIP_SHIFT id=",id," shift_z=",offset,
+     " gun_pixels=",hg["metric"]," arms_pixels=",hh["metric"])
+    (ha["image"] as Image).save_png(path+id+"_hip_shift"+str(h)+"_full.png")
+   rig.transform=hip_pose
  print("XZIEL_V11_DEPTH_SWEEP_COMPLETE independent_original_source_guns=3 candidates_each=6")
  quit(0)
