@@ -32,7 +32,7 @@ func _material(base: Color, rough: float = 0.82, metallic: float = 0.0, glow: bo
 func build(owner: Node3D) -> void:
 	rock = _material(Color(0.083, 0.083, 0.103))
 	granite = _material(Color(0.18, 0.167, 0.176))
-	polished = _material(Color(0.093, 0.099, 0.131), 0.23, 0.29)
+	polished = _material(Color(0.154, 0.151, 0.164), 0.24, 0.23)
 	grout = _material(Color(0.042, 0.043, 0.057))
 	gilded = _material(Color(0.41, 0.27, 0.13), 0.33, 0.58)
 	aged_bronze = _material(Color(0.22, 0.17, 0.13), 0.6, 0.51)
@@ -136,16 +136,16 @@ func _build_ribbed_roof() -> void:
 	# Double-slope vaulted roof with actual interior surfaces and decorative ribs.
 	for side in [-1.0, 1.0]:
 		var slab := _block("VaultRoof_%s" % ("L" if side < 0.0 else "R"),
-			Vector3(side * 4.37, 6.67, 0), Vector3(8.92, 0.22, 35), roof)
+			Vector3(side * 4.37, 10.30, 0), Vector3(8.92, 0.22, 35), roof)
 		slab.rotation_degrees.z = -side * 10.0
 	for step in range(6):
 		var z: float = -15.0 + float(step) * 6.05
 		for side in [-1.0, 1.0]:
 			_beam("GothicVaultRib_%d_%s" % [step, "L" if side < 0 else "R"],
-				Vector3(side * 8.58, 5.84, z), Vector3(0, 7.42, z), 0.083, granite)
-		_cylinder("VaultKeystone_%02d" % step, Vector3(0, 7.31, z), 0.16, 0.31, gilded, 10)
+				Vector3(side * 8.58, 9.18, z), Vector3(0, 11.24, z), 0.083, granite)
+		_cylinder("VaultKeystone_%02d" % step, Vector3(0, 11.17, z), 0.16, 0.31, gilded, 10)
 	# Crown beam also seals the black void visible in user's current APK.
-	_block("VaultCrown", Vector3(0, 7.35, 0), Vector3(0.28, 0.23, 35), granite)
+	_block("VaultCrown", Vector3(0, 11.15, 0), Vector3(0.28, 0.23, 35), granite)
 
 func _build_gothic_window_frames() -> void:
 	for side in [-1.0, 1.0]:
@@ -156,20 +156,20 @@ func _build_gothic_window_frames() -> void:
 			# Tracery outlines original emissive window panes instead of swapping them.
 			for dz in [-0.72, 0.72]:
 				_block("TraceryPost_%s_%d_%d" % [face, index, int(dz * 100)],
-					Vector3(x, 3.48, z + dz), Vector3(0.13, 2.72, 0.10), black_iron)
-			_block("TracerySill_%s_%d" % [face, index], Vector3(x, 2.1, z),
+					Vector3(x, 5.0, z + dz), Vector3(0.13, 4.42, 0.10), black_iron)
+			_block("TracerySill_%s_%d" % [face, index], Vector3(x, 2.77, z),
 				Vector3(0.16, 0.12, 1.58), granite)
-			_block("TraceryTransom_%s_%d" % [face, index], Vector3(x, 3.7, z),
+			_block("TraceryTransom_%s_%d" % [face, index], Vector3(x, 5.30, z),
 				Vector3(0.12, 0.085, 1.48), aged_bronze)
 			_beam("GothicWindowPeakL_%s_%d" % [face, index],
-				Vector3(x, 4.87, z - 0.76), Vector3(x, 5.28, z), 0.06, aged_bronze)
+				Vector3(x, 7.16, z - 0.76), Vector3(x, 7.62, z), 0.06, aged_bronze)
 			_beam("GothicWindowPeakR_%s_%d" % [face, index],
-				Vector3(x, 5.28, z), Vector3(x, 4.87, z + 0.76), 0.06, aged_bronze)
-			_block("WindowMullion_%s_%d" % [face, index], Vector3(x, 3.48, z),
-				Vector3(0.13, 2.62, 0.043), aged_bronze)
+				Vector3(x, 7.62, z), Vector3(x, 7.16, z + 0.76), 0.06, aged_bronze)
+			_block("WindowMullion_%s_%d" % [face, index], Vector3(x, 5.0, z),
+				Vector3(0.13, 4.36, 0.043), aged_bronze)
 	# Blue stained glass casts cold fill on opposing banks.
-	_lamp("WestBlueStainedGlassGlow", Vector3(-7.4, 4.3, -3.8), 10.0, 0.48, Color(0.24, 0.38, 0.97))
-	_lamp("EastBlueStainedGlassGlow", Vector3(7.4, 4.3, 4.0), 10.0, 0.48, Color(0.24, 0.38, 0.97))
+	_lamp("WestBlueStainedGlassGlow", Vector3(-7.4, 5.3, -3.8), 10.0, 0.48, Color(0.24, 0.38, 0.97))
+	_lamp("EastBlueStainedGlassGlow", Vector3(7.4, 5.3, 4.0), 10.0, 0.48, Color(0.24, 0.38, 0.97))
 
 func _build_columns_and_side_shrines() -> void:
 	for side in [-1.0, 1.0]:
@@ -179,10 +179,10 @@ func _build_columns_and_side_shrines() -> void:
 			_block("ColumnGothicFoot_%d_%d" % [int(side), row],
 				Vector3(x, 0.24, z), Vector3(1.06, 0.46, 1.13), granite)
 			_block("ColumnCapital_%d_%d" % [int(side), row],
-				Vector3(x, 5.32, z), Vector3(0.98, 0.30, 1.05), aged_bronze)
+				Vector3(x, 8.15, z), Vector3(0.98, 0.30, 1.05), aged_bronze)
 			for dx in [-0.29, 0.29]:
 				_cylinder("ColumnFluting_%d_%d_%d" % [int(side), row, int(dx * 100)],
-					Vector3(x + dx, 2.9, z - 0.47), 0.077, 4.6, granite, 8)
+					Vector3(x + dx, 4.24, z - 0.47), 0.077, 7.32, granite, 8)
 	# Small carved sanctuary niches outline the candle-lit altar reredos.
 	for side in [-1.0, 1.0]:
 		var x: float = side * 5.72
@@ -229,53 +229,53 @@ func _candle(label: String, p: Vector3, tall: float = 0.25) -> void:
 func _build_chandeliers() -> void:
 	for group in range(2):
 		var z: float = -7.25 if group == 0 else 3.4
-		_beam("ChandelierChain_%d" % group, Vector3(0, 7.32, z), Vector3(0, 4.88, z), 0.025, aged_bronze)
-		_cylinder("ChandelierHub_%d" % group, Vector3(0, 4.81, z), 0.22, 0.23, gilded, 10)
+		_beam("ChandelierChain_%d" % group, Vector3(0, 11.12, z), Vector3(0, 7.55, z), 0.025, aged_bronze)
+		_cylinder("ChandelierHub_%d" % group, Vector3(0, 7.47, z), 0.22, 0.23, gilded, 10)
 		for index in range(10):
 			var theta := float(index) * TAU / 10.0
 			var x: float = cos(theta) * 1.52
 			var dz := sin(theta) * 1.52
 			_beam("ChandelierArm_%d_%02d" % [group, index],
-				Vector3(0, 4.76, z), Vector3(x, 4.64, z + dz), 0.045, aged_bronze)
+				Vector3(0, 7.43, z), Vector3(x, 7.31, z + dz), 0.045, aged_bronze)
 			_cylinder("ChandelierCandleCup_%d_%02d" % [group, index],
-				Vector3(x, 4.70, z + dz), 0.10, 0.14, gilded, 8)
+				Vector3(x, 7.37, z + dz), 0.10, 0.14, gilded, 8)
 			_candle("ChandelierFlame_%d_%02d" % [group, index],
-				Vector3(x, 4.90, z + dz), 0.26)
-		_lamp("ChandelierWarmLight_%d" % group, Vector3(0, 5.2, z),
+				Vector3(x, 7.57, z + dz), 0.26)
+		_lamp("ChandelierWarmLight_%d" % group, Vector3(0, 7.87, z),
 			11.0, 1.9, Color(1.0, 0.59, 0.29))
 
 func _build_altar_focal_point() -> void:
 	# Raised Tripo altar itself lives in iglesia.gd at y=0.45.
 	# These elements are physically separate scenery, never a background image.
-	_block("ChancelLipGold", Vector3(0, 0.45, -13.62), Vector3(6.42, 0.08, 0.11), gilded)
-	_block("AltarReredosShadow", Vector3(0, 3.2, -17.10), Vector3(6.6, 4.55, 0.20), rock)
+	_block("ChancelLipGold", Vector3(0, 0.45, -13.62), Vector3(7.32, 0.08, 0.11), gilded)
+	_block("AltarReredosShadow", Vector3(0, 4.73, -17.10), Vector3(7.4, 6.35, 0.20), rock)
 	for x in [-3.21, 3.21]:
-		_cylinder("GothicRetablePier_%d" % int(x), Vector3(x, 3.50, -16.86),
-			0.16, 4.1, granite, 8)
-		_cylinder("GothicRetableFinial_%d" % int(x), Vector3(x, 5.65, -16.86),
+		_cylinder("GothicRetablePier_%d" % int(x), Vector3(x, 4.65, -16.86),
+			0.16, 6.25, granite, 8)
+		_cylinder("GothicRetableFinial_%d" % int(x), Vector3(x, 7.89, -16.86),
 			0.12, 0.43, gilded, 8)
-	_beam("AltarGothicArchLeft", Vector3(-3.25, 5.55, -16.83),
-		Vector3(0, 6.51, -16.83), 0.15, gilded)
-	_beam("AltarGothicArchRight", Vector3(0, 6.51, -16.83),
-		Vector3(3.25, 5.55, -16.83), 0.15, gilded)
+	_beam("AltarGothicArchLeft", Vector3(-3.25, 7.75, -16.83),
+		Vector3(0, 8.72, -16.83), 0.15, gilded)
+	_beam("AltarGothicArchRight", Vector3(0, 8.72, -16.83),
+		Vector3(3.25, 7.75, -16.83), 0.15, gilded)
 	# Center crucifix as the aisle's primary focal point at player eye height.
-	_block("CentralCrucifixVertical", Vector3(0, 4.43, -16.76),
-		Vector3(0.16, 2.08, 0.14), gilded)
-	_block("CentralCrucifixCrossbar", Vector3(0, 4.76, -16.74),
-		Vector3(1.06, 0.14, 0.13), gilded)
+	_block("CentralCrucifixVertical", Vector3(0, 5.92, -16.76),
+		Vector3(0.20, 2.83, 0.14), gilded)
+	_block("CentralCrucifixCrossbar", Vector3(0, 6.38, -16.74),
+		Vector3(1.36, 0.16, 0.13), gilded)
 	for side in [-1.0, 1.0]:
 		var x: float = side * 4.25
-		_block("AltarRedBanner_%d" % int(side), Vector3(x, 4.37, -17.10),
-			Vector3(1.42, 2.64, 0.08), wine)
-		_block("BannerCrossVertical_%d" % int(side), Vector3(x, 4.36, -17.035),
-			Vector3(0.075, 1.08, 0.03), gilded)
-		_block("BannerCrossHorizontal_%d" % int(side), Vector3(x, 4.48, -17.03),
+		_block("AltarRedBanner_%d" % int(side), Vector3(x, 5.62, -17.10),
+			Vector3(1.42, 4.05, 0.08), wine)
+		_block("BannerCrossVertical_%d" % int(side), Vector3(x, 5.50, -17.035),
+			Vector3(0.075, 1.25, 0.03), gilded)
+		_block("BannerCrossHorizontal_%d" % int(side), Vector3(x, 5.65, -17.03),
 			Vector3(0.48, 0.07, 0.03), gilded)
 	# Place candleholders on and next to top of raised altar.
 	for index in range(10):
 		var x: float = -2.1 + float(index) * (4.2 / 9.0)
-		_cylinder("AltarCandleStand_%02d" % index, Vector3(x, 2.22, -15.50), 0.075, 0.37, aged_bronze, 8)
-		_candle("AltarCandle_%02d" % index, Vector3(x, 2.53, -15.50), 0.35)
+		_cylinder("AltarCandleStand_%02d" % index, Vector3(x, 2.51, -15.50), 0.075, 0.37, aged_bronze, 8)
+		_candle("AltarCandle_%02d" % index, Vector3(x, 2.81, -15.50), 0.35)
 	for side in [-1.0, 1.0]:
 		var x: float = side * 2.87
 		_cylinder("AltarSideCandelabra_%d" % int(side), Vector3(x, 1.48, -14.9),
@@ -293,14 +293,14 @@ func _build_wall_sconces() -> void:
 			var z: float = -9.0 + float(row) * 8.2
 			var x: float = side * 8.78
 			_block("SconceBack_%d_%d" % [int(side), row],
-				Vector3(x, 3.24, z), Vector3(0.24, 0.53, 0.36), aged_bronze)
+				Vector3(x, 4.64, z), Vector3(0.24, 0.53, 0.36), aged_bronze)
 			_beam("SconceBracket_%d_%d" % [int(side), row],
-				Vector3(x, 3.2, z), Vector3(x - side * 0.51, 3.43, z),
+				Vector3(x, 4.6, z), Vector3(x - side * 0.51, 4.83, z),
 				0.045, gilded)
 			for dz in [-0.23, 0.23]:
 				_candle("WallFlame_%d_%d_%d" % [int(side), row, int(dz * 100)],
-					Vector3(x - side * 0.5, 3.61, z + dz), 0.25)
+					Vector3(x - side * 0.5, 5.01, z + dz), 0.25)
 			if row == 1:
 				_lamp("SconceOmni_%d" % int(side),
-					Vector3(x - side * 1.0, 3.75, z),
+					Vector3(x - side * 1.0, 5.15, z),
 					6.6, 0.85, Color(1.0, 0.53, 0.26))
