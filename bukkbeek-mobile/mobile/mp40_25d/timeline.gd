@@ -77,5 +77,5 @@ func frame_art_ready() -> bool:
   for phase in clips[name]["phases"]:
    for i in range(int(phase["frames"])):
     var path: String = "res://mobile/mp40_25d/frames/%s/%s_%02d.png" % [name, str(phase["id"]), i]
-    if not FileAccess.file_exists(path): return false
+    if not ResourceLoader.exists(path) and not FileAccess.file_exists(path): return false
  return true

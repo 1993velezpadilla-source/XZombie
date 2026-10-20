@@ -1,0 +1,502 @@
+name: MP40 2.5D V8 playable preview Android (107 original PNGs)
+on:
+  push:
+    branches:
+      - feature/mp40-pixel-v8-playable-preview-20261019
+    paths:
+      - 'bukkbeek-mobile/**'
+      - '.github/workflows/mp40-pixel-v8-android.yml'
+  workflow_dispatch:
+
+# Don't spend the user's free GitHub minutes on stale intermediary MP40 builds.
+concurrency:
+  group: bukkbeek-xziel-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android-debug-arm64:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Get XZombie overlay
+        uses: actions/checkout@v4
+
+      # Stop immediately when the actual source PNG is missing. In V4,
+      # a low-res placeholder must NOT be published as a finished MP40 Pixel.
+      - name: Require original MP40 Pixel full resolution image (V4)
+        if: github.ref == 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        shell: bash
+        run: |
+          set -euo pipefail
+          sheet='bukkbeek-mobile/pixel_assets/WWII MP40 Pixel Art Sprite Sheet.png'
+          if ! test -s "$sheet"; then sheet='bukkbeek-mobile/pixel_assets/MP40_Pixel_Source_1448x1086.png'; fi
+          if ! test -s "$sheet"; then
+            echo "::error title=MP40 Pixel source missing::Commit the REAL 1448x1086 original PNG to bukkbeek-mobile/pixel_assets/. No Android build will be labeled V4 without it."
+            exit 60
+          fi
+          python3 - "$sheet" <<'PY'
+          from pathlib import Path
+          from struct import unpack
+          import sys
+          p = Path(sys.argv[1])
+          raw = p.read_bytes()
+          assert raw[:8] == bytes((137,80,78,71,13,10,26,10)), "Source is not PNG"
+          wh = unpack('>II', raw[16:24])
+          assert wh == (1448, 1086), f"Wrong source dimensions: {wh}"
+          print(f"MP40_PIXEL_ORIGINAL_ASSET_PRESENT source={p.name} dims={wh}")
+          PY
+
+      - name: Recover 12 ORIGINAL approved PNG assets from project GitHub
+        run: |
+          mkdir -p bukkbeek-mobile/official_png
+          SOURCE="https://raw.githubusercontent.com/1993velezpadilla-source/config-old-3/0119c5b0f9109c4c88dbdd4173a9a2ba523abc3d/assets/xziel/official_touch_skins_v1"
+          for name in aim aim_fire crouch fire grenade interact knife prone reload slide vault_jump weapon_swap; do
+            curl --fail --silent --show-error --location --retry 3 \
+              "$SOURCE/$name.png" -o "bukkbeek-mobile/official_png/$name.png"
+          done
+          python3 bukkbeek-mobile/verify_official_png.py bukkbeek-mobile/official_png
+
+      - name: Java 17 for Godot Android
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Prepare build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends unzip zip libfontconfig1 python3-pil xvfb libgl1-mesa-dri
+
+      - name: Fetch pinned pristine Bukkbeek template
+        run: |
+          mkdir -p _build/bukkbeek
+          cd _build/bukkbeek
+          git init -q
+          git remote add origin https://github.com/bukkbeek/GodotFPS-Template.git
+          git fetch --depth=1 origin 11619794d644e7933f87caa6099f3acc1f085f5d
+          git checkout --detach FETCH_HEAD
+
+      - name: Recover exact source MP40 and T4 marine hands from existing repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _build/bukkbeek/mobile/mp40_source
+          while read -r name url; do
+            curl --fail --silent --show-error --location --retry 3 "$url" \
+              -o "_build/bukkbeek/mobile/mp40_source/$name"
+          done < <(python3 bukkbeek-mobile/verify_mp40_source.py --urls)
+          python3 bukkbeek-mobile/verify_mp40_source.py _build/bukkbeek/mobile/mp40_source
+
+      - name: Assert approved PNGs and reject obsolete buttons
+        run: |
+          python3 bukkbeek-mobile/verify_official_png.py bukkbeek-mobile/official_png
+          ! grep -E 'touch_idle|touch_pressed|joystick_ring|touch_fire_idle|touch_fire_pressed' bukkbeek-mobile/mobile/touch_hud.gd
+          python3 bukkbeek-mobile/verify_mobile_gestures.py bukkbeek-mobile/mobile
+
+      - name: Install approved PNGs and apply Android input adapter
+        run: |
+          mkdir -p _build/bukkbeek/mobile/official_png
+          cp bukkbeek-mobile/mobile/touch_hud.gd _build/bukkbeek/mobile/touch_hud.gd
+          cp bukkbeek-mobile/mobile/mobile_settings.gd _build/bukkbeek/mobile/mobile_settings.gd
+          cp bukkbeek-mobile/mobile/mobile_player.gd _build/bukkbeek/mobile/mobile_player.gd
+          cp bukkbeek-mobile/mobile/mobile_grenade.gd _build/bukkbeek/mobile/mobile_grenade.gd
+          cp bukkbeek-mobile/mobile/virtual_joystick.gd _build/bukkbeek/mobile/virtual_joystick.gd
+          cp bukkbeek-mobile/mobile/mp40_weapon.gd _build/bukkbeek/mobile/mp40_weapon.gd
+          cp bukkbeek-mobile/mobile/source_weapon.gd _build/bukkbeek/mobile/source_weapon.gd
+          cp bukkbeek-mobile/mobile/source_weapon_fit.gd _build/bukkbeek/mobile/source_weapon_fit.gd
+          cp bukkbeek-mobile/mobile/source_weapon_ads_ik.gd _build/bukkbeek/mobile/source_weapon_ads_ik.gd
+          cp bukkbeek-mobile/mobile/weapon_pack_visual_probe.gd _build/bukkbeek/mobile/weapon_pack_visual_probe.gd
+          cp bukkbeek-mobile/mobile/weapon_fidelity_probe.gd _build/bukkbeek/mobile/weapon_fidelity_probe.gd
+          cp bukkbeek-mobile/mobile/weapon_depth_sweep_probe.gd _build/bukkbeek/mobile/weapon_depth_sweep_probe.gd
+          cp bukkbeek-mobile/mobile/weapon_kar98_ads_pose_probe.gd _build/bukkbeek/mobile/weapon_kar98_ads_pose_probe.gd
+          cp bukkbeek-mobile/mobile/weapon_mesh_frustum_probe.gd _build/bukkbeek/mobile/weapon_mesh_frustum_probe.gd
+          cp bukkbeek-mobile/mobile/kar98k_camera_grid_probe.gd _build/bukkbeek/mobile/kar98k_camera_grid_probe.gd
+          cp bukkbeek-mobile/mobile/source_camera_authority_probe.gd _build/bukkbeek/mobile/source_camera_authority_probe.gd
+          cp bukkbeek-mobile/mobile/weapon_pack_runtime_probe.gd _build/bukkbeek/mobile/weapon_pack_runtime_probe.gd
+          cp bukkbeek-mobile/mobile/weapon_source_geometry_probe.gd _build/bukkbeek/mobile/weapon_source_geometry_probe.gd
+          cp bukkbeek-mobile/mobile/universal_weapon_motion.gd _build/bukkbeek/mobile/universal_weapon_motion.gd
+          cp bukkbeek-mobile/mobile/mp40_ads_arm_modifier.gd _build/bukkbeek/mobile/mp40_ads_arm_modifier.gd
+          cp bukkbeek-mobile/mobile/mp40_runtime_probe.gd _build/bukkbeek/mobile/mp40_runtime_probe.gd
+          cp bukkbeek-mobile/mobile/mp40_visual_probe.gd _build/bukkbeek/mobile/mp40_visual_probe.gd
+          cp bukkbeek-mobile/mobile/mp40.tscn _build/bukkbeek/mobile/mp40.tscn
+          python3 bukkbeek-mobile/verify_mp40_source.py _build/bukkbeek/mobile/mp40_source
+          # No user-facing test APK unless THESE EXACT 3 Project Aether files
+          # have been decoded and committed with their source .ubulk proof.
+          python3 bukkbeek-mobile/verify_mp40_authentic_audio.py bukkbeek-mobile/audio/aether/mp40
+          cp bukkbeek-mobile/audio/aether/mp40/*.wav _build/bukkbeek/mobile/mp40_source/
+          ! grep -Ei 'metal_(spring|close)|rubberduck|CC0' bukkbeek-mobile/mobile/mp40.tscn bukkbeek-mobile/mobile/mp40_weapon.gd
+          cp bukkbeek-mobile/official_png/*.png _build/bukkbeek/mobile/official_png/
+          python3 bukkbeek-mobile/patch_bukkbeek.py _build/bukkbeek
+          python3 bukkbeek-mobile/patch_mobile_v7.py _build/bukkbeek
+          python3 bukkbeek-mobile/verify_mobile_v7.py _build/bukkbeek
+          python3 bukkbeek-mobile/stage_aether_weapon_pack.py _build/bukkbeek
+          python3 bukkbeek-mobile/verify_multiweapon_v8.py _build/bukkbeek
+          python3 bukkbeek-mobile/audit_source_glb.py _build/bukkbeek/mobile/weapon_sources
+          test -s _build/bukkbeek/resources/player/fps_demo_arms.glb
+          test -s _build/bukkbeek/resources/undead/fps_demo_undead.glb
+          grep -q 'NodePath("MP40Source")' _build/bukkbeek/player/player.tscn
+
+      - name: Install Godot 4.6 editor and Android templates
+        run: |
+          mkdir -p _tools/godot
+          curl --fail --location --retry 3 -o /tmp/godot.zip \
+            https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip
+          unzip -q /tmp/godot.zip -d _tools/godot
+          chmod +x _tools/godot/Godot_v4.6-stable_linux.x86_64
+          echo "$GITHUB_WORKSPACE/_tools/godot" >> "$GITHUB_PATH"
+          mkdir -p "$HOME/.local/share/godot/export_templates/4.6.stable"
+          curl --fail --location --retry 3 -o /tmp/templates.tpz \
+            https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_export_templates.tpz
+          unzip -q /tmp/templates.tpz -d /tmp/godot-export
+          cp /tmp/godot-export/templates/* "$HOME/.local/share/godot/export_templates/4.6.stable/"
+
+      - name: Configure Android SDK, debug signing, and import
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ github.workspace }}/_tools/android-debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+        run: |
+          keytool -genkeypair -noprompt -v -keystore _tools/android-debug.keystore \
+            -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android -dname "CN=XZIEL Mobile Test, OU=Dev, O=XZIEL, C=PR"
+          mkdir -p "$HOME/.config/godot"
+          cat > "$HOME/.config/godot/editor_settings-4.tres" <<EOF
+          [gd_resource type="EditorSettings" format=3]
+          [resource]
+          export/android/android_sdk_path = "$ANDROID_HOME"
+          export/android/java_sdk_path = "$JAVA_HOME"
+          EOF
+          set -o pipefail
+          timeout 180s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --import 2>&1 | tee /tmp/bukkbeek-import.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script" /tmp/bukkbeek-import.log; then
+            echo "Rejected: Godot source parse errors cannot be marked GREEN"
+            exit 2
+          fi
+
+      - name: Real Bukkbeek player MP40 runtime gate (hands, textures, fire, reload)
+        run: |
+          set -o pipefail
+          timeout 100s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/mp40_runtime_probe.gd 2>&1 | tee /tmp/bukkbeek-mp40-runtime.log
+          grep -q 'BUKKBEEK_MP40_LIVE_GREEN' /tmp/bukkbeek-mp40-runtime.log
+          if grep -E 'BUKKBEEK_MP40_LIVE_RED|BUKKBEEK_MP40_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/bukkbeek-mp40-runtime.log; then
+            exit 4
+          fi
+
+      - name: Verify actual Bukkbeek multiweapon scene and exact source PSA bindings
+        run: |
+          set -o pipefail
+          timeout 120s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/weapon_pack_runtime_probe.gd 2>&1 | tee /tmp/bukkbeek-multiweapon-runtime.log
+          grep -q 'XZIEL_MULTIWEAPON_RUNTIME_GREEN' /tmp/bukkbeek-multiweapon-runtime.log
+          if grep -E 'XZIEL_MULTIWEAPON_RUNTIME_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/bukkbeek-multiweapon-runtime.log; then
+            exit 7
+          fi
+
+      - name: Read original weapon geometry, rigs, hip ADS camera and PSA rotations
+        run: |
+          set -o pipefail
+          timeout 100s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/weapon_source_geometry_probe.gd 2>&1 | tee /tmp/bukkbeek-geometry.log
+          for gun in colt thompson kar98k; do
+            grep -q "XZIEL_V9_GEOM id=$gun" /tmp/bukkbeek-geometry.log
+            grep -q "XZIEL_V9_ROOTS id=$gun role=reload" /tmp/bukkbeek-geometry.log
+          done
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/bukkbeek-geometry.log; then
+            exit 8
+          fi
+
+      - name: Render real 2D pixel captures of MP40 in ADS and empty-reload frames
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri
+          mkdir -p _build/bukkbeek/visual_probes
+          set -o pipefail
+          timeout 90s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 --script res://mobile/mp40_visual_probe.gd \
+            2>&1 | tee /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_VISUAL_SCREENSHOT_GREEN ads' /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_VISUAL_SCREENSHOT_GREEN reload_finished_idle' /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_VISUAL_SCREENSHOT_GREEN v6_sprint_source_hands' /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_VISUAL_SCREENSHOT_GREEN v6_ads_return_12cm' /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_V6_REAL_ANDROID_INPUT_SPRINT_GREEN' /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_V6_REAL_SPRINT_RELOAD_GREEN' /tmp/bukkbeek-mp40-visual.log
+          grep -q 'MP40_VISUAL_SCREENSHOT_GREEN v6_real_sprint_input' /tmp/bukkbeek-mp40-visual.log
+          test -s _build/bukkbeek/visual_probes/ads.png
+
+      - name: Publish MP40 visual proof (do not confuse with on-phone validation)
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bukkbeek-MP40-ADS-Reload-Visual-Probe
+          path: _build/bukkbeek/visual_probes/
+          retention-days: 14
+
+      - name: Render HIP and ADS real pixels for Colt Thompson and Kar98k
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        run: |
+          set -o pipefail
+          timeout 150s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/weapon_pack_visual_probe.gd \
+            2>&1 | tee /tmp/xziel-3guns-visual.log
+          grep -q "XZIEL_MULTI_GUN_VISUAL_GREEN" /tmp/xziel-3guns-visual.log
+          if grep -E "XZIEL_MULTI_GUN_VISUAL_RED|SCRIPT ERROR:|Parse Error:|Compile Error:" /tmp/xziel-3guns-visual.log; then
+            exit 10
+          fi
+
+      - name: Upload new gun HIP ADS physical viewmodel frames
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-V9-Three-Guns-HIP-ADS-Real-Frames
+          path: _build/bukkbeek/visual_probes/v9_*.png
+          retention-days: 14
+
+      - name: Recover original WaW source camera, sight and grip tag transforms
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        run: |
+          set -o pipefail
+          timeout 80s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/source_camera_authority_probe.gd \
+            2>&1 | tee /tmp/xziel-source-camera-bones.log
+          grep -q 'XZIEL_SOURCE_CAMERA_AUDIT_DONE' /tmp/xziel-source-camera-bones.log
+          if grep -E 'XZIEL_SOURCE_CAMERA_AUDIT_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-source-camera-bones.log; then
+            exit 12
+          fi
+
+      - name: Sweep authentic 3D source weapon screen visibility by exact ADS camera depth
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        run: |
+          set -o pipefail
+          timeout 185s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/weapon_depth_sweep_probe.gd 2>&1 | tee /tmp/xziel-v11-depth-sweep.log
+          grep -q 'XZIEL_V11_DEPTH_SWEEP_COMPLETE' /tmp/xziel-v11-depth-sweep.log
+          if grep -E 'XZIEL_SWEEP_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-v11-depth-sweep.log; then exit 13; fi
+
+      - name: Upload original gun, original hand and full screenshots per depth
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-V11-PerWeapon-ADS-Depth-Calibrations
+          path: |
+            _build/bukkbeek/visual_probes/*_shift*.png
+            _build/bukkbeek/visual_probes/kar98k_deep*.png
+          retention-days: 14
+
+      - name: Compare original Kar98k ADS-specific hand and gun PSA pose against idle rig
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        run: |
+          set -o pipefail
+          timeout 100s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/weapon_kar98_ads_pose_probe.gd \
+            2>&1 | tee /tmp/xziel-kar-source-ads-psa.log
+          grep -q 'XZIEL_KAR_SOURCE_PSA_SWEEP_DONE' /tmp/xziel-kar-source-ads-psa.log
+          if grep -E 'XZIEL_KAR_PSA_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-kar-source-ads-psa.log; then exit 14; fi
+
+      - name: Upload genuine Kar98k alternate source ADS hand/bolt poses
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-V11-Kar98k-Original-ADS-PSA-Pose-Frames
+          path: _build/bukkbeek/visual_probes/kar98k_source_*.png
+          retention-days: 14
+
+      - name: Reverse-engineer original weapon GPU skin per-surface camera projection
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        run: |
+          set -o pipefail
+          timeout 120s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/weapon_mesh_frustum_probe.gd \
+            2>&1 | tee /tmp/xziel-v12-mesh-frustum.log
+          grep -q 'XZIEL_SOURCE_FRUSTUM_COMPLETE' /tmp/xziel-v12-mesh-frustum.log
+          if grep -E 'XZIEL_SOURCE_FRUSTUM_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-v12-mesh-frustum.log; then exit 15; fi
+
+      - name: Exhaustively search real source Kar98k rifle receiver/arm depth, FOV, near-plane 
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        run: |
+          set -o pipefail
+          timeout 210s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/kar98k_camera_grid_probe.gd \
+            2>&1 | tee /tmp/xziel-v13-kar-camera-grid.log
+          grep -q 'XZIEL_KAR_GRID_COMPLETE samples=50' /tmp/xziel-v13-kar-camera-grid.log
+          if grep -E 'XZIEL_KAR_GRID_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-v13-kar-camera-grid.log; then exit 16; fi
+
+      - name: Upload original GLB Kar98k best camera and sensitivity frames
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-V13-Kar98k-Optical-HIP-Original-Rig-Camera-Grid
+          path: _build/bukkbeek/visual_probes/v13_*.png
+          retention-days: 14
+
+      - name: Audit each original weapon versus original arms for visibility
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        run: |
+          set -o pipefail
+          timeout 145s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/weapon_fidelity_probe.gd \
+            2>&1 | tee /tmp/xziel-weapon-fidelity.log
+          grep -q 'XZIEL_REAL_FIDELITY_AUDIT_CAPTURED' /tmp/xziel-weapon-fidelity.log
+          if grep -E 'XZIEL_REAL_FIDELITY_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-weapon-fidelity.log; then
+            exit 11
+          fi
+
+      - name: Upload isolated hand versus gun screenshots
+        if: github.ref != 'refs/heads/fix/mp40-pixel-visible-android-v3-20261019' && github.ref != 'refs/heads/feature/mp40-pixel-v8-playable-preview-20261019'
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-V10-Diagnostic-Source-Gun-VS-Hands
+          path: _build/bukkbeek/visual_probes/*_*_*.png
+          retention-days: 14
+
+      - name: Add isolated MP40 Pixel to existing map, keep all 9 other guns
+        run: |
+          python3 bukkbeek-mobile/patch_mp40_pixel.py _build/bukkbeek
+          # Source art is split first; then repair both the fallback atlas AND
+          # the actually-loaded 9 high-res PNGs. V4 previously repaired ONLY
+          # the fallback and left all nine rendered frames untreated.
+          # Optional, strictly-original HIGH RES sheet (1448x1086), saved by
+          # project owner under the following committed filename. The tiny
+          # fallback is never described as the final version.
+          sheet='bukkbeek-mobile/pixel_assets/WWII MP40 Pixel Art Sprite Sheet.png'
+          if ! test -s "$sheet"; then
+            sheet='bukkbeek-mobile/pixel_assets/MP40_Pixel_Source_1448x1086.png'
+          fi
+          if test -s "$sheet"; then
+            python3 bukkbeek-mobile/split_pixel_sheet.py "$sheet" _build/bukkbeek
+            test "$(find _build/bukkbeek/mobile/mp40_pixel/frames -maxdepth 1 -name '*.png' | wc -l)" -eq 9
+          else
+            echo 'MP40_PIXEL_SOURCE_LOWRES_WARNING: original 1448x1086 image not yet in GitHub'
+          fi
+          python3 bukkbeek-mobile/repair_mp40_pixel_matte.py _build/bukkbeek
+          # V5.2 user phone review: no reload ghosts or opaque ADS sight plug.
+          python3 bukkbeek-mobile/guard_mp40_pixel_frames.py _build/bukkbeek
+          # V6: approved new forward-looking HIP PNG, applied AFTER matte guard.
+          python3 bukkbeek-mobile/apply_mp40_forward_hip.py _build/bukkbeek
+          # V7: Motion strictly cross-checked with DICE's original MP40 animator.
+          # Reference-only: do not mislabel the incomplete sprite art as finished.
+          python3 bukkbeek-mobile/verify_mp40_25d_reference.py bukkbeek-mobile/mobile/mp40_25d/motion_manifest.json
+          mkdir -p _build/bukkbeek/mobile/mp40_25d
+          cp bukkbeek-mobile/mobile/mp40_25d/motion_manifest.json _build/bukkbeek/mobile/mp40_25d/
+          cp bukkbeek-mobile/mobile/mp40_25d/timeline.gd _build/bukkbeek/mobile/mp40_25d/
+          cp bukkbeek-mobile/mobile/mp40_25d/motion_probe.gd _build/bukkbeek/mobile/mp40_25d/
+          cp bukkbeek-mobile/mobile/mp40_pixel_runtime_probe.gd _build/bukkbeek/mobile/
+          cp bukkbeek-mobile/mobile/mp40_pixel_visual_probe.gd _build/bukkbeek/mobile/
+          timeout 180s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --import 2>&1 | tee /tmp/mp40-pixel-import.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script' /tmp/mp40-pixel-import.log; then exit 40; fi
+          timeout 60s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --script res://mobile/mp40_pixel_runtime_probe.gd 2>&1 | tee /tmp/mp40-pixel-runtime.log
+          grep -q 'MP40_PIXEL_TEST_GREEN' /tmp/mp40-pixel-runtime.log
+          timeout 45s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --script res://mobile/mp40_25d/motion_probe.gd > /tmp/mp40-25d-motion.log 2>&1 || { cat /tmp/mp40-25d-motion.log; exit 57; }
+          grep -q 'MP40_25D_REFERENCE_TIMELINE_GREEN' /tmp/mp40-25d-motion.log
+          # V8: code must import and remain disabled while source sheets are absent.
+          cp bukkbeek-mobile/mobile/mp40_25d/sprite_deck.gd _build/bukkbeek/mobile/mp40_25d/
+          cp bukkbeek-mobile/mobile/mp40_25d/sprite_deck_probe.gd _build/bukkbeek/mobile/mp40_25d/
+          timeout 30s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless --path _build/bukkbeek --script res://mobile/mp40_25d/sprite_deck_probe.gd > /tmp/mp40-25d-deck.log 2>&1 || { cat /tmp/mp40-25d-deck.log; exit 59; }
+          grep -q 'MP40_25D_STREAMING_DECK_GREEN' /tmp/mp40-25d-deck.log
+          cat /tmp/mp40-25d-deck.log
+          cat /tmp/mp40-25d-motion.log
+          if grep -E 'MP40_PIXEL_TEST_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/mp40-pixel-runtime.log; then exit 41; fi
+
+      - name: Render original-map MP40 Pixel HIP and ADS and reject invisible weapons
+        run: |
+          set -o pipefail
+          timeout 150s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/mp40_pixel_visual_probe.gd \
+            2>&1 | tee /tmp/mp40-pixel-v3-visual.log
+          grep -q 'MP40_PIXEL_ACTUAL_FRAMEBUFFER_GREEN' /tmp/mp40-pixel-v3-visual.log
+          if grep -E 'MP40_PIXEL_VISIBLE_RED|SCRIPT ERROR:|Parse Error:' /tmp/mp40-pixel-v3-visual.log; then exit 42; fi
+
+      - name: Upload actual MP40Pixel HIP ADS screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-MP40Pixel-V6-Actual-HIP-ADS-Captures
+          path: _build/bukkbeek/pixel_visual_probes/*.png
+          retention-days: 14
+
+      - name: Integrate eight original strips into 107 playable V8 frames
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 bukkbeek-mobile/enable_mp40_25d_preview.py _build/bukkbeek
+          timeout 240s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --import 2>&1 | tee /tmp/xziel-mp40-v8-import.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script' /tmp/xziel-mp40-v8-import.log; then exit 71; fi
+          timeout 90s _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --script res://mobile/mp40_25d/playable_probe.gd \
+            2>&1 | tee /tmp/xziel-mp40-v8-playable.log
+          grep -q MP40_25D_V8_PLAYABLE_GREEN /tmp/xziel-mp40-v8-playable.log
+          if grep -E 'PLAYABLE_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/xziel-mp40-v8-playable.log; then exit 72; fi
+
+      - name: Capture actual original-map V8 HIP and ADS
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 150s xvfb-run -a -s "-screen 0 1280x720x24" \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _build/bukkbeek --rendering-driver opengl3 \
+            --script res://mobile/mp40_25d/visual_probe.gd \
+            2>&1 | tee /tmp/xziel-mp40-v8-visual.log
+          grep -q MP40_25D_V8_FRAMEBUFFER_GREEN /tmp/xziel-mp40-v8-visual.log
+          if grep -E 'FRAMEBUFFER_RED|SCRIPT ERROR:|Parse Error:' /tmp/xziel-mp40-v8-visual.log; then exit 73; fi
+
+      - name: Upload authentic V8 in-game screenshots for Pixel Fold inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-MP40-25D-V8-Actual-HIP-ADS-Preview
+          path: _build/bukkbeek/v8_visual_probes/*.png
+          retention-days: 14
+
+      - name: Export debug Android arm64 APK
+        env:
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ github.workspace }}/_tools/android-debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+        run: |
+          mkdir -p _build/bukkbeek/build
+          set -o pipefail
+          _tools/godot/Godot_v4.6-stable_linux.x86_64 --headless \
+            --path _build/bukkbeek --export-debug "Android" \
+            "$GITHUB_WORKSPACE/_build/bukkbeek/build/bukkbeek_xziel_touch_arm64.apk" 2>&1 | tee /tmp/bukkbeek-export.log
+          if grep -E "SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script" /tmp/bukkbeek-export.log; then
+            echo "Rejected: Godot script errors in exported APK"
+            exit 3
+          fi
+          test -s _build/bukkbeek/build/bukkbeek_xziel_touch_arm64.apk
+
+      - name: Upload Android APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-MP40-25D-V8-PLAYABLE-PREVIEW-ARM64
+          path: _build/bukkbeek/build/bukkbeek_xziel_touch_arm64.apk
+          retention-days: 14
+
+      - name: Upload assembled full Godot project
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: XZIEL-MP40-25D-V8-PLAYABLE-PREVIEW-SOURCE
+          path: |
+            _build/bukkbeek/
+            !_build/bukkbeek/.godot/
+            !_build/bukkbeek/.git/
+            !_build/bukkbeek/build/
+          retention-days: 14
