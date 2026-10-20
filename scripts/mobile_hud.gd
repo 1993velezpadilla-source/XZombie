@@ -3,6 +3,7 @@ extends Control
 ## Multi-touch is owned by finger ID: fire/ADS/aim-fire never steal each other.
 const SOURCE_BUTTONS := "res://assets/imported/buttons/"
 const SOURCE_FRAMES := "res://assets/imported/mp40/"
+const RELOAD_SECONDS := 2.25
 const HIP_SIGHT_PX := Vector2(221.5, 105.0)
 const ADS_SIGHT_PX := Vector2(242.0, 126.0)
 const ADS_FIRE_SIGHT_PX := Vector2(245.0, 114.0)
@@ -113,6 +114,7 @@ func _set_action(action: String, down: bool) -> void:
     fire_active = int(held_actions.get("fire", 0)) + int(held_actions.get("aim_fire", 0)) > 0
     ads_active = ads_toggled or int(held_actions.get("aim_fire", 0)) > 0
     _layout()
+    queue_redraw()
 
 func _input(e: InputEvent) -> void:
     if e is InputEventScreenTouch:
@@ -128,6 +130,7 @@ func _input(e: InputEvent) -> void:
                 else:
                     role = "look"
             touch_owners[e.index] = role
+            queue_redraw()
             if role not in ["move", "look"]:
                 _set_action(role, true)
         else:
@@ -137,6 +140,7 @@ func _input(e: InputEvent) -> void:
         if role == "move" and e.index == pointer_id:
             stick_axis = ((e.position - pointer_origin) / maxf(80.0, size.y * 0.13)).limit_length(1.0)
             sprint_active = stick_axis.y < -0.87 and stick_axis.length() > 0.91
+            queue_redraw()
         elif role in ["look", "fire", "aim_fire"]:
             # Finger can drag camera while continuing to fire / aim+fire.
             look_delta += e.relative
@@ -150,6 +154,7 @@ func _release_finger(index: int) -> void:
         pointer_id = -1
         stick_axis = Vector2.ZERO
         sprint_active = false
+        queue_redraw()
     elif role not in ["look", "move"]:
         _set_action(role, false)
 
@@ -161,7 +166,7 @@ func _process(delta: float) -> void:
     shot_remaining = maxf(0.0, shot_remaining - delta)
     var frame := "ads_idle" if ads_active else "idle_hip_01"
     if is_instance_valid(game) and game.reload_timer > 0.0:
-        var progress := 1.0 - clampf(game.reload_timer / game.RELOAD_SECONDS, 0.0, 1.0)
+        var progress := 1.0 - clampf(game.reload_timer / RELOAD_SECONDS, 0.0, 1.0)
         frame = "reload_%02d" % clampi(int(progress * 4.0) + 1, 1, 4)
     elif shot_remaining > 0.0:
         frame = "ads_fire_01" if ads_active else "fire_hip_01"
