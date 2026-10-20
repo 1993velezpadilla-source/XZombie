@@ -201,7 +201,7 @@ func _setup_mp40_audio() -> void:
 	# Do not invent replacement audio: these WAVs are recovered, hash-pinned
 	# originals from the user's Project Aether / XZombie GitHub sources.
 	for cue in ["fire", "mag_out", "mag_in", "charge"]:
-		var path := SOUND_ROOT + cue + ".wav"
+		var path: String = SOUND_ROOT + str(cue) + ".wav"
 		if not ResourceLoader.exists(path):
 			push_warning("IGLESIA_MP40_SOURCE_AUDIO_MISSING: " + path)
 			continue
