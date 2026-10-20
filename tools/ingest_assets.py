@@ -12,6 +12,8 @@ from urllib.parse import quote
 from urllib.request import Request, urlopen
 from PIL import Image, ImageDraw
 import wave
+import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "assets" / "imported"
@@ -154,12 +156,12 @@ def main() -> None:
     btn = "assets/xziel/official_touch_skins_v1/"
     for name, sha in BUTTON_SHAS.items():
         fetch("config-old-3", BUTTON_REF, btn+name, OUT/"buttons"/name, sha)
-    remote = "bukkbeek-mobile/pixel_assets/WWII MP40 Pixel Art Sprite Sheet.png"
-    data = fetch("XZombie", WEAPON_REF, remote, OUT/"mp40"/"source_sheet.png", MP40_SHEET_SHA)
-    forward_path = "bukkbeek-mobile/pixel_assets/MP40_Pixel_Forward_HIP_482x326.png"
-    forward = fetch("XZombie", FORWARD_REF, forward_path,
-                    OUT/"mp40"/"source_forward_hip.png", FORWARD_HIP_SHA)
-    split_mp40(data, forward)
+    # The fresh ORIGINAL third-artstyle MP40 replaces the old WaW marine
+    # screenshot atlas, instead of recoloring or cropping obsolete frames.
+    subprocess.run([
+        sys.executable, str(ROOT / "tools/draw_nun_mp40_v3.py"),
+        "--out", str(OUT / "mp40"),
+    ], check=True)
     # Real recovered MP40 fire from Project Aether plus all three reload cues
     # from the user's authenticated XZombie source package; no fake SFX.
     for output, (repo, ref, remote, sha) in MP40_AUDIO_SHAS.items():
