@@ -4,6 +4,12 @@ on:
     branches: ["iglesia-clean-20261020"]
   workflow_dispatch:
 
+# Every commit used to start another 250MB Android export. Never spend CI
+# minutes/artifact storage building older commits after a newer patch exists.
+concurrency:
+  group: iglesia-church-mobile-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
