@@ -331,6 +331,21 @@ def render(name: str, output: Path):
     else:
         pale_hands_hip(p, stage=reload_phase if reload_phase else 0)
         mp40_hip_body(p, reload_phase)
+        if "reload_empty" in name and reload_phase >= 3:
+            # Empty magazine: pull the charging handle after the fresh mag
+            # seats. Tactical reload never shows this motion or plays its cue.
+            bolt_travel = 23 if reload_phase == 4 else 7
+            p.line([(682 - bolt_travel, 505), (710 - bolt_travel, 513)],
+                   STEEL_BLACK, 13)
+            p.ellipse((678 - bolt_travel, 494, 705 - bolt_travel, 523),
+                      METAL_HI, width=3)
+            p.poly([(674 - bolt_travel, 493), (690 - bolt_travel, 480),
+                    (719 - bolt_travel, 502), (708 - bolt_travel, 528),
+                    (693 - bolt_travel, 522)], SKIN, width=3)
+            p.line([(688 - bolt_travel, 486), (707 - bolt_travel, 500)],
+                   SKIN_LIGHT, 4)
+            p.line([(693 - bolt_travel, 490), (703 - bolt_travel, 497)],
+                   NAIL, 3)
         pale_fingers_on_top(p, reload_phase=reload_phase)
         if fire:
             muzzle_flash(p, 480, 203)
