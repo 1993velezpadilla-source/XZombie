@@ -15,6 +15,11 @@ const ADS_FIRE := 3
 const SPRINT := 4
 const RELOAD_01 := 5
 const ADS_TIME := 0.20
+## User-approved forward-facing HIP screenshot, alpha-cleaned and packed as
+## separate 482x326 native PNG. Neither ADS nor reload uses these frames.
+const FORWARD_HIP_FRAME_WIDTH := 482.0
+const FORWARD_HIP_MUZZLE_X := 221.5
+const FORWARD_HIP_ENABLED := true
 ## Measured directly from the original transparent 400x200 ADS frame.
 ## Sight center is at x ~= 250 / 400; centering sprite bounds is WRONG.
 const ADS_IDLE_SIGHT_PX := Vector2(255.0, 18.0)
@@ -47,8 +52,12 @@ var played_bolt := false
 var mag_out: AudioStreamPlayer3D
 var mag_in: AudioStreamPlayer3D
 var charge: AudioStreamPlayer3D
+var has_true_highres_sheet := false
 var _current_hip_frame := -1
 var _current_ads_frame := -1
+## Content bounds are measured once from the real imported alpha (not a guessed
+## PNG rectangle). The lower *visible* edge must touch the viewport in HIP/ADS.
+var opaque_bottom: Array[float] = []
 
 func _ready() -> void:
  super._ready()
@@ -63,6 +72,16 @@ func _ready() -> void:
  if not _load_art():
   push_error("MP40_PIXEL_RED missing weapon sprite art")
   return
+ if FORWARD_HIP_ENABLED:
+  if textures[HIP].get_width() != int(FORWARD_HIP_FRAME_WIDTH) or textures[HIP_FIRE].get_width() != int(FORWARD_HIP_FRAME_WIDTH):
+   push_error("MP40_PIXEL_FORWARD_HIP_RED: original approved 482px sprite was not installed")
+   return
+ opaque_bottom.resize(FRAME_NAMES.size())
+ for i in range(FRAME_NAMES.size()):
+  opaque_bottom[i] = _last_visible_center_row(textures[i])
+ has_true_highres_sheet = loaded_original_pngs == 9 and FileAccess.file_exists(SOURCE_ROOT + "hires_manifest.json")
+ if loaded_original_pngs == 9 and not has_true_highres_sheet:
+  push_warning("MP40_PIXEL_UNVERIFIED_FRAMES: 9 PNGs found but no original-source manifest")
 
  sprite_canvas = CanvasLayer.new()
  sprite_canvas.name = "MP40PixelV2"
@@ -83,7 +102,10 @@ func _ready() -> void:
  sprite_canvas.visible = false
  set_meta("mp40_pixel", true)
  set_meta("mp40_pixel_v2_layout", true)
+ set_meta("mp40_pixel_grounded_viewmodel", true)
+ set_meta("mp40_pixel_forward_hip_v6", FORWARD_HIP_ENABLED)
  set_meta("mp40_pixel_highres_frame_count", loaded_original_pngs)
+ set_meta("mp40_pixel_source_highres", has_true_highres_sheet)
  print("MP40_PIXEL_V2_READY original_png=", loaded_original_pngs, " total_frames=9 same_mp40_audio=true")
 
 func _load_art() -> bool:
@@ -113,6 +135,19 @@ func _load_art() -> bool:
    return false
   textures[i] = source
  return true
+
+## Read the ORIGINAL RGBA alpha, restricting the sample to central weapon/arms
+## so stray outer-cell speckles cannot pretend the gun reaches the bottom.
+## Called at startup ONLY; never allocate/read texture pixels in _process().
+func _last_visible_center_row(tex: Texture2D) -> float:
+ var im: Image = tex.get_image()
+ if im == null or im.is_empty(): return float(tex.get_height())
+ var w := im.get_width()
+ for y in range(im.get_height() - 1, -1, -1):
+  for x in range(int(w * 0.19), int(w * 0.81), 3):
+   if im.get_pixel(x, y).a > 0.30:
+    return float(y + 1)
+ return float(tex.get_height())
 
 func activate(current_aim_mode: bool = false) -> void:
  super.activate(current_aim_mode)
@@ -195,19 +230,27 @@ func _render() -> void:
  var a_frame := textures[ads_frame]
  var hip_width := 1280.0 * unit * 0.43
  var hip_left := view.x * 0.31
- var hip_bottom := view.y * 0.955
+ # Lower sleeves are naturally clipped by the physical SCREEN edge, not
+ # suspended as a flat rectangle several centimeters above it.
+ var hip_bottom := view.y * 1.035
  if frame == SPRINT:
   hip_width = 1280.0 * unit * 0.48
   hip_left = view.x * 0.30
-  hip_bottom = view.y * 0.98
+  hip_bottom = view.y * 1.045
  elif is_reloading:
   hip_width = 1280.0 * unit * 0.49
   hip_left = view.x * 0.275
-  hip_bottom = view.y * 0.97
+  hip_bottom = view.y * 1.045
  var hip_is_atlas := h_frame is AtlasTexture
  var h_factor_x := float(h_frame.get_width()) / ATLAS_CELL.x if hip_is_atlas else 1.0
  var h_factor_y := float(h_frame.get_height()) / ATLAS_CELL.y if hip_is_atlas else 1.0
- var h_scale := hip_width / (SOURCE_WIDTHS[frame] * h_factor_x)
+ var forward_frame: bool = FORWARD_HIP_ENABLED and not hip_is_atlas and (frame == HIP or frame == HIP_FIRE)
+ var sprite_width: float = FORWARD_HIP_FRAME_WIDTH if forward_frame else SOURCE_WIDTHS[frame] * h_factor_x
+ var h_scale := hip_width / sprite_width
+ if forward_frame:
+  # Anchor the ACTUAL front sight x coordinate to center-screen.
+  # This is a screen-space appearance correction; ballistic ray is unchanged.
+  hip_left = view.x * 0.5 - FORWARD_HIP_MUZZLE_X * h_scale
  hip_sprite.scale = Vector2.ONE * h_scale
  var h_inset := Vector2(ATLAS_OFFSETS[frame].x * h_factor_x,
   ATLAS_OFFSETS[frame].y * h_factor_y) if hip_is_atlas else Vector2.ZERO
@@ -215,7 +258,7 @@ func _render() -> void:
  var bob := sin(motion_time) * 2.0 * unit if moving else 0.0
  var sway := cos(motion_time * 0.52) * 1.5 * unit if moving else 0.0
  hip_sprite.position = Vector2(hip_left - h_inset.x * h_scale + sway,
-  hip_bottom - h_frame.get_height() * h_scale + bob)
+  hip_bottom - opaque_bottom[frame] * h_scale + bob)
 
  # A REAL 2D iron sight: aim ray = ORIGINAL sight post pixel coordinates,
  # including transparent atlas packing offsets. No heuristic centering.
@@ -225,11 +268,22 @@ func _render() -> void:
  var a_fx := float(a_frame.get_width()) / ATLAS_CELL.x if a_is_atlas else 1.0
  var a_fy := float(a_frame.get_height()) / ATLAS_CELL.y if a_is_atlas else 1.0
  var ads_scale := ad_width / (SOURCE_WIDTHS[ADS] * a_fx)
- ads_sprite.scale = Vector2.ONE * ads_scale
- var sight := ADS_FIRE_SIGHT_PX if ads_frame == ADS_FIRE else ADS_IDLE_SIGHT_PX
+ var sight: Vector2 = ADS_FIRE_SIGHT_PX if ads_frame == ADS_FIRE else ADS_IDLE_SIGHT_PX
+ # The original 1448x1086 3x3 sheet has a DIFFERENT ADS optical anchor
+ # than the legacy cropped 400x200 frame. Do not reuse the latter coordinate.
+ if has_true_highres_sheet and not a_is_atlas:
+  sight = Vector2(245.0, 114.0) if ads_frame == ADS_FIRE else Vector2(242.0, 126.0)
  if a_is_atlas:
   var inset: Vector2 = ATLAS_OFFSETS[ads_frame]
   sight = Vector2((sight.x + inset.x) * a_fx, (sight.y + inset.y) * a_fy)
+ # Centering the front sight previously left a hard, straight-cut sprite
+ # bottom floating in mid-air. Scale from the REAL bottom opaque row so the
+ # physical bottom of the phone crops the arms naturally. Preserve aspect
+ # ratio and exact sight-axis center: NEVER stretch just the metal receiver.
+ var lower_run: float = maxf(1.0, opaque_bottom[ads_frame] - sight.y)
+ var grounded_scale: float = (view.y * 1.035 - view.y * 0.5) / lower_run
+ ads_scale = maxf(ads_scale, grounded_scale)
+ ads_sprite.scale = Vector2.ONE * ads_scale
  ads_sprite.position = view * 0.5 - sight * ads_scale
  var w := ads_weight if can_ads else 0.0
  hip_sprite.modulate.a = clampf(1.0 - w, 0.0, 1.0)

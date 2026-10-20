@@ -26,7 +26,7 @@ if frames.exists():
         if not origin.exists():
             continue
         data=origin.read_bytes()
-        assert data[:8]==b"\\x89PNG\\r\\n\\x1a\\n", "MP40_PIXEL_RED corrupt PNG: "+name
+        assert data[:8]==bytes((137, 80, 78, 71, 13, 10, 26, 10)), "MP40_PIXEL_RED corrupt PNG: "+name
         width,height=unpack(">II",data[16:24])
         assert width>=256 and height>=160, "MP40_PIXEL_RED low-resolution source: "+name
         (root/"mobile"/"mp40_pixel"/"frames"/origin.name).write_bytes(data)
