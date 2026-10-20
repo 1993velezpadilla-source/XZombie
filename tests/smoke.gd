@@ -99,9 +99,19 @@ func _smoke() -> void:
 	world.force_touch_mode_for_tests = true
 	var stray: Vector2 = Vector2(760, 140)
 	_screen_touch(world.hud, 7, stray, true)
+	# Android synthesizes a mouse LEFT button for this ordinary look tap.
+	# Inject its desktop equivalent into the Linux headless engine so this
+	# exact regression fails if the mobile mouse-input guard is ever removed.
+	var synthetic_mouse := InputEventMouseButton.new()
+	synthetic_mouse.button_index = MOUSE_BUTTON_LEFT
+	synthetic_mouse.position = stray
+	synthetic_mouse.pressed = true
+	Input.parse_input_event(synthetic_mouse)
 	if world.hud.fire_active or world._is_fire_requested():
 		_fail("ANDROID_GHOST_FIRE: touching look zone triggered bullets")
 		return
+	synthetic_mouse.pressed = false
+	Input.parse_input_event(synthetic_mouse)
 	_screen_touch(world.hud, 7, stray, false)
 	var aim_button: TextureButton = world.hud.touch_buttons["aim"]
 	var aim_pos: Vector2 = aim_button.position + aim_button.size * 0.5
