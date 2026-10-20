@@ -20,8 +20,8 @@ jobs:
           ! grep -R -E 'load\("res://(xogot|bukkbeek-mobile|engine)/' scripts
       - name: Python dependencies
         run: python3 -m pip install --user -r requirements.txt
-      - name: Fetch user-approved sprites and stone material
-        run: python3 tools/ingest_assets.py
+      - name: Generate new gothic nun MP40 + import real Tripo altar and all benches
+        run: python3 tools/ingest_assets.py --with-furniture
       - name: Install Godot 4.6 stable
         shell: bash
         run: |
@@ -36,6 +36,7 @@ jobs:
       - name: Source file evidence
         if: always()
         run: |
+          find assets/imported/mp40 -maxdepth 1 -type f -printf '%f %s bytes\\n' | sort | head -24
           find . -maxdepth 4 -type f | sort | head -120
 
   android-preview:
