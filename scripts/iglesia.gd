@@ -13,6 +13,11 @@ var round_number := 0
 var points := 500
 var bullets := 32
 var reserve := 192
+const RELOAD_SECONDS := 2.25
+const SOUND_ROOT := "res://assets/imported/audio/mp40/"
+var sound_players: Dictionary = {}
+var reload_started_empty := false
+var reload_cues_played: Dictionary = {}
 var shot_timer := 0.0
 var reload_timer := 0.0
 var next_round_timer := 3.0
@@ -28,6 +33,7 @@ func _ready() -> void:
 	_build_materials()
 	_build_nave()
 	_build_navigation()
+	_setup_mp40_audio()
 	player = SURVIVOR.new()
 	add_child(player)
 	player.global_position = Vector3(0, 0.2, 12.4)
@@ -90,6 +96,10 @@ func _place_furniture(asset_name: String, parent_body: StaticBody3D, target_dime
 	var original := Vector3(0.980453491, 0.457199096, 0.285186768) if asset_name == "bench" else Vector3(0.553695679, 0.777038574, 0.980178833)
 	instance.scale = Vector3(target_dimensions.x / original.x, target_dimensions.y / original.y, target_dimensions.z / original.z)
 	instance.position.y = -target_dimensions.y * 0.5
+	if asset_name == "altar":
+		# The congregation enters from positive Z; the Tripo altar's original
+		# forward face is away from the nave. Flip its VISUAL, not its collider.
+		instance.rotation_degrees.y = 180.0
 	return true
 
 func _build_nave() -> void:
@@ -117,7 +127,8 @@ func _build_nave() -> void:
 				box.material_override = wood
 				pew.add_child(box)
 			blockers.append(Rect2(x - size.x / 2 - 0.34, z - size.z / 2 - 0.34, size.x + 0.68, size.z + 0.68))
-	var altar_dimensions := Vector3(3.45, 1.35, 1.3)
+	# Wider altar faces the pews; keep enough room for both sanctuary lanes.
+	var altar_dimensions := Vector3(5.0, 1.65, 2.1)
 	var altar := _solid("Altar_Real_Collider", Vector3(0, altar_dimensions.y / 2.0, -14.1), altar_dimensions, stone, false)
 	if not _place_furniture("altar", altar, altar_dimensions):
 		var altar_mesh := MeshInstance3D.new()
@@ -126,7 +137,7 @@ func _build_nave() -> void:
 		altar_mesh.mesh = mesh
 		altar_mesh.material_override = stone
 		altar.add_child(altar_mesh)
-	blockers.append(Rect2(-2.15, -15.1, 4.3, 2.0))
+	blockers.append(Rect2(-2.85, -15.55, 5.7, 2.9))
 	_solid("WallBuy_Kiosk", wallbuy + Vector3(-0.25, 1.1, 0), Vector3(0.15, 2.2, 1.5), iron)
 	for x in [-8.65, 8.65]:
 		for z in [-11.0, -4.0, 3.0, 10.0]:
@@ -185,12 +196,48 @@ func _set_lighting() -> void:
 	altar_light.omni_range = 8.0
 	add_child(altar_light)
 
+
+func _setup_mp40_audio() -> void:
+	# Do not invent replacement audio: these WAVs are recovered, hash-pinned
+	# originals from the user's Project Aether / XZombie GitHub sources.
+	for cue in ["fire", "mag_out", "mag_in", "charge"]:
+		var path := SOUND_ROOT + cue + ".wav"
+		if not ResourceLoader.exists(path):
+			push_warning("IGLESIA_MP40_SOURCE_AUDIO_MISSING: " + path)
+			continue
+		var sound := AudioStreamPlayer.new()
+		sound.name = "MP40_" + cue
+		sound.stream = load(path) as AudioStream
+		sound.max_polyphony = 8 if cue == "fire" else 1
+		sound.volume_db = -7.0 if cue == "fire" else -9.0
+		add_child(sound)
+		sound_players[cue] = sound
+
+func _play_mp40_cue(cue: String) -> void:
+	var audio: AudioStreamPlayer = sound_players.get(cue)
+	if is_instance_valid(audio) and audio.stream != null:
+		audio.play()
+
+func _update_reload_cues() -> void:
+	if reload_timer <= 0.0:
+		return
+	var t := 1.0 - reload_timer / RELOAD_SECONDS
+	for cue in ["mag_out", "mag_in", "charge"]:
+		if cue == "charge" and not reload_started_empty:
+			continue
+		var threshold := 0.18 if cue == "mag_out" else (0.66 if cue == "mag_in" else 0.89)
+		if t >= threshold and not reload_cues_played.get(cue, false):
+			reload_cues_played[cue] = true
+			_play_mp40_cue(cue)
+
 func _physics_process(delta: float) -> void:
 	if not is_instance_valid(player):
 		return
 	shot_timer = maxf(0.0, shot_timer - delta)
 	if reload_timer > 0.0:
 		reload_timer -= delta
+		if reload_timer > 0.0:
+			_update_reload_cues()
 		if reload_timer <= 0.0:
 			var transfer := mini(32 - bullets, reserve)
 			bullets += transfer
@@ -211,7 +258,9 @@ func _physics_process(delta: float) -> void:
 
 func begin_reload() -> void:
 	if reload_timer <= 0.0 and bullets < 32 and reserve > 0:
-		reload_timer = 2.25
+		reload_started_empty = bullets == 0
+		reload_cues_played.clear()
+		reload_timer = RELOAD_SECONDS
 		hud.weapon_anim = "idle_hip_01"
 
 func fire() -> void:
@@ -222,7 +271,8 @@ func fire() -> void:
 		return
 	bullets -= 1
 	shot_timer = 0.102
-	hud.weapon_anim = "fire_hip_01"
+	hud.trigger_shot()
+	_play_mp40_cue("fire")
 	var a: Vector3 = player.camera.global_position
 	var b: Vector3 = a - player.camera.global_transform.basis.z * 120.0
 	var q := PhysicsRayQueryParameters3D.create(a, b)
