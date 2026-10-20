@@ -51,6 +51,29 @@ jobs:
         run: /tmp/Godot_v4.6-stable_linux.x86_64 --headless --path . --editor --import --quit
       - name: Survival room smoke gate
         run: /tmp/Godot_v4.6-stable_linux.x86_64 --headless --path . --script res://tests/smoke.gd
+      - name: Actual Godot first-person HIP and ADS camera renders
+        id: camera_fidelity
+        continue-on-error: true
+        shell: bash
+        run: |
+          mkdir -p build
+          if ! command -v xvfb-run >/dev/null; then
+            sudo apt-get -qq update
+            sudo apt-get -qq install -y xvfb
+          fi
+          xvfb-run -a -s "-screen 0 1280x720x24" timeout 150s /tmp/Godot_v4.6-stable_linux.x86_64 --path . --rendering-method gl_compatibility --script res://tools/capture_church.gd
+          test -s build/iglesia-main-aisle-HIP.png
+          test -s build/iglesia-main-aisle-ADS.png
+      - name: Publish actual Godot gameplay captures for visual critique
+        if: steps.camera_fidelity.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Iglesia-Actual-Godot-HIP-ADS-Camera-Frames
+          path: |
+            build/iglesia-main-aisle-HIP.png
+            build/iglesia-main-aisle-ADS.png
+          retention-days: 7
+          if-no-files-found: error
       - name: Source file evidence
         if: always()
         run: |
