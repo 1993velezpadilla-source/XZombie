@@ -1,0 +1,32 @@
+{
+  "project": "Iglesia",
+  "runtime": "Godot 4.6 only",
+  "excluded_runtime_sources": ["Virin", "NZ:P", "Quake BSP", "old XZombie controls"],
+  "source_repositories_audited": [
+    "1993velezpadilla-source/config-old-3",
+    "1993velezpadilla-source/temp-files-2",
+    "1993velezpadilla-source/legacy-cache-staging-03",
+    "1993velezpadilla-source/hayuya-studio",
+    "1993velezpadilla-source/XZombie",
+    "1993velezpadilla-source/Drag-mini"
+  ],
+  "source_models": {
+    "repo": "1993velezpadilla-source/config-old-3",
+    "ref": "feature/sanctum-ash-tripo-furniture-swap-20261020",
+    "path": "xogot/assets/environment/church/",
+    "notes": "Actual branch currently has altar.glb ~69.8MB and bench.glb ~70.1MB. Previous furniture.asset.json lists older 23MB files, so never treat the manifest sizes as current. GLB mobile import and polygon budget are not yet validated."
+  },
+  "touch_assets": {
+    "source_commit": "0119c5b0f9109c4c88dbdd4173a9a2ba523abc3d",
+    "approved": true
+  },
+  "weapon_2d": {
+    "repo": "1993velezpadilla-source/XZombie",
+    "ref": "experiment/nun-universal-bone2d-hands-v1-20261019",
+    "source_sheet": "WWII MP40 Pixel Art Sprite Sheet.png",
+    "dimensions": [1448, 1086],
+    "frames": 9,
+    "status": "existing art imported for testing; silhouette/animation quality not yet approved"
+  },
+  "mobile_gate": "PENDING_CI_AND_REAL_DEVICE"
+}

@@ -1,0 +1,39 @@
+name: IGLESIA Clean Godot Gauntlet
+on:
+  push:
+    branches: ["iglesia-clean-20261020"]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Zero legacy enforcement
+        shell: bash
+        run: |
+          test "$(find . -maxdepth 1 -name '*.tscn' | wc -l)" -eq 1
+          test ! -d bukkbeek-mobile
+          test ! -d xogot
+          test ! -d engine
+          ! grep -R -E 'load\("res://(xogot|bukkbeek-mobile|engine)/' scripts
+      - name: Python dependencies
+        run: python3 -m pip install --user Pillow
+      - name: Fetch user-approved sprites and stone material
+        run: python3 tools/ingest_assets.py
+      - name: Install Godot 4.6 stable
+        shell: bash
+        run: |
+          curl -fLSs --retry 3 -o /tmp/godot.zip https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip
+          unzip -q /tmp/godot.zip -d /tmp/
+          chmod +x /tmp/Godot_v4.6-stable_linux.x86_64
+          /tmp/Godot_v4.6-stable_linux.x86_64 --version
+      - name: Godot asset import
+        run: /tmp/Godot_v4.6-stable_linux.x86_64 --headless --path . --editor --import --quit
+      - name: Survival room smoke gate
+        run: /tmp/Godot_v4.6-stable_linux.x86_64 --headless --path . --script res://tests/smoke.gd
+      - name: Source file evidence
+        if: always()
+        run: |
+          find . -maxdepth 4 -type f | sort | head -120
