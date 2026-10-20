@@ -111,10 +111,10 @@ func _build_reflective_aisle() -> void:
 	# 1.45 m × 1.0 m coursed stone paving, elongated perspective down nave.
 	# Collision stays on the solid static floor directly below these seams.
 	for i in range(25):
-		var z := -16.9 + float(i) * 1.37
+		var z: float = -16.9 + float(i) * 1.37
 		_block("FloorCourse_%02d" % i, Vector3(0, FLOOR_Y + 0.006, z), Vector3(17.5, 0.009, 0.028), grout)
 	for row in range(12):
-		var x := -8.3 + float(row) * 1.51
+		var x: float = -8.3 + float(row) * 1.51
 		_block("FloorJoint_%02d" % row, Vector3(x, FLOOR_Y + 0.006, 0), Vector3(0.026, 0.009, 34.3), grout)
 	# Candle reflections run along the physical aisle; transparent overlay
 	# rather than pretending unavailable mobile screen-space reflections.
@@ -139,7 +139,7 @@ func _build_ribbed_roof() -> void:
 			Vector3(side * 4.37, 6.67, 0), Vector3(8.92, 0.22, 35), roof)
 		slab.rotation_degrees.z = -side * 10.0
 	for step in range(6):
-		var z := -15.0 + float(step) * 6.05
+		var z: float = -15.0 + float(step) * 6.05
 		for side in [-1.0, 1.0]:
 			_beam("GothicVaultRib_%d_%s" % [step, "L" if side < 0 else "R"],
 				Vector3(side * 8.58, 5.84, z), Vector3(0, 7.42, z), 0.083, granite)
@@ -151,8 +151,8 @@ func _build_gothic_window_frames() -> void:
 	for side in [-1.0, 1.0]:
 		var face := "East" if side > 0 else "West"
 		for index in range(4):
-			var z := [-11.0, -4.0, 3.0, 10.0][index]
-			var x := side * 8.58 # slightly in front of existing blue glass
+			var z: float = [-11.0, -4.0, 3.0, 10.0][index]
+			var x: float = side * 8.58 # slightly in front of existing blue glass
 			# Tracery outlines original emissive window panes instead of swapping them.
 			for dz in [-0.72, 0.72]:
 				_block("TraceryPost_%s_%d_%d" % [face, index, int(dz * 100)],
@@ -174,8 +174,8 @@ func _build_gothic_window_frames() -> void:
 func _build_columns_and_side_shrines() -> void:
 	for side in [-1.0, 1.0]:
 		for row in range(5):
-			var z := [-13.0, -7.0, -1.0, 5.0, 11.0][row]
-			var x := side * 8.25
+			var z: float = [-13.0, -7.0, -1.0, 5.0, 11.0][row]
+			var x: float = side * 8.25
 			_block("ColumnGothicFoot_%d_%d" % [int(side), row],
 				Vector3(x, 0.24, z), Vector3(1.06, 0.46, 1.13), granite)
 			_block("ColumnCapital_%d_%d" % [int(side), row],
@@ -185,7 +185,7 @@ func _build_columns_and_side_shrines() -> void:
 					Vector3(x + dx, 2.9, z - 0.47), 0.077, 4.6, granite, 8)
 	# Small carved sanctuary niches outline the candle-lit altar reredos.
 	for side in [-1.0, 1.0]:
-		var x := side * 5.72
+		var x: float = side * 5.72
 		_block("ShrineNicheBack_%d" % int(side), Vector3(x, 3.21, -17.17),
 			Vector3(1.83, 3.5, 0.16), rock)
 		_block("ShrinePedestal_%d" % int(side), Vector3(x, 1.43, -16.87),
@@ -228,12 +228,12 @@ func _candle(label: String, p: Vector3, tall: float = 0.25) -> void:
 
 func _build_chandeliers() -> void:
 	for group in range(2):
-		var z := -7.25 if group == 0 else 3.4
+		var z: float = -7.25 if group == 0 else 3.4
 		_beam("ChandelierChain_%d" % group, Vector3(0, 7.32, z), Vector3(0, 4.88, z), 0.025, aged_bronze)
 		_cylinder("ChandelierHub_%d" % group, Vector3(0, 4.81, z), 0.22, 0.23, gilded, 10)
 		for index in range(10):
 			var theta := float(index) * TAU / 10.0
-			var x := cos(theta) * 1.52
+			var x: float = cos(theta) * 1.52
 			var dz := sin(theta) * 1.52
 			_beam("ChandelierArm_%d_%02d" % [group, index],
 				Vector3(0, 4.76, z), Vector3(x, 4.64, z + dz), 0.045, aged_bronze)
@@ -264,7 +264,7 @@ func _build_altar_focal_point() -> void:
 	_block("CentralCrucifixCrossbar", Vector3(0, 4.76, -16.74),
 		Vector3(1.06, 0.14, 0.13), gilded)
 	for side in [-1.0, 1.0]:
-		var x := side * 4.25
+		var x: float = side * 4.25
 		_block("AltarRedBanner_%d" % int(side), Vector3(x, 4.37, -17.10),
 			Vector3(1.42, 2.64, 0.08), wine)
 		_block("BannerCrossVertical_%d" % int(side), Vector3(x, 4.36, -17.035),
@@ -273,15 +273,15 @@ func _build_altar_focal_point() -> void:
 			Vector3(0.48, 0.07, 0.03), gilded)
 	# Place candleholders on and next to top of raised altar.
 	for index in range(10):
-		var x := -2.1 + float(index) * (4.2 / 9.0)
+		var x: float = -2.1 + float(index) * (4.2 / 9.0)
 		_cylinder("AltarCandleStand_%02d" % index, Vector3(x, 2.22, -15.50), 0.075, 0.37, aged_bronze, 8)
 		_candle("AltarCandle_%02d" % index, Vector3(x, 2.53, -15.50), 0.35)
 	for side in [-1.0, 1.0]:
-		var x := side * 2.87
+		var x: float = side * 2.87
 		_cylinder("AltarSideCandelabra_%d" % int(side), Vector3(x, 1.48, -14.9),
 			0.073, 1.5, aged_bronze)
 		for branch in [-1.0, 0.0, 1.0]:
-			var z := -14.9 + branch * 0.25
+			var z: float = -14.9 + branch * 0.25
 			_candle("Candelabra_%d_%d" % [int(side), int(branch)],
 				Vector3(x, 2.38 - absf(branch) * 0.17, z), 0.22)
 	_lamp("AltarAmberFocalBounce", Vector3(0, 3.4, -15.15), 8.4,
@@ -290,8 +290,8 @@ func _build_altar_focal_point() -> void:
 func _build_wall_sconces() -> void:
 	for side in [-1.0, 1.0]:
 		for row in range(3):
-			var z := -9.0 + float(row) * 8.2
-			var x := side * 8.78
+			var z: float = -9.0 + float(row) * 8.2
+			var x: float = side * 8.78
 			_block("SconceBack_%d_%d" % [int(side), row],
 				Vector3(x, 3.24, z), Vector3(0.24, 0.53, 0.36), aged_bronze)
 			_beam("SconceBracket_%d_%d" % [int(side), row],
