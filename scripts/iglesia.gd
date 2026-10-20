@@ -18,6 +18,7 @@ const SOUND_ROOT := "res://assets/imported/audio/mp40/"
 var sound_players: Dictionary = {}
 var reload_started_empty := false
 var reload_cues_played: Dictionary = {}
+var force_touch_mode_for_tests := false
 var shot_timer := 0.0
 var reload_timer := 0.0
 var next_round_timer := 3.0
@@ -326,7 +327,7 @@ func _is_fire_requested() -> bool:
 	# On desktop genuine left click retains mouse shooting.
 	if is_instance_valid(hud) and hud.fire_active:
 		return true
-	return not OS.has_feature("mobile") and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+	return not (OS.has_feature("mobile") or force_touch_mode_for_tests) and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 
 func begin_reload() -> void:
 	if reload_timer <= 0.0 and bullets < 32 and reserve > 0:
