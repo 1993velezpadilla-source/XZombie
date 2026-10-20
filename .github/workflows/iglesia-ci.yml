@@ -69,11 +69,11 @@ jobs:
         run: |
           keytool -genkeypair -keystore "$RUNNER_TEMP/iglesia-debug.keystore" -storepass android -keypass android -alias androiddebugkey -keyalg RSA -keysize 2048 -validity 365 -dname "CN=Iglesia Development, O=Iglesia, C=US"
           echo "GODOT_ANDROID_KEYSTORE_DEBUG_PATH=$RUNNER_TEMP/iglesia-debug.keystore" >> "$GITHUB_ENV"
-      - name: Import verified original PNG and 4K albedo
+      - name: Import real Tripo furniture, verified MP40 PNG/WAV and 4K albedo
         run: |
           python3 -m pip install --user -r requirements.txt
-          python3 tools/ingest_assets.py
-          timeout 120s godot --headless --path . --editor --import --quit
+          python3 tools/ingest_assets.py --with-furniture
+          timeout 240s godot --headless --path . --editor --import --quit
       - name: Native debug ARM64 export
         run: |
           set -euo pipefail
