@@ -41,7 +41,7 @@ func _physics_process(delta: float) -> void:
 		current_path = world.path_between(global_position, target.global_position)
 		waypoint = 0
 		path_timer = 0.65 + randf() * 0.2
-	var aim := target.global_position
+	var aim: Vector3 = target.global_position
 	if waypoint < current_path.size():
 		aim = Vector3(current_path[waypoint].x, global_position.y, current_path[waypoint].y)
 		if global_position.distance_to(aim) < 0.48:

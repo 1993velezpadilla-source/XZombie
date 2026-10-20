@@ -18,9 +18,5 @@ window/handheld/orientation=0
 renderer/rendering_method="mobile"
 textures/default_filters/use_nearest_mipmap_filter=false
 
-[input]
-
-# Mobile is handled natively; keyboard binds are read directly, not legacy maps.
-
 [physics]
 3d/default_gravity=23.0
