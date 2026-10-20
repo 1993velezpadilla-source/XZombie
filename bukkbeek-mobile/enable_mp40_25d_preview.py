@@ -39,7 +39,7 @@ with tempfile.TemporaryDirectory(prefix="mp40-v8-art-") as directory:
     destination = root / "mobile/mp40_25d"
     destination.mkdir(parents=True, exist_ok=True)
     for name in ["motion_manifest.json", "timeline.gd", "sprite_deck.gd",
-                 "mp40_pixel_v8_weapon.gd", "playable_probe.gd"]:
+                 "mp40_pixel_v8_weapon.gd", "playable_probe.gd", "visual_probe.gd"]:
         shutil.copy2(source / "mobile/mp40_25d" / name, destination / name)
     assemble(temp, destination / "motion_manifest.json", destination / "frames")
     frame_paths = sorted((destination / "frames").glob("*/*.png"))
