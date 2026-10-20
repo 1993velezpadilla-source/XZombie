@@ -3,8 +3,8 @@ extends CharacterBody3D
 signal eliminated(points: int)
 var health := 120.0
 var move_speed := 1.65
-var target: Node3D
-var world: Node3D
+var target
+var world
 var attack_cooldown := 0.0
 var path_timer := 0.0
 var current_path: PackedVector2Array = PackedVector2Array()

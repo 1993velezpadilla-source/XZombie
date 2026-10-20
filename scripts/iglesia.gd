@@ -6,9 +6,9 @@ const TOUCH_HUD = preload("res://scripts/mobile_hud.gd")
 const CELL := 0.5
 var nav := AStarGrid2D.new()
 var blockers: Array[Rect2] = []
-var player: CharacterBody3D
-var hud: Control
-var zombies: Array[CharacterBody3D] = []
+var player
+var hud
+var zombies: Array = []
 var round_number := 0
 var points := 500
 var bullets := 32
@@ -84,7 +84,7 @@ func _place_furniture(asset_name: String, parent_body: StaticBody3D, target_dime
 	var packed := load(resource_path)
 	if not packed is PackedScene:
 		return false
-	var instance := packed.instantiate()
+	var instance = packed.instantiate()
 	parent_body.add_child(instance)
 	# Source nominal extents from the archived owner-supplied GLB metadata.
 	var original := Vector3(0.980453491, 0.457199096, 0.285186768) if asset_name == "bench" else Vector3(0.553695679, 0.777038574, 0.980178833)
@@ -223,8 +223,8 @@ func fire() -> void:
 	bullets -= 1
 	shot_timer = 0.102
 	hud.weapon_anim = "fire_hip_01"
-	var a := player.camera.global_position
-	var b := a - player.camera.global_transform.basis.z * 120.0
+	var a: Vector3 = player.camera.global_position
+	var b: Vector3 = a - player.camera.global_transform.basis.z * 120.0
 	var q := PhysicsRayQueryParameters3D.create(a, b)
 	q.exclude = [player.get_rid()]
 	var hit := get_world_3d().direct_space_state.intersect_ray(q)
@@ -255,7 +255,7 @@ func _run_rounds(delta: float) -> void:
 			next_spawn_timer = 1.55
 
 func spawn_undead() -> void:
-	var z := UNDEAD.new()
+	var z = UNDEAD.new()
 	add_child(z)
 	var candidates := [Vector3(-7.4, 0.2, -12.2), Vector3(7.4, 0.2, -12.2), Vector3(-7.4, 0.2, 9.8), Vector3(7.4, 0.2, 9.8)]
 	z.global_position = candidates[randi() % candidates.size()]

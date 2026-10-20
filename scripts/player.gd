@@ -1,6 +1,6 @@
 extends CharacterBody3D
 ## New Godot-native movement: no Virin, no imported controls.
-var hud: Control
+var hud
 var camera: Camera3D
 var health := 100
 var mouse_sensitivity := 0.0024
@@ -43,7 +43,10 @@ func apply_look(delta: Vector2) -> void:
 	camera.rotation.x = pitch
 
 func _physics_process(delta: float) -> void:
-	var axis := Input.get_vector("move_left", "move_right", "move_forward", "move_back")
+	var axis := Vector2(
+		float(Input.is_key_pressed(KEY_D)) - float(Input.is_key_pressed(KEY_A)),
+		float(Input.is_key_pressed(KEY_S)) - float(Input.is_key_pressed(KEY_W))
+	).normalized()
 	if is_instance_valid(hud) and hud.get("stick_axis") != null:
 		var stick: Vector2 = hud.stick_axis
 		if stick.length() > 0.06:
@@ -56,7 +59,7 @@ func _physics_process(delta: float) -> void:
 	velocity.z = move_direction.z * speed
 	if not is_on_floor():
 		velocity.y -= gravity * delta
-	elif Input.is_action_just_pressed("jump") or (is_instance_valid(hud) and hud.jump_requested):
+	elif Input.is_key_pressed(KEY_SPACE) or (is_instance_valid(hud) and hud.jump_requested):
 		velocity.y = 7.0
 	if is_instance_valid(hud):
 		hud.jump_requested = false

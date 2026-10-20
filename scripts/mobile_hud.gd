@@ -1,6 +1,6 @@
 extends Control
 ## Landscape touch HUD with reserved sprite slots; no obsolete buttons or visuals.
-var game: Node3D
+var game
 var stick_axis := Vector2.ZERO
 var look_delta := Vector2.ZERO
 var fire_active := false
@@ -41,7 +41,7 @@ func _add_touch_button(action: String) -> void:
 	b.ignore_texture_size = true
 	b.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 	var texture_name := "vault_jump" if action == "jump" else action
-	var tex_path := "res://assets/imported/buttons/" + texture_name + ".png""
+	var tex_path := "res://assets/imported/buttons/" + texture_name + ".png"
 	if ResourceLoader.exists(tex_path):
 		b.texture_normal = load(tex_path)
 	else:
@@ -128,7 +128,7 @@ func _process(delta: float) -> void:
 		frame = "sprint_01"
 	var path := "res://assets/imported/mp40/" + frame + ".png"
 	if ResourceLoader.exists(path):
-		var t := load(path)
+		var t = load(path)
 		if weapon.texture != t:
 			weapon.texture = t
 	weapon.visible = weapon.texture != null

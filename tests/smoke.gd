@@ -15,7 +15,7 @@ func _smoke() -> void:
 	if scene == null:
 		_fail("missing scene")
 		return
-	var world: Node3D = scene.instantiate()
+	var world = scene.instantiate()
 	root.add_child(world)
 	await process_frame
 	if world.get_node_or_null("Altar_Real_Collider") == null:
@@ -30,11 +30,11 @@ func _smoke() -> void:
 	if world.hud == null:
 		_fail("touch UI missing")
 		return
-	var source_in_bench := world.path_between(Vector3(-4.48,0,-9.8), Vector3(0,0,-12))
+	var source_in_bench = world.path_between(Vector3(-4.48,0,-9.8), Vector3(0,0,-12))
 	if not source_in_bench.is_empty():
 		_fail("zombie path must not start inside a pew")
 		return
-	var center_aisle := world.path_between(Vector3(0,0,12),Vector3(0,0,-12))
+	var center_aisle = world.path_between(Vector3(0,0,12),Vector3(0,0,-12))
 	if center_aisle.size() < 10:
 		_fail("nave central aisle not navigable")
 		return
