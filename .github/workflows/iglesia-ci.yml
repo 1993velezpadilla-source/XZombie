@@ -28,6 +28,18 @@ jobs:
         run: python3 -m pip install --user -r requirements.txt
       - name: Generate new gothic nun MP40 + import real Tripo altar and all benches
         run: python3 tools/ingest_assets.py --with-furniture
+      - name: Adversarial original MP40 v3 art & nun-hands gate
+        run: python3 tools/qa_mp40_art_v3.py --source assets/imported/mp40 --output build/art-review/nun_mp40_v3.jpg
+      - name: Publish high-res editable art visual QA on GitHub
+        uses: actions/upload-artifact@v4
+        with:
+          name: Nun-MP40-V3-GitHub-Art-Review
+          path: |
+            build/art-review/nun_mp40_v3.jpg
+            build/art-review/nun_mp40_v3_sha256.json
+            assets/imported/mp40/nun_mp40_v3_manifest.json
+          retention-days: 7
+          if-no-files-found: error
       - name: Install Godot 4.6 stable
         shell: bash
         run: |
