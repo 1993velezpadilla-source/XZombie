@@ -212,7 +212,7 @@ func _physics_process(delta: float) -> void:
 func begin_reload() -> void:
 	if reload_timer <= 0.0 and bullets < 32 and reserve > 0:
 		reload_timer = 2.25
-		hud.weapon_anim = "reload_01"
+		hud.weapon_anim = "idle_hip_01"
 
 func fire() -> void:
 	if shot_timer > 0.0:

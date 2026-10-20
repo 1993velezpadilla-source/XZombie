@@ -19,7 +19,7 @@ jobs:
           test ! -d engine
           ! grep -R -E 'load\("res://(xogot|bukkbeek-mobile|engine)/' scripts
       - name: Python dependencies
-        run: python3 -m pip install --user Pillow
+        run: python3 -m pip install --user -r requirements.txt
       - name: Fetch user-approved sprites and stone material
         run: python3 tools/ingest_assets.py
       - name: Install Godot 4.6 stable

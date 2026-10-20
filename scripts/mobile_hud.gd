@@ -30,7 +30,7 @@ func _ready() -> void:
 	weapon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	weapon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	add_child(weapon)
-	for action in ["fire", "aim", "reload", "interact", "jump", "sprint"]:
+	for action in ["fire", "aim", "reload", "interact", "jump"]:
 		_add_touch_button(action)
 	resized.connect(_layout)
 	_layout()
@@ -40,7 +40,8 @@ func _add_touch_button(action: String) -> void:
 	b.name = action
 	b.ignore_texture_size = true
 	b.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
-	var tex_path := "res://assets/imported/buttons/" + action + ".png"
+	var texture_name := "vault_jump" if action == "jump" else action
+	var tex_path := "res://assets/imported/buttons/" + texture_name + ".png""
 	if ResourceLoader.exists(tex_path):
 		b.texture_normal = load(tex_path)
 	else:
@@ -65,7 +66,7 @@ func _button(action: String, down: bool) -> void:
 			if down: use_requested = true
 		"jump":
 			if down: jump_requested = true
-		"sprint": sprint_active = down
+
 
 func _layout() -> void:
 	var sz := get_viewport_rect().size
@@ -78,7 +79,6 @@ func _layout() -> void:
 		"reload": Vector2(sz.x - 155, sz.y - 310),
 		"interact": Vector2(sz.x - 295, sz.y - 315),
 		"jump": Vector2(sz.x - 420, sz.y - 140),
-		"sprint": Vector2(90, sz.y - 300)
 	}
 	for action in coords:
 		var b: TextureButton = touch_buttons.get(action)
@@ -99,12 +99,14 @@ func _input(e: InputEvent) -> void:
 			if e.index == pointer_id:
 				pointer_id = -1
 				stick_axis = Vector2.ZERO
+				sprint_active = false
 			if e.index == look_id:
 				look_id = -1
 	elif e is InputEventScreenDrag:
 		if e.index == pointer_id:
 			var d: Vector2 = (e.position - pointer_origin) / 95.0
 			stick_axis = d.limit_length(1.0)
+			sprint_active = stick_axis.y < -0.85 and stick_axis.length() > 0.91
 		elif e.index == look_id:
 			look_delta += e.relative
 
@@ -116,7 +118,14 @@ func _process(delta: float) -> void:
 			weapon_anim = "ads_idle" if ads_active else "idle_hip_01"
 	if not is_instance_valid(weapon):
 		return
-	var frame := "ads_idle" if ads_active and weapon_anim == "idle_hip_01" else weapon_anim
+	var frame := "ads_idle" if ads_active else "idle_hip_01"
+	if is_instance_valid(game) and game.reload_timer > 0.0:
+		var index := clampi(int((2.25 - game.reload_timer) / 0.5625), 0, 3)
+		frame = "reload_%02d" % (index + 1)
+	elif weapon_anim == "fire_hip_01":
+		frame = "ads_fire_01" if ads_active else "fire_hip_01"
+	elif sprint_active and not ads_active:
+		frame = "sprint_01"
 	var path := "res://assets/imported/mp40/" + frame + ".png"
 	if ResourceLoader.exists(path):
 		var t := load(path)

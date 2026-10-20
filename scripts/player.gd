@@ -48,7 +48,7 @@ func _physics_process(delta: float) -> void:
 		var stick: Vector2 = hud.stick_axis
 		if stick.length() > 0.06:
 			axis = stick
-	var ads := is_instance_valid(hud) and hud.ads_active
+	var ads := Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) or (is_instance_valid(hud) and hud.ads_active)
 	sprinting = (Input.is_key_pressed(KEY_SHIFT) or (is_instance_valid(hud) and hud.sprint_active)) and axis.length() > 0.25 and not ads
 	var speed := speed_ads if ads else (speed_sprint if sprinting else speed_walk)
 	var move_direction := (global_transform.basis.x * axis.x + global_transform.basis.z * axis.y).normalized()

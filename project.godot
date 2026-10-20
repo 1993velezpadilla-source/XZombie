@@ -16,7 +16,6 @@ window/handheld/orientation=0
 
 [rendering]
 renderer/rendering_method="mobile"
-renderer/rendering_method.mobile="gl_compatibility"
 textures/default_filters/use_nearest_mipmap_filter=false
 
 [physics]

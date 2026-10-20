@@ -46,7 +46,7 @@ WALL = {
 }
 
 def git_blob_sha(data: bytes) -> str:
-    return hashlib.sha1(f"blob {len(data)}\\0".encode().replace(b"\\0", b"\\x00") + data).hexdigest()
+    return hashlib.sha1(f"blob {len(data)}".encode() + bytes([0]) + data).hexdigest()
 
 def fetch(repo: str, ref: str, remote: str, local: Path, sha: str) -> bytes:
     if local.is_file() and git_blob_sha(local.read_bytes()) == sha:
