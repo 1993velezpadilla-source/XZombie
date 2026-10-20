@@ -16,25 +16,36 @@ source = Path(__file__).resolve().parent
 root = Path(sys.argv[1]).resolve()
 archive = source / "pixel_assets/mp40_25d_original_source_strips.zip"
 assert archive.is_file(), "MP40_25D_V8_SOURCE_RED: 8 strips ZIP missing"
-expected = {name for name, _ in SOURCES.values()}
+expected = {Path(name).stem for name, _ in SOURCES.values()}
 with tempfile.TemporaryDirectory(prefix="mp40-v8-art-") as directory:
     temp = Path(directory)
     found = {}
+    from PIL import Image
     with zipfile.ZipFile(archive) as z:
-        print('MP40_25D_V8_ZIP_ENTRIES', [entry.filename for entry in z.infolist()], flush=True)
+        print("MP40_25D_V8_ZIP_ENTRIES", [entry.filename for entry in z.infolist()], flush=True)
         for entry in z.infolist():
             if entry.is_dir():
                 continue
-            name = Path(entry.filename.replace("\\", "/")).name
-            if name not in expected:
+            source_name = Path(entry.filename.replace("\\", "/")).name
+            stem = Path(source_name).stem.lower()
+            if stem not in expected or Path(source_name).suffix.lower() not in (".webp", ".png"):
                 continue
-            assert name not in found, "MP40_25D_V8_SOURCE_RED duplicated strip: " + name
-            assert entry.file_size <= 16_000_000, "MP40_25D_V8_SOURCE_RED oversized strip: " + name
-            with z.open(entry) as inp, (temp / name).open("wb") as out:
+            assert stem not in found, "MP40_25D_V8_SOURCE_RED duplicate strip: " + stem
+            assert entry.file_size <= 16_000_000, "MP40_25D_V8_SOURCE_RED oversized strip: " + source_name
+            input_file = temp / source_name
+            with z.open(entry) as inp, input_file.open("wb") as out:
                 shutil.copyfileobj(inp, out)
-            found[name] = entry.file_size
+            with Image.open(input_file) as im:
+                rgba = im.convert("RGBA")
+                print("MP40_25D_V8_SOURCE", source_name, "dimensions=", rgba.size, "alpha=", rgba.getchannel("A").getextrema(), flush=True)
+                if rgba.size != (2172, 724):
+                    raise ValueError("MP40_25D_V8_SOURCE_RED invalid strip size "+source_name+" "+str(rgba.size))
+                if rgba.getchannel("A").getextrema() != (0, 255):
+                    raise ValueError("MP40_25D_V8_SOURCE_RED no transparency in "+source_name)
+                rgba.save(temp / (stem + ".png"), optimize=True)
+            found[stem] = entry.file_size
     assert set(found) == expected, (
-        "MP40_25D_V8_SOURCE_RED missing strips "
+        "MP40_25D_V8_SOURCE_RED missing source strips "
         + repr(sorted(expected - set(found)))
     )
     destination = root / "mobile/mp40_25d"
