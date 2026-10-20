@@ -1,0 +1,97 @@
+name: MP40 Godot Bone2D reload feasibility (V6 art / no game changes)
+on:
+  push:
+    branches:
+      - experiment/mp40-pixel-godot-2d-bones-20261019
+    paths:
+      - 'bukkbeek-mobile/rig_demo/**'
+      - '.github/workflows/mp40-bone2d-study.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mp40-bone2d-study-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  real-godot-bone-study:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install preview tools (NO Android SDK, NO huge weapon gauntlet)
+        shell: bash
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends python3-pil ffmpeg unzip xvfb libgl1-mesa-dri
+          mkdir -p _tools/godot
+          curl -fL --retry 3 -o /tmp/godot-bones.zip \
+            https://github.com/godotengine/godot/releases/download/4.6-stable/Godot_v4.6-stable_linux.x86_64.zip
+          unzip -q /tmp/godot-bones.zip -d _tools/godot
+          chmod +x _tools/godot/Godot_v4.6-stable_linux.x86_64
+      - name: Stage isolated project and derive FOUR arm/weapon layers from 2 genuine V6 source poses
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s 'bukkbeek-mobile/pixel_assets/WWII MP40 Pixel Art Sprite Sheet.png'
+          mkdir -p _bone_study/rig_demo/assets
+          cp bukkbeek-mobile/rig_demo/project.godot _bone_study/project.godot
+          cp bukkbeek-mobile/rig_demo/*.tscn bukkbeek-mobile/rig_demo/*.gd _bone_study/rig_demo/
+          python3 bukkbeek-mobile/rig_demo/extract_v6_layers.py \
+            'bukkbeek-mobile/pixel_assets/WWII MP40 Pixel Art Sprite Sheet.png' \
+            _bone_study/rig_demo/assets
+          test "$(find _bone_study/rig_demo/assets -maxdepth 1 -name '*.png' | wc -l)" -eq 4
+      - name: Godot 4.6 native script import
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 120s _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --headless --path _bone_study --import 2>&1 | tee /tmp/mp40-bones-import.log
+          if grep -E 'SCRIPT ERROR:|Parse Error:|Compile Error:|Failed to load script' /tmp/mp40-bones-import.log; then exit 51; fi
+      - name: Drive ACTUAL Skeleton2D/Bone2D joints and record 68 framebuffer frames
+        shell: bash
+        run: |
+          set -euo pipefail
+          timeout 180s xvfb-run -a -s '-screen 0 1280x720x24' \
+            _tools/godot/Godot_v4.6-stable_linux.x86_64 \
+            --path _bone_study --rendering-driver opengl3 \
+            --script res://rig_demo/capture.gd 2>&1 | tee /tmp/mp40-bones-motion.log
+          grep -q 'MP40_BONES_DEMO_GREEN' /tmp/mp40-bones-motion.log
+          if grep -E 'MP40_BONES_DEMO_RED|SCRIPT ERROR:|Parse Error:|Compile Error:' /tmp/mp40-bones-motion.log; then exit 52; fi
+          test "$(find _bone_study/rig_demo/captures -maxdepth 1 -name '*.png' | wc -l)" -eq 68
+      - name: Encode honest 24fps real-Godot video and storyboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p _bone_study/results
+          ffmpeg -hide_banner -loglevel error -framerate 24 \
+            -i _bone_study/rig_demo/captures/%04d.png \
+            -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p \
+            -movflags +faststart _bone_study/results/MP40-V6-Bone2D-Empty-Reload-PROOF.mp4
+          python3 - <<'PY'
+          from PIL import Image, ImageDraw
+          from pathlib import Path
+          frames=Path('_bone_study/rig_demo/captures')
+          out=Image.new('RGB',(1280,720*4))
+          indices=[1,16,37,58]
+          for i,idx in enumerate(indices):
+              pic=Image.open(frames/f'{idx:04d}.png').convert('RGB')
+              out.paste(pic,(0,i*720))
+          out.save('_bone_study/results/MP40-Bone2D-Phases.png')
+          assert Path('_bone_study/results/MP40-V6-Bone2D-Empty-Reload-PROOF.mp4').stat().st_size>10000
+          print('MP40_BONES_VIDEO_GREEN genuine_godot_framebuffer=true')
+          PY
+      - name: Deliver video, frame board, source and honest limitations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: MP40-Godot-2D-Bone-Reload-Feasibility-ONLY
+          path: |
+            _bone_study/results/*.mp4
+            _bone_study/results/*.png
+            _bone_study/rig_demo/assets/rig_source_manifest.json
+            _bone_study/rig_demo/reload_stage.gd
+            _bone_study/rig_demo/reload_study.tscn
+          retention-days: 14
