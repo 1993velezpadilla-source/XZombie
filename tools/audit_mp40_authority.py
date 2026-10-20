@@ -14,7 +14,7 @@ import sys
 BASE = Path(__file__).resolve().parents[1]
 SOURCE = BASE / "build" / "source-audit-only"
 MAGIC = 0x46546C67
-from ingest_assets import fetch, MP40_AETHER_GLB_REFERENCE, SOURCE_AETHER_REF
+from ingest_assets import fetch, MP40_AETHER_GLB_REFERENCE, MP40_AETHER_MODEL_REF
 
 
 def read_glb(path: Path) -> dict:
@@ -38,7 +38,7 @@ def read_glb(path: Path) -> dict:
 
 def main():
     for name, (remote, blob_sha) in MP40_AETHER_GLB_REFERENCE.items():
-        fetch("config-old-3", SOURCE_AETHER_REF, remote, SOURCE / name, blob_sha)
+        fetch("config-old-3", MP40_AETHER_MODEL_REF, remote, SOURCE / name, blob_sha)
     files = {}
     for name in ("viewmodel.glb", "viewhands.glb"):
         doc = read_glb(SOURCE / name)
