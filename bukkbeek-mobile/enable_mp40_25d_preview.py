@@ -21,6 +21,7 @@ with tempfile.TemporaryDirectory(prefix="mp40-v8-art-") as directory:
     temp = Path(directory)
     found = {}
     with zipfile.ZipFile(archive) as z:
+        print('MP40_25D_V8_ZIP_ENTRIES', [entry.filename for entry in z.infolist()], flush=True)
         for entry in z.infolist():
             if entry.is_dir():
                 continue
