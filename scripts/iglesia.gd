@@ -3,6 +3,7 @@ extends Node3D
 const SURVIVOR = preload("res://scripts/player.gd")
 const UNDEAD = preload("res://scripts/zombie.gd")
 const TOUCH_HUD = preload("res://scripts/mobile_hud.gd")
+const CHURCH_DRESSING = preload("res://scripts/church_dressing.gd")
 const CELL := 0.5
 var nav := AStarGrid2D.new()
 var blockers: Array[Rect2] = []
@@ -33,6 +34,10 @@ func _ready() -> void:
 	randomize()
 	_build_materials()
 	_build_nave()
+	var dressing := CHURCH_DRESSING.new()
+	dressing.name = "MainAisleGothicDressing"
+	add_child(dressing)
+	dressing.build(self)
 	_build_navigation()
 	_setup_mp40_audio()
 	player = SURVIVOR.new()
@@ -99,7 +104,10 @@ func _place_furniture(asset_name: String, parent_body: StaticBody3D, target_dime
 	# Never rely on stale nominal metadata: measure actual nested GLB meshes
 	# under the REAL runtime transform, then fit all dimensions against collider.
 	# In the -90° yaw, source-local X maps to world Z; local Z maps to world X.
-	instance.rotation_degrees.y = -90.0 if asset_name == "altar" else 0.0
+	# Reviewed gameplay captures: Tripo pew backrests were facing the entrance.
+	# Rotate visual only; its symmetric physics/nav footprint is unchanged.
+	# In this nave the congregation looks toward -Z (the altar).
+	instance.rotation_degrees.y = -90.0 if asset_name == "altar" else 180.0
 	instance.scale = Vector3.ONE
 	var raw_bounds := furniture_bounds(parent_body, instance)
 	if raw_bounds.size.x < 0.00001 or raw_bounds.size.y < 0.00001 or raw_bounds.size.z < 0.00001:
@@ -194,7 +202,12 @@ func _build_nave() -> void:
 			blockers.append(Rect2(x - size.x / 2 - 0.34, z - size.z / 2 - 0.34, size.x + 0.68, size.z + 0.68))
 	# Wider altar faces the pews; keep enough room for both sanctuary lanes.
 	var altar_dimensions := Vector3(4.8, 1.65, 2.7)
-	var altar := _solid("Altar_Real_Collider", Vector3(0, altar_dimensions.y / 2.0, -14.1), altar_dimensions, stone, false)
+	# Three distinct physical sanctuary risers make the altar read elevated
+	# instead of sunk into the old floor. Actual Tripo art is grounded on top.
+	_solid("ChancelStep_01", Vector3(0, 0.065, -12.75), Vector3(6.5, 0.13, 0.92), stone)
+	_solid("ChancelStep_02", Vector3(0, 0.145, -13.34), Vector3(6.5, 0.29, 0.93), stone)
+	_solid("ChancelDais", Vector3(0, 0.225, -15.05), Vector3(6.5, 0.45, 3.25), stone)
+	var altar := _solid("Altar_Real_Collider", Vector3(0, 0.45 + altar_dimensions.y / 2.0, -15.05), altar_dimensions, stone, false)
 	if not _place_furniture("altar", altar, altar_dimensions):
 		var altar_mesh := MeshInstance3D.new()
 		var mesh := BoxMesh.new()
@@ -202,7 +215,7 @@ func _build_nave() -> void:
 		altar_mesh.mesh = mesh
 		altar_mesh.material_override = stone
 		altar.add_child(altar_mesh)
-	blockers.append(Rect2(-2.80, -15.85, 5.6, 3.55))
+	blockers.append(Rect2(-3.30, -16.7, 6.6, 4.42))
 	_solid("WallBuy_Kiosk", wallbuy + Vector3(-0.25, 1.1, 0), Vector3(0.15, 2.2, 1.5), iron)
 	for x in [-8.65, 8.65]:
 		for z in [-11.0, -4.0, 3.0, 10.0]:
@@ -245,7 +258,7 @@ func _set_lighting() -> void:
 	env.background_color = Color(0.017, 0.020, 0.031)
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	env.ambient_light_color = Color(0.17, 0.21, 0.27)
-	env.ambient_light_energy = 0.45
+	env.ambient_light_energy = 0.68
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	world.environment = env
 	add_child(world)
@@ -257,8 +270,8 @@ func _set_lighting() -> void:
 	var altar_light := OmniLight3D.new()
 	altar_light.position = Vector3(0, 3.0, -13)
 	altar_light.light_color = Color(1.0, 0.55, 0.26)
-	altar_light.light_energy = 1.6
-	altar_light.omni_range = 8.0
+	altar_light.light_energy = 2.5
+	altar_light.omni_range = 11.0
 	add_child(altar_light)
 
 
