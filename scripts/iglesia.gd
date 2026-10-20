@@ -102,8 +102,58 @@ func _place_furniture(asset_name: String, parent_body: StaticBody3D, target_dime
 		instance.rotation_degrees.y = -90.0
 	else:
 		instance.scale = Vector3(target_dimensions.x / original.x, target_dimensions.y / original.y, target_dimensions.z / original.z)
-	instance.position.y = -target_dimensions.y * 0.5
+	# Tripo scene origins are NOT necessarily at the bottom or center of art.
+	# Survey every transformed mesh bound AFTER scale/rotation; stand visual on
+	# the physics floor, and center it over the matching BoxShape3D footprint.
+	# This fixes 14 buried pews and the altar without shifting the collider.
+	var bounds := furniture_bounds(parent_body, instance)
+	if bounds.size == Vector3.ZERO:
+		push_error("IGLESIA_FURNITURE_NO_MESH: " + asset_name)
+		instance.queue_free()
+		return false
+	var desired_floor_local := -target_dimensions.y * 0.5
+	instance.position += Vector3(
+		-(bounds.position.x + bounds.size.x * 0.5),
+		desired_floor_local - bounds.position.y,
+		-(bounds.position.z + bounds.size.z * 0.5)
+	)
+	var verified := furniture_bounds(parent_body, instance)
+	if absf(verified.position.y - desired_floor_local) > 0.012:
+		push_error("IGLESIA_FURNITURE_BURIED: " + asset_name)
+		instance.queue_free()
+		return false
+	if absf(verified.position.x + verified.size.x * 0.5) > 0.02 or absf(verified.position.z + verified.size.z * 0.5) > 0.02:
+		push_error("IGLESIA_FURNITURE_OFF_CENTER: " + asset_name)
+		instance.queue_free()
+		return false
+	instance.set_meta("floor_aligned", true)
+	instance.set_meta("visual_bounds", verified)
 	return true
+
+func furniture_bounds(parent_body: Node3D, instance: Node3D) -> AABB:
+	# Includes child MeshInstance3D nested inside imported GLB scene roots.
+	# Transform ALL eight corners to body-local space, not only one AABB
+	# origin: rotating an AABB with transform * position is mathematically wrong.
+	var low := Vector3(INF, INF, INF)
+	var high := Vector3(-INF, -INF, -INF)
+	var meshes: Array[Node] = instance.find_children("*", "MeshInstance3D", true, false)
+	if instance is MeshInstance3D:
+		meshes.append(instance)
+	for node in meshes:
+		var mesh_instance := node as MeshInstance3D
+		if mesh_instance == null or mesh_instance.mesh == null:
+			continue
+		var box := mesh_instance.get_aabb()
+		for ix in [0, 1]:
+			for iy in [0, 1]:
+				for iz in [0, 1]:
+					var p := box.position + Vector3(box.size.x * ix, box.size.y * iy, box.size.z * iz)
+					var local_point := parent_body.to_local(mesh_instance.to_global(p))
+					low = low.min(local_point)
+					high = high.max(local_point)
+	if not is_finite(low.x) or not is_finite(low.y) or not is_finite(low.z):
+		return AABB()
+	return AABB(low, high - low)
 
 func _build_nave() -> void:
 	_solid("Floor", Vector3(0, -0.3, 0), Vector3(18, 0.6, 35), stone)
@@ -248,7 +298,7 @@ func _physics_process(delta: float) -> void:
 	if Input.is_key_pressed(KEY_R) or hud.reload_requested:
 		begin_reload()
 	hud.reload_requested = false
-	if reload_timer <= 0.0 and (Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT) or hud.fire_active):
+	if reload_timer <= 0.0 and _is_fire_requested():
 		fire()
 	if Input.is_key_pressed(KEY_E) or hud.use_requested:
 		purchase_wallgun()
@@ -258,6 +308,14 @@ func _physics_process(delta: float) -> void:
 	if player.health == 0:
 		get_tree().paused = true
 		hud.show_game_over(round_number)
+
+func _is_fire_requested() -> bool:
+	# Android emits synthetic LEFT MOUSE events for EVERY screen tap.
+	# Those events must NEVER bypass the dedicated HUD FIRE/ADS+FIRE hit zones.
+	# On desktop genuine left click retains mouse shooting.
+	if is_instance_valid(hud) and hud.fire_active:
+		return true
+	return not OS.has_feature("mobile") and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 
 func begin_reload() -> void:
 	if reload_timer <= 0.0 and bullets < 32 and reserve > 0:
