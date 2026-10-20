@@ -4,9 +4,10 @@ extends Control
 const SOURCE_BUTTONS := "res://assets/imported/buttons/"
 const SOURCE_FRAMES := "res://assets/imported/mp40/"
 const RELOAD_SECONDS := 2.25
-const HIP_SIGHT_PX := Vector2(221.5, 105.0)
-const ADS_SIGHT_PX := Vector2(242.0, 126.0)
-const ADS_FIRE_SIGHT_PX := Vector2(245.0, 114.0)
+# Drawn from scratch at 960×720 with optic shafts at the same x.
+const HIP_SIGHT_PX := Vector2(480.0, 207.0)
+const ADS_SIGHT_PX := Vector2(480.0, 213.0)
+const ADS_FIRE_SIGHT_PX := Vector2(480.0, 213.0)
 const BUTTON_LAYOUT := {
     "fire": Vector2(0.885, 0.59),
     "aim_fire": Vector2(0.795, 0.405),
@@ -50,7 +51,7 @@ func _ready() -> void:
     weapon.mouse_filter = Control.MOUSE_FILTER_IGNORE
     weapon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
     weapon.stretch_mode = TextureRect.STRETCH_SCALE
-    weapon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+    weapon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
     add_child(weapon)
     for action in BUTTON_LAYOUT.keys():
         _add_touch_button(action)
@@ -119,6 +120,8 @@ func _set_action(action: String, down: bool) -> void:
 func _input(e: InputEvent) -> void:
     if e is InputEventScreenTouch:
         if e.pressed:
+            # Action ownership is assigned ONLY when a finger starts INSIDE
+            # an official button; move/look NEVER implicitly fire.
             if touch_owners.has(e.index):
                 _release_finger(e.index)
             var role := _action_at(e.position)
@@ -167,7 +170,8 @@ func _process(delta: float) -> void:
     var frame := "ads_idle" if ads_active else "idle_hip_01"
     if is_instance_valid(game) and game.reload_timer > 0.0:
         var progress := 1.0 - clampf(game.reload_timer / RELOAD_SECONDS, 0.0, 1.0)
-        frame = "reload_%02d" % clampi(int(progress * 4.0) + 1, 1, 4)
+        var prefix := "reload_empty_" if game.reload_started_empty else "reload_"
+        frame = prefix + ("%02d" % clampi(int(progress * 4.0) + 1, 1, 4))
     elif shot_remaining > 0.0:
         frame = "ads_fire_01" if ads_active else "fire_hip_01"
     elif sprint_active and not ads_active:
@@ -177,6 +181,8 @@ func _process(delta: float) -> void:
         var path := SOURCE_FRAMES + frame + ".png"
         if ResourceLoader.exists(path):
             loaded_frames[frame] = load(path)
+        else:
+            push_error("NUN_MP40_V3_FRAME_MISSING: " + path)
     var image: Texture2D = loaded_frames.get(frame)
     if image == null:
         weapon.visible = false
@@ -188,15 +194,17 @@ func _process(delta: float) -> void:
 
 func _position_weapon(frame: String, image: Texture2D) -> void:
     var s := get_viewport_rect().size
-    var scale_unit := minf(s.x / 1280.0, s.y / 720.0)
     var is_ads := frame.begins_with("ads")
-    var optical := ADS_FIRE_SIGHT_PX if frame == "ads_fire_01" else ADS_SIGHT_PX
+    var optical: Vector2 = ADS_FIRE_SIGHT_PX if frame == "ads_fire_01" else ADS_SIGHT_PX
     if not is_ads:
         optical = HIP_SIGHT_PX
-    var scale_factor := scale_unit * (1.87 if is_ads else 1.35)
-    # Hip muzzle is aimed towards the CROSSHAIR, not the far left of screen.
-    # Iron-sight center and hitscan ray share the exact viewport center.
-    var target := s * 0.5 + (Vector2.ZERO if is_ads else Vector2(0, 22.0 * scale_unit))
+    # Artistic viewmodel size is calculated from physical lower sprite span.
+    # The bottom of the nun's sleeves meets the real Android viewport edge.
+    # Crosshair always agrees with weapon sights AND camera's hitscan ray.
+    var vertical_span := float(image.get_height()) - optical.y
+    var scale_factor := (s.y * 0.512) / maxf(1.0, vertical_span)
+    scale_factor = minf(scale_factor, (s.x * 0.92) / float(image.get_width()))
+    var target := s * 0.5
     weapon.size = image.get_size() * scale_factor
     weapon.position = target - optical * scale_factor
 
