@@ -53,7 +53,7 @@ func build(owner: Node3D) -> void:
 	set_meta("only_main_aisle", true)
 	print("IGLESIA_DRESSING_GREEN: nave, reflected stone tiling, roof ribs, windows, chandeliers, candles, altar retable, banners, crucifix")
 
-func _block(label: String, pos: Vector3, dims: Vector3, mat: Material, parent: Node3D = self) -> MeshInstance3D:
+func _block(label: String, pos: Vector3, dims: Vector3, mat: Material) -> MeshInstance3D:
 	var item := MeshInstance3D.new()
 	item.name = label
 	var mesh := BoxMesh.new()
@@ -62,7 +62,7 @@ func _block(label: String, pos: Vector3, dims: Vector3, mat: Material, parent: N
 	item.material_override = mat
 	item.position = pos
 	item.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(item)
+	add_child(item)
 	return item
 
 func _cylinder(label: String, pos: Vector3, radius: float, height: float, mat: Material, sides: int = 10) -> MeshInstance3D:
