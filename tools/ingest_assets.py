@@ -24,6 +24,15 @@ WEAPON_REF = "experiment/nun-universal-bone2d-hands-v1-20261019"
 FORWARD_REF = "96f9de7eaabf96793c245f686b00f85efa3b80e3"
 SOURCE_AETHER_REF = "5c8093db6c5eab64d653f715813f1d70915d393f"
 MP40_RELOAD_REF = "96f9de7eaabf96793c245f686b00f85efa3b80e3"
+MP40_AETHER_GLB_REFERENCE = {
+    "viewmodel.glb": ("xogot/assets/weapons/aether_waw_real/mp40/viewmodel.glb", "d6344a545d5e46125fb26add71436df0725c5437"),
+    "viewhands.glb": ("xogot/assets/weapons/aether_waw_hands/t4_marine/mp40/viewhands.glb", "fe1b0735cd4b768ae3a6bfeb731fc61050cdb1f2"),
+    "weapon_mp40_c.png": ("xogot/assets/weapons/aether_waw_textures/weapon_mp40_c.png", "1e0b3090a85a01b729c7708ac7adfbf0aa535215"),
+    "weapon_mp40_n.png": ("xogot/assets/weapons/aether_waw_textures/weapon_mp40_n.png", "2374f2b0743b0a541ab1abfafc7951647d0cf7dc"),
+}
+# For shape/pose study only. Never ship third-party game-content GLBs inside
+# the APK without separately confirmed distribution rights.
+
 
 BUTTON_SHAS = {
     "aim.png": "e0d1d2043f85a100c6740aa806c321048f595f4b",
@@ -151,6 +160,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description="Verified owner-asset import for Iglesia")
     p.add_argument("--with-hero-models", action="store_true", help="All huge Tripo GLBs (art audit only)")
     p.add_argument("--with-furniture", action="store_true", help="Include real Tripo altar and pew GLBs in mobile preview; no FPS guarantee")
+    p.add_argument("--reference-mp40", action="store_true", help="Study original Aether mechanical rig for motion only; output outside res:// and never ship")
     p.add_argument("--full-textures", action="store_true", help="Also import 4K normal+roughness originals")
     args = p.parse_args()
     btn = "assets/xziel/official_touch_skins_v1/"
@@ -183,6 +193,11 @@ def main() -> None:
             path = "xogot/assets/environment/church/" + name
             fetch("config-old-3", CHURCH_REF, path, OUT/name, sha)
         print("WARNING: authentic Tripo models installed; LOD/mobile FPS NOT validated")
+    if args.reference_mp40:
+        for name, (remote, sha) in MP40_AETHER_GLB_REFERENCE.items():
+            fetch("config-old-3", SOURCE_AETHER_REF, remote,
+                  ROOT / "build" / "source-audit-only" / name, sha)
+        print("MP40_REFERENCE_SOURCE_VERIFIED: local audit only, NOT SHIPPED; pending license and nun hand re-rig")
     print("ASSET_INGEST_GREEN: verified inputs only (not an Android performance claim)")
 
 if __name__ == "__main__":
