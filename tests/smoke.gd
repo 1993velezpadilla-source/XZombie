@@ -26,12 +26,12 @@ func _smoke() -> void:
 		return
 	var altar: StaticBody3D = world.get_node("Altar_Real_Collider")
 	var altar_shape: CollisionShape3D = altar.get_child(0)
-	if altar_shape.shape.size.x < 4.9 or altar_shape.shape.size.z < 2.0:
+	if altar_shape.shape.size.x < 4.7 or altar_shape.shape.size.z < 2.6:
 		_fail("Tripo altar collider still undersized")
 		return
 	if ResourceLoader.exists("res://assets/imported/altar.glb"):
 		var altar_skin := altar.get_child(1)
-		if absf(absf(altar_skin.rotation_degrees.y) - 180.0) > 0.5:
+		if absf(altar_skin.rotation_degrees.y + 90.0) > 0.5:
 			_fail("Tripo altar faces the wrong direction")
 			return
 	if world.player == null or world.player.camera == null:
