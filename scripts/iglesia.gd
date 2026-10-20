@@ -94,12 +94,15 @@ func _place_furniture(asset_name: String, parent_body: StaticBody3D, target_dime
 	parent_body.add_child(instance)
 	# Source nominal extents from the archived owner-supplied GLB metadata.
 	var original := Vector3(0.980453491, 0.457199096, 0.285186768) if asset_name == "bench" else Vector3(0.553695679, 0.777038574, 0.980178833)
-	instance.scale = Vector3(target_dimensions.x / original.x, target_dimensions.y / original.y, target_dimensions.z / original.z)
-	instance.position.y = -target_dimensions.y * 0.5
 	if asset_name == "altar":
-		# The congregation enters from positive Z; the Tripo altar's original
-		# forward face is away from the nave. Flip its VISUAL, not its collider.
-		instance.rotation_degrees.y = 180.0
+		# Original Sanctum was built along +X. This Godot nave looks toward -Z:
+		# 180-degree Tripo author yaw plus a 90-degree map-axis correction = -90.
+		# Swap X/Z extent fit so the LONG ceremonial front faces the pews.
+		instance.scale = Vector3(target_dimensions.z / original.x, target_dimensions.y / original.y, target_dimensions.x / original.z)
+		instance.rotation_degrees.y = -90.0
+	else:
+		instance.scale = Vector3(target_dimensions.x / original.x, target_dimensions.y / original.y, target_dimensions.z / original.z)
+	instance.position.y = -target_dimensions.y * 0.5
 	return true
 
 func _build_nave() -> void:
@@ -128,7 +131,7 @@ func _build_nave() -> void:
 				pew.add_child(box)
 			blockers.append(Rect2(x - size.x / 2 - 0.34, z - size.z / 2 - 0.34, size.x + 0.68, size.z + 0.68))
 	# Wider altar faces the pews; keep enough room for both sanctuary lanes.
-	var altar_dimensions := Vector3(5.0, 1.65, 2.1)
+	var altar_dimensions := Vector3(4.8, 1.65, 2.7)
 	var altar := _solid("Altar_Real_Collider", Vector3(0, altar_dimensions.y / 2.0, -14.1), altar_dimensions, stone, false)
 	if not _place_furniture("altar", altar, altar_dimensions):
 		var altar_mesh := MeshInstance3D.new()
@@ -137,7 +140,7 @@ func _build_nave() -> void:
 		altar_mesh.mesh = mesh
 		altar_mesh.material_override = stone
 		altar.add_child(altar_mesh)
-	blockers.append(Rect2(-2.85, -15.55, 5.7, 2.9))
+	blockers.append(Rect2(-2.80, -15.85, 5.6, 3.55))
 	_solid("WallBuy_Kiosk", wallbuy + Vector3(-0.25, 1.1, 0), Vector3(0.15, 2.2, 1.5), iron)
 	for x in [-8.65, 8.65]:
 		for z in [-11.0, -4.0, 3.0, 10.0]:
