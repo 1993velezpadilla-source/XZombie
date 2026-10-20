@@ -23,6 +23,7 @@ BUTTON_REF = "0119c5b0f9109c4c88dbdd4173a9a2ba523abc3d"
 WEAPON_REF = "experiment/nun-universal-bone2d-hands-v1-20261019"
 FORWARD_REF = "96f9de7eaabf96793c245f686b00f85efa3b80e3"
 SOURCE_AETHER_REF = "5c8093db6c5eab64d653f715813f1d70915d393f"
+MP40_AETHER_MODEL_REF = "98b7ce12fd69a72df3609837ec8fdae1f0d03adb"  # exact tree used to pin model and hands
 MP40_RELOAD_REF = "96f9de7eaabf96793c245f686b00f85efa3b80e3"
 MP40_AETHER_GLB_REFERENCE = {
     "viewmodel.glb": ("xogot/assets/weapons/aether_waw_real/mp40/viewmodel.glb", "d6344a545d5e46125fb26add71436df0725c5437"),
@@ -195,7 +196,7 @@ def main() -> None:
         print("WARNING: authentic Tripo models installed; LOD/mobile FPS NOT validated")
     if args.reference_mp40:
         for name, (remote, sha) in MP40_AETHER_GLB_REFERENCE.items():
-            fetch("config-old-3", SOURCE_AETHER_REF, remote,
+            fetch("config-old-3", MP40_AETHER_MODEL_REF, remote,
                   ROOT / "build" / "source-audit-only" / name, sha)
         print("MP40_REFERENCE_SOURCE_VERIFIED: local audit only, NOT SHIPPED; pending license and nun hand re-rig")
     print("ASSET_INGEST_GREEN: verified inputs only (not an Android performance claim)")
