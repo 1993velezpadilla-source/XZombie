@@ -5,7 +5,7 @@ on:
       - feature/mp40-pixel-v8-playable-preview-20261019
     paths:
       - 'bukkbeek-mobile/**'
-      - '.github/workflows/mp40-pixel-v3-fast-android.yml'
+      - '.github/workflows/mp40-pixel-v8-android.yml'
   workflow_dispatch:
 
 # Don't spend the user's free GitHub minutes on stale intermediary MP40 builds.
