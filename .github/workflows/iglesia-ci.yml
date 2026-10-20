@@ -84,7 +84,7 @@ jobs:
         run: |
           set -euo pipefail
           unzip -t build/Iglesia-first-playable-debug.apk | tail -1
-          unzip -Z1 build/Iglesia-first-playable-debug.apk | grep -E '^lib/arm64-v8a/.*\\.so$'
+          unzip -Z1 build/Iglesia-first-playable-debug.apk | grep -F "lib/arm64-v8a/"
           "$ANDROID_HOME/build-tools/35.0.1/apksigner" verify --verbose build/Iglesia-first-playable-debug.apk
           sha256sum build/Iglesia-first-playable-debug.apk > build/sha256.txt
       - name: Publish phone test artifact
