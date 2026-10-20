@@ -16,6 +16,7 @@ window/handheld/orientation=0
 
 [rendering]
 renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true
 textures/default_filters/use_nearest_mipmap_filter=false
 
 [physics]
