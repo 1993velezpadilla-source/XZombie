@@ -14,7 +14,7 @@ func _screen_touch(hud: Control, finger: int, pos: Vector2, pressed: bool) -> vo
 	event.pressed = pressed
 	hud._input(event)
 
-func _check_prop(world: Node3D, path: String, target: Vector3) -> bool:
+func _check_prop(world: Node3D, path: String, target: Vector3, ground_y: float = 0.0) -> bool:
 	var prop: StaticBody3D = world.get_node_or_null(path) as StaticBody3D
 	if prop == null or prop.get_child_count() < 2:
 		return false
@@ -25,7 +25,7 @@ func _check_prop(world: Node3D, path: String, target: Vector3) -> bool:
 	var floor_global := prop.to_global(box.position).y
 	var center_x := box.position.x + box.size.x * 0.5
 	var center_z := box.position.z + box.size.z * 0.5
-	return absf(floor_global) < 0.02 and absf(center_x) < 0.02 and absf(center_z) < 0.02 \
+	return absf(floor_global - ground_y) < 0.02 and absf(center_x) < 0.02 and absf(center_z) < 0.02 \
 		and box.size.distance_to(target) < 0.08
 
 func _smoke() -> void:
@@ -57,7 +57,7 @@ func _smoke() -> void:
 	if absf(altar_skin.rotation_degrees.y + 90.0) > 0.5:
 		_fail("Tripo altar faces the wrong direction")
 		return
-	if not _check_prop(world, "Altar_Real_Collider", Vector3(4.8, 1.65, 2.7)):
+	if not _check_prop(world, "Altar_Real_Collider", Vector3(4.8, 1.65, 2.7), 0.45):
 		_fail("real Tripo altar does not stand on floor / is undersized")
 		return
 	for row in range(7):
@@ -66,6 +66,24 @@ func _smoke() -> void:
 			if not _check_prop(world, label, Vector3(3.95, 1.10, 0.95)):
 				_fail("real Tripo pew SUNK or collider/mat mismatch: " + label)
 				return
+			var pew_art := (world.get_node(label) as StaticBody3D).get_child(1) as Node3D
+			if absf(pew_art.rotation_degrees.y - 180.0) > 0.5:
+				_fail("pew STILL FACING ENTRANCE rather than sanctuary: " + label)
+				return
+	var decor := world.get_node_or_null("MainAisleGothicDressing")
+	if decor == null:
+		_fail("Gothic aisle dressing absent")
+		return
+	for detail in ["StoneFloor_Satin_Wet", "VaultCrown", "AltarReredosShadow",
+		"CentralCrucifixVertical", "AltarRedBanner_-1", "AltarRedBanner_1",
+		"ChandelierWarmLight_0", "ChandelierWarmLight_1"]:
+		if decor.get_node_or_null(detail) == null:
+			_fail("Gothic target reconstruction missing: " + detail)
+			return
+	for stair in ["ChancelStep_01", "ChancelStep_02", "ChancelDais"]:
+		if world.get_node_or_null(stair) == null:
+			_fail("no raised altar physical riser: " + stair)
+			return
 	if world.player == null or world.player.camera == null:
 		_fail("first person player/camera missing")
 		return
@@ -167,5 +185,5 @@ func _smoke() -> void:
 	if world.reload_timer <= 0:
 		_fail("sprint incorrectly cancels reload")
 		return
-	print("IGLESIA_SMOKE_GREEN: original nun MP40 v3 13-frame; all 14 Tripo pews and altar EXACT floor fitted; Android ghost-fire guarded; independent FIRE+ADS; reload preserved")
+	print("IGLESIA_SMOKE_GREEN: 14 pews rotated 180 toward raised sanctuary, Tripo altar +0.45m, 3 real risers, Gothic nave dressing, MP40 v3 and Android ghost-fire guarded")
 	quit(0)
