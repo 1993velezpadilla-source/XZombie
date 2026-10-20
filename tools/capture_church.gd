@@ -45,12 +45,21 @@ func _capture() -> void:
 	var cam: Camera3D = ply.get("camera") as Camera3D
 	cam.rotation = Vector3.ZERO
 	cam.current = true
+	# Match the user's specific Round-2 HIP/ADS screenshot reference
+	# without altering the real running game or producing a fake mockup.
+	_world.set("round_number", 2)
+	_world.set("points", 1000)
+	_world.set("bullets", 32)
+	_world.set("reserve", 141)
+	_world.set("next_round_timer", 60.0)
 	var hud: Control = _world.get("hud")
 	hud.set("ads_toggled", false)
 	hud.set("ads_active", false)
 	hud.call("set_status", 2, 1000, 100, 32, 141, false)
 	if not await _frame("res://build/iglesia-main-aisle-HIP.png", "hip"):
 		return
+	_world.set("bullets", 6)
+	_world.set("reserve", 167)
 	hud.set("ads_toggled", true)
 	hud.set("ads_active", true)
 	hud.call("set_status", 2, 1000, 100, 6, 167, false)
