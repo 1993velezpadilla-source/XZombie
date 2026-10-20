@@ -95,16 +95,20 @@ func _place_furniture(asset_name: String, parent_body: StaticBody3D, target_dime
 		push_error("IGLESIA_FURNITURE_INVALID_ROOT: " + asset_name)
 		return false
 	parent_body.add_child(instance)
-	# Source nominal extents from the archived owner-supplied GLB metadata.
-	var original := Vector3(0.980453491, 0.457199096, 0.285186768) if asset_name == "bench" else Vector3(0.553695679, 0.777038574, 0.980178833)
+	# Never rely on stale nominal metadata: measure actual nested GLB meshes
+	# under the REAL runtime transform, then fit all dimensions against collider.
+	# In the -90° yaw, source-local X maps to world Z; local Z maps to world X.
+	instance.rotation_degrees.y = -90.0 if asset_name == "altar" else 0.0
+	instance.scale = Vector3.ONE
+	var raw_bounds := furniture_bounds(parent_body, instance)
+	if raw_bounds.size.x < 0.00001 or raw_bounds.size.y < 0.00001 or raw_bounds.size.z < 0.00001:
+		push_error("IGLESIA_TRIPO_ZERO_EXTENTS: " + asset_name)
+		instance.queue_free()
+		return false
 	if asset_name == "altar":
-		# Original Sanctum was built along +X. This Godot nave looks toward -Z:
-		# 180-degree Tripo author yaw plus a 90-degree map-axis correction = -90.
-		# Swap X/Z extent fit so the LONG ceremonial front faces the pews.
-		instance.scale = Vector3(target_dimensions.z / original.x, target_dimensions.y / original.y, target_dimensions.x / original.z)
-		instance.rotation_degrees.y = -90.0
+		instance.scale = Vector3(target_dimensions.z / raw_bounds.size.z, target_dimensions.y / raw_bounds.size.y, target_dimensions.x / raw_bounds.size.x)
 	else:
-		instance.scale = Vector3(target_dimensions.x / original.x, target_dimensions.y / original.y, target_dimensions.z / original.z)
+		instance.scale = target_dimensions / raw_bounds.size
 	# Tripo scene origins are NOT necessarily at the bottom or center of art.
 	# Survey every transformed mesh bound AFTER scale/rotation; stand visual on
 	# the physics floor, and center it over the matching BoxShape3D footprint.
@@ -127,6 +131,10 @@ func _place_furniture(asset_name: String, parent_body: StaticBody3D, target_dime
 		return false
 	if absf(verified.position.x + verified.size.x * 0.5) > 0.02 or absf(verified.position.z + verified.size.z * 0.5) > 0.02:
 		push_error("IGLESIA_FURNITURE_OFF_CENTER: " + asset_name)
+		instance.queue_free()
+		return false
+	if absf(verified.size.x - target_dimensions.x) > 0.04 or absf(verified.size.y - target_dimensions.y) > 0.04 or absf(verified.size.z - target_dimensions.z) > 0.04:
+		push_error("IGLESIA_FURNITURE_SCALE_MISMATCH: " + asset_name + " measured=" + str(verified.size) + " target=" + str(target_dimensions))
 		instance.queue_free()
 		return false
 	instance.set_meta("floor_aligned", true)
