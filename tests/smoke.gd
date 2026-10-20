@@ -47,7 +47,7 @@ func _smoke() -> void:
 		return
 	var altar: StaticBody3D = world.get_node("Altar_Real_Collider")
 	var altar_shape: CollisionShape3D = altar.get_child(0)
-	if altar_shape.shape.size.x < 4.7 or altar_shape.shape.size.z < 2.6:
+	if altar_shape.shape.size.x < 5.8 or altar_shape.shape.size.z < 2.6:
 		_fail("Tripo altar collider still undersized")
 		return
 	if not ResourceLoader.exists("res://assets/imported/altar.glb") or not ResourceLoader.exists("res://assets/imported/bench.glb"):
@@ -57,7 +57,7 @@ func _smoke() -> void:
 	if absf(altar_skin.rotation_degrees.y + 90.0) > 0.5:
 		_fail("Tripo altar faces the wrong direction")
 		return
-	if not _check_prop(world, "Altar_Real_Collider", Vector3(4.8, 1.65, 2.7), 0.45):
+	if not _check_prop(world, "Altar_Real_Collider", Vector3(5.9, 1.95, 2.7), 0.45):
 		_fail("real Tripo altar does not stand on floor / is undersized")
 		return
 	for row in range(7):
