@@ -177,15 +177,15 @@ func furniture_bounds(parent_body: Node3D, instance: Node3D) -> AABB:
 
 func _build_nave() -> void:
 	_solid("Floor", Vector3(0, -0.3, 0), Vector3(18, 0.6, 35), stone)
-	_solid("WallWest", Vector3(-9, 3.0, 0), Vector3(0.45, 6.0, 35), stone)
-	_solid("WallEast", Vector3(9, 3.0, 0), Vector3(0.45, 6.0, 35), stone)
-	_solid("AltarWall", Vector3(0, 3.0, -17.5), Vector3(18, 6.0, 0.45), stone)
-	_solid("EntryWallL", Vector3(-5.5, 3.0, 17.5), Vector3(7, 6.0, 0.45), stone)
-	_solid("EntryWallR", Vector3(5.5, 3.0, 17.5), Vector3(7, 6.0, 0.45), stone)
-	_solid("EntryLintel", Vector3(0, 5.0, 17.5), Vector3(4, 2, 0.45), stone)
+	_solid("WallWest", Vector3(-9, 4.8, 0), Vector3(0.45, 9.6, 35), stone)
+	_solid("WallEast", Vector3(9, 4.8, 0), Vector3(0.45, 9.6, 35), stone)
+	_solid("AltarWall", Vector3(0, 4.8, -17.5), Vector3(18, 9.6, 0.45), stone)
+	_solid("EntryWallL", Vector3(-5.5, 4.8, 17.5), Vector3(7, 9.6, 0.45), stone)
+	_solid("EntryWallR", Vector3(5.5, 4.8, 17.5), Vector3(7, 9.6, 0.45), stone)
+	_solid("EntryLintel", Vector3(0, 7.8, 17.5), Vector3(4, 3.6, 0.45), stone)
 	for z in [-13.0, -7.0, -1.0, 5.0, 11.0]:
-		_solid("PillarL", Vector3(-8.25, 2.65, z), Vector3(0.6, 5.3, 0.85), stone)
-		_solid("PillarR", Vector3(8.25, 2.65, z), Vector3(0.6, 5.3, 0.85), stone)
+		_solid("PillarL", Vector3(-8.25, 4.1, z), Vector3(0.6, 8.2, 0.85), stone)
+		_solid("PillarR", Vector3(8.25, 4.1, z), Vector3(0.6, 8.2, 0.85), stone)
 	for row in range(7):
 		var z := -9.8 + float(row) * 3.05
 		for side in [-1, 1]:
@@ -201,12 +201,12 @@ func _build_nave() -> void:
 				pew.add_child(box)
 			blockers.append(Rect2(x - size.x / 2 - 0.34, z - size.z / 2 - 0.34, size.x + 0.68, size.z + 0.68))
 	# Wider altar faces the pews; keep enough room for both sanctuary lanes.
-	var altar_dimensions := Vector3(4.8, 1.65, 2.7)
+	var altar_dimensions := Vector3(5.9, 1.95, 2.7)
 	# Three distinct physical sanctuary risers make the altar read elevated
 	# instead of sunk into the old floor. Actual Tripo art is grounded on top.
-	_solid("ChancelStep_01", Vector3(0, 0.065, -12.75), Vector3(6.5, 0.13, 0.92), stone)
-	_solid("ChancelStep_02", Vector3(0, 0.145, -13.34), Vector3(6.5, 0.29, 0.93), stone)
-	_solid("ChancelDais", Vector3(0, 0.225, -15.05), Vector3(6.5, 0.45, 3.25), stone)
+	_solid("ChancelStep_01", Vector3(0, 0.065, -12.75), Vector3(7.4, 0.13, 0.92), stone)
+	_solid("ChancelStep_02", Vector3(0, 0.145, -13.34), Vector3(7.4, 0.29, 0.93), stone)
+	_solid("ChancelDais", Vector3(0, 0.225, -15.05), Vector3(7.4, 0.45, 3.25), stone)
 	var altar := _solid("Altar_Real_Collider", Vector3(0, 0.45 + altar_dimensions.y / 2.0, -15.05), altar_dimensions, stone, false)
 	if not _place_furniture("altar", altar, altar_dimensions):
 		var altar_mesh := MeshInstance3D.new()
@@ -215,15 +215,15 @@ func _build_nave() -> void:
 		altar_mesh.mesh = mesh
 		altar_mesh.material_override = stone
 		altar.add_child(altar_mesh)
-	blockers.append(Rect2(-3.30, -16.7, 6.6, 4.42))
+	blockers.append(Rect2(-3.90, -16.7, 7.8, 4.42))
 	_solid("WallBuy_Kiosk", wallbuy + Vector3(-0.25, 1.1, 0), Vector3(0.15, 2.2, 1.5), iron)
 	for x in [-8.65, 8.65]:
 		for z in [-11.0, -4.0, 3.0, 10.0]:
 			var glass := MeshInstance3D.new()
 			var pane := BoxMesh.new()
-			pane.size = Vector3(0.07, 2.5, 1.5)
+			pane.size = Vector3(0.07, 4.2, 1.5)
 			glass.mesh = pane
-			glass.position = Vector3(x, 3.5, z)
+			glass.position = Vector3(x, 5.0, z)
 			var light_blue := _material(Color(0.10, 0.18, 0.26))
 			light_blue.emission_enabled = true
 			light_blue.emission = Color(0.04, 0.09, 0.16)
@@ -268,7 +268,7 @@ func _set_lighting() -> void:
 	moon.light_energy = 0.58
 	add_child(moon)
 	var altar_light := OmniLight3D.new()
-	altar_light.position = Vector3(0, 3.0, -13)
+	altar_light.position = Vector3(0, 4.3, -13)
 	altar_light.light_color = Color(1.0, 0.55, 0.26)
 	altar_light.light_energy = 2.5
 	altar_light.omni_range = 11.0
