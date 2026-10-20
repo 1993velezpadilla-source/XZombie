@@ -147,7 +147,8 @@ def split_mp40(source: bytes, forward: bytes) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(description="Verified owner-asset import for Iglesia")
-    p.add_argument("--with-hero-models", action="store_true", help="Huge Tripo GLB test only; do not ship before mobile LOD")
+    p.add_argument("--with-hero-models", action="store_true", help="All huge Tripo GLBs (art audit only)")
+    p.add_argument("--with-furniture", action="store_true", help="Include real Tripo altar and pew GLBs in mobile preview; no FPS guarantee")
     p.add_argument("--full-textures", action="store_true", help="Also import 4K normal+roughness originals")
     args = p.parse_args()
     btn = "assets/xziel/official_touch_skins_v1/"
@@ -173,11 +174,13 @@ def main() -> None:
             continue
         path = "xogot/assets/materials/church/stone_wall_4k/" + name
         fetch("config-old-3", CHURCH_REF, path, OUT/name, sha)
-    if args.with_hero_models:
+    if args.with_hero_models or args.with_furniture:
         for name, sha in MESHES.items():
+            if args.with_furniture and not args.with_hero_models and name not in ("altar.glb", "bench.glb"):
+                continue
             path = "xogot/assets/environment/church/" + name
             fetch("config-old-3", CHURCH_REF, path, OUT/name, sha)
-        print("WARNING: heavy original GLBs present; LOD/mobile FPS NOT validated")
+        print("WARNING: authentic Tripo models installed; LOD/mobile FPS NOT validated")
     print("ASSET_INGEST_GREEN: verified inputs only (not an Android performance claim)")
 
 if __name__ == "__main__":
