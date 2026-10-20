@@ -90,7 +90,10 @@ func _place_furniture(asset_name: String, parent_body: StaticBody3D, target_dime
 	var packed := load(resource_path)
 	if not packed is PackedScene:
 		return false
-	var instance = packed.instantiate()
+	var instance := packed.instantiate() as Node3D
+	if instance == null:
+		push_error("IGLESIA_FURNITURE_INVALID_ROOT: " + asset_name)
+		return false
 	parent_body.add_child(instance)
 	# Source nominal extents from the archived owner-supplied GLB metadata.
 	var original := Vector3(0.980453491, 0.457199096, 0.285186768) if asset_name == "bench" else Vector3(0.553695679, 0.777038574, 0.980178833)
