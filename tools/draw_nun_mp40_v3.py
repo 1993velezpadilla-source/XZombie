@@ -93,11 +93,12 @@ def habit_arms(p: Painter, ads: bool = False, sprint: bool = False):
         left_cuff = [(351, 527), (424, 526), (442, 565), (371, 576)]
         right_cuff = [(562, 555), (624, 535), (642, 567), (581, 590)]
     else:
-        left = [(130, 741), (243, 704), (317, 579), (380, 517), (433, 536),
-                (468, 585), (393, 744)]
+        # Support arm angles forward and physically REACHES the barrel.
+        left = [(130, 741), (243, 710), (365, 624), (478, 490),
+                (522, 465), (578, 498), (562, 561), (412, 744)]
         right = [(850, 745), (801, 655), (754, 548), (708, 517),
                  (655, 563), (652, 638), (684, 739)]
-        left_cuff = [(372, 513), (439, 524), (462, 554), (408, 576)]
+        left_cuff = [(508, 461), (553, 439), (593, 478), (557, 516)]
         right_cuff = [(704, 518), (764, 547), (770, 583), (689, 574)]
     p.poly(left, CLOTH)
     p.poly(right, CLOTH)
@@ -105,8 +106,10 @@ def habit_arms(p: Painter, ads: bool = False, sprint: bool = False):
         p.outline_folds([((205, 732), (353, 566)), ((288, 719), (399, 558)),
                          ((741, 722), (606, 569)), ((683, 721), (578, 577))], True)
     else:
-        p.outline_folds([((222, 724), (364, 558)), ((306, 736), (414, 565)),
+        p.outline_folds([((220, 729), (517, 495)), ((312, 734), (550, 515)),
                          ((813, 710), (734, 572)), ((703, 726), (690, 590))], True)
+        p.line([(282, 705), (491, 530), (540, 505)], INK, 5)
+        p.line([(337, 712), (522, 554)], (83, 76, 86, 255), 3)
     p.poly(left_cuff, CUFF)
     p.poly(right_cuff, CUFF)
     p.line(left_cuff[0:2], (245, 223, 205, 255), 4)
@@ -118,18 +121,25 @@ def habit_arms(p: Painter, ads: bool = False, sprint: bool = False):
 
 def pale_hands_hip(p: Painter, stage: int = 0):
     """Exposed pale hands, elongated fingers and dark nails (no green gloves)."""
-    pull = stage * 13
-    # Left hand supports the fore-end, right hand wraps the pistol grip.
-    p.poly([(400, 529 - pull), (423, 474 - pull), (452, 438 - pull),
-            (486, 458 - pull), (496, 513 - pull), (449, 554 - pull)], SKIN_SHADE)
-    p.poly([(410, 522 - pull), (436, 474 - pull), (455, 459 - pull),
-            (470, 473 - pull), (452, 515 - pull), (444, 542 - pull)], SKIN)
-    for i, step in enumerate([0, 12, 24]):
-        p.poly([(448 + step, 480 - pull + i * 3), (462 + step, 451 - pull + i * 3),
-                (478 + step, 450 - pull + i * 3), (477 + step, 471 - pull + i * 3),
-                (462 + step, 497 - pull + i * 3)], SKIN if i != 2 else SKIN_LIGHT, width=2)
-        p.ellipse((470 + step, 446 - pull + i * 3,
-                   479 + step, 454 - pull + i * 3), NAIL, stroke=None)
+    pull = stage * 5
+    # Left palm now wraps the actual gun fore-end; no detached fist.
+    p.poly([(544, 485 - pull), (537, 455 - pull), (559, 420 - pull),
+            (583, 408 - pull), (618, 426 - pull), (624, 453 - pull),
+            (598, 479 - pull), (562, 514 - pull)], SKIN_SHADE)
+    p.poly([(548, 487 - pull), (547, 456 - pull), (564, 432 - pull),
+            (591, 423 - pull), (612, 441 - pull), (603, 472 - pull),
+            (572, 493 - pull)], SKIN)
+    p.poly([(555, 491 - pull), (544, 471 - pull), (567, 452 - pull),
+            (587, 454 - pull), (600, 476 - pull)], SKIN_LIGHT, width=2)
+    for i, step in enumerate([0, 11, 22]):
+        p.poly([(568 + step, 444 - pull + i * 3),
+                (574 + step, 422 - pull + i * 2),
+                (591 + step, 421 - pull + i * 2),
+                (596 + step, 442 - pull + i * 2),
+                (584 + step, 466 - pull + i * 2)], SKIN, width=2)
+        p.ellipse((580 + step, 418 - pull + i * 2,
+                   590 + step, 426 - pull + i * 2), NAIL, stroke=None)
+    p.line([(554, 476 - pull), (566, 483 - pull)], SKIN_LIGHT, 4)
     p.poly([(696, 553), (748, 544), (766, 574), (744, 635),
             (717, 641), (674, 599)], SKIN_SHADE)
     p.poly([(704, 557), (750, 554), (759, 575), (735, 624),
@@ -287,12 +297,15 @@ def pale_fingers_on_top(p: Painter, ads=False, reload_phase=0):
                     (x2 + 26, 568), (x2 + 4, 566)], SKIN)
             p.line([(x2 + 17, 541), (x2 + 20, 557)], SKIN_LIGHT, 3)
         return
+    # Fingers physically curl OVER the MP40 shroud at x~=590, y~=440.
     for i in range(3):
-        x = 448 + i * 13
-        y = 480 + i * 2 - reload_phase * 8
-        p.poly([(x - 4, y), (x + 10, y - 25), (x + 23, y - 17),
-                (x + 15, y + 5)], SKIN)
-        p.line([(x + 6, y - 15), (x + 12, y - 19)], NAIL, 2)
+        x = 572 + i * 13
+        y = 442 + i * 6 - reload_phase * 5
+        p.poly([(x - 5, y - 5), (x + 5, y - 18),
+                (x + 19, y - 15), (x + 23, y + 7),
+                (x + 11, y + 18)], SKIN if i else SKIN_LIGHT)
+        p.line([(x + 7, y - 16), (x + 14, y - 13)], NAIL, 3)
+        p.line([(x + 4, y + 6), (x + 14, y + 11)], SKIN_SHADE, 2)
     for i in range(3):
         x, y = 692 + i * 13, 577 + i * 10
         p.poly([(x, y), (x + 11, y - 6), (x + 21, y + 22),
